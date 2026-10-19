@@ -77,7 +77,7 @@ export type TopologyEdge = {
 }
 
 export type TopologyCompatibilityIssue = {
-  code: 'unsupported-cell-shape' | 'invalid-edge-endpoint'
+  code: 'unsupported-cell-shape' | 'invalid-edge-endpoint' | 'invalid-node-parent'
   cellId: string
   message: string
 }
@@ -106,14 +106,43 @@ export function fromX6Graph(input: X6Graph): EditorGraph {
   const edges: TopologyEdge[] = []
   const issues: TopologyCompatibilityIssue[] = []
   const passthroughCells: X6Cell[] = []
+  const cellsById = new Map(graph.cells.map((cell) => [cell.id, cell]))
+  const nodeDepths = new Map<string, number>()
+
+  // Validate the entire ancestor chain so children of unsupported groups also
+  // remain raw rather than reaching React Flow with a dangling parent.
+  for (const cell of graph.cells) {
+    if (!supportedNodeShapes.has(cell.shape)) continue
+    const visited = new Set([cell.id])
+    let ancestor = cell
+    let valid = true
+    let depth = 0
+    while (ancestor.parent !== undefined) {
+      const parent = cellsById.get(ancestor.parent)
+      if (!parent || parent.shape !== 'group' || visited.has(parent.id)) {
+        valid = false
+        break
+      }
+      visited.add(parent.id)
+      ancestor = parent
+      depth += 1
+    }
+    if (valid) nodeDepths.set(cell.id, depth)
+  }
+
+  function isUsableEndpoint(endpoint: X6Endpoint | undefined): endpoint is X6Endpoint {
+    if (!endpoint || !nodeDepths.has(endpoint.cell)) return false
+    if (endpoint.port === undefined) return true
+    return cellsById.get(endpoint.cell)?.ports?.items?.some((port) => port.id === endpoint.port) ?? false
+  }
 
   for (const cell of graph.cells) {
     if (cell.shape === 'edge') {
-      if (!cell.source?.cell || !cell.target?.cell) {
+      if (!isUsableEndpoint(cell.source) || !isUsableEndpoint(cell.target)) {
         issues.push({
           code: 'invalid-edge-endpoint',
           cellId: cell.id,
-          message: `连线 ${cell.id} 缺少可识别的节点端点，已原样保留。`,
+          message: `连线 ${cell.id} 引用了无法渲染的节点或端口，已原样保留。`,
         })
         passthroughCells.push(cell)
         continue
@@ -133,6 +162,16 @@ export function fromX6Graph(input: X6Graph): EditorGraph {
           raw: cell,
         },
       })
+      continue
+    }
+
+    if (supportedNodeShapes.has(cell.shape) && !nodeDepths.has(cell.id)) {
+      issues.push({
+        code: 'invalid-node-parent',
+        cellId: cell.id,
+        message: `图元 ${cell.id} 的分组父级不存在、不受支持或形成循环，已原样保留。`,
+      })
+      passthroughCells.push(cell)
       continue
     }
 
@@ -172,6 +211,8 @@ export function fromX6Graph(input: X6Graph): EditorGraph {
     })
   }
 
+  // React Flow requires parents to precede their children, regardless of input order.
+  nodes.sort((left, right) => nodeDepths.get(left.id)! - nodeDepths.get(right.id)!)
   return { nodes, edges, issues, passthroughCells, rawGraph: graph }
 }
 

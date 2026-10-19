@@ -140,10 +140,10 @@
 97. As a learner, I want to receive clear loading, empty, validation, network and service-error feedback, so that I know what happened and how to continue.
 98. As a learner, I want to switch accounts, tasks and experiments without stale state leaking between them, so that I can trust the displayed context.
 99. As a learner, I want to have polling, requests and real-time connections cleaned up when leaving a page, so that obsolete work does not corrupt my current session.
-100. As a local reconstruction user, I want to distinguish simulated actions, real reads and verified real writes, so that I understand which backend behavior has been exercised.
-101. As a project owner, I want to track coverage of every discovered route, operation and permission branch, so that no module is silently dropped during phased delivery.
-102. As a project owner, I want to receive a declared scope and remaining gaps for each delivery, so that I can distinguish a finished phase from a finished platform.
-103. As a project owner, I want to replace the visual design later without reimplementing business logic, so that I can modernize the interface independently.
+100.  As a local reconstruction user, I want to distinguish simulated actions, real reads and verified real writes, so that I understand which backend behavior has been exercised.
+101.  As a project owner, I want to track coverage of every discovered route, operation and permission branch, so that no module is silently dropped during phased delivery.
+102.  As a project owner, I want to receive a declared scope and remaining gaps for each delivery, so that I can distinguish a finished phase from a finished platform.
+103.  As a project owner, I want to replace the visual design later without reimplementing business logic, so that I can modernize the interface independently.
 
 ## Implementation Decisions
 
@@ -180,16 +180,16 @@
 
 ### 实施阶段
 
-| 阶段 | 交付范围 | 验收界限 |
-|---|---|---|
-| P0 | 全站范围、功能/路由/权限台账、证据缺口、测试边界 | 规格可评审；所有已知入口有归属 |
-| P0.1 | 前置工程初始化，详见独立规格 | 独立工程规格验收通过，不计作业务功能完成 |
-| P1 | 登录与应用壳、实验列表管理、拓扑编辑与配置、保存重开 | 浏览器完成首条闭环；真实联调状态单独声明 |
-| P2 | 实验详情其余页、环境/节点生命周期、控制台、流量、检测、攻击教学、模拟蓝军 | 每个适用动作有状态/权限/失败验收 |
-| P3 | 课程、视频/进度、教学任务/结果、路线、虚拟/实操科目、自测/作业/积分 | 不同学习上下文分别完成闭环 |
-| P4 | 考核/练习/结果、装备/预约、演练/保障/席位/协作及统计 | 各类型任务、题目和权限条件均有验收 |
-| P5 | 资源库、首页配套、个人路线画像、笔记网盘、离线、个人设置与预览 | 文件、进度、个人数据域与产物正确 |
-| P6 | AI、态势、剩余独立入口及全站回归 | 所有适用功能通过；阻塞项不能算完成 |
+| 阶段 | 交付范围                                                                  | 验收界限                                 |
+| ---- | ------------------------------------------------------------------------- | ---------------------------------------- |
+| P0   | 全站范围、功能/路由/权限台账、证据缺口、测试边界                          | 规格可评审；所有已知入口有归属           |
+| P0.1 | 前置工程初始化，详见独立规格                                              | 独立工程规格验收通过，不计作业务功能完成 |
+| P1   | 登录与应用壳、实验列表管理、拓扑编辑与配置、保存重开                      | 浏览器完成首条闭环；真实联调状态单独声明 |
+| P2   | 实验详情其余页、环境/节点生命周期、控制台、流量、检测、攻击教学、模拟蓝军 | 每个适用动作有状态/权限/失败验收         |
+| P3   | 课程、视频/进度、教学任务/结果、路线、虚拟/实操科目、自测/作业/积分       | 不同学习上下文分别完成闭环               |
+| P4   | 考核/练习/结果、装备/预约、演练/保障/席位/协作及统计                      | 各类型任务、题目和权限条件均有验收       |
+| P5   | 资源库、首页配套、个人路线画像、笔记网盘、离线、个人设置与预览            | 文件、进度、个人数据域与产物正确         |
+| P6   | AI、态势、剩余独立入口及全站回归                                          | 所有适用功能通过；阻塞项不能算完成       |
 
 阶段结束必须列出已还原、模拟、待联调、依赖阻塞、不适用及理由。最终功能验收不因先实现实验台而缩减。视觉翻新是后续独立规格。
 

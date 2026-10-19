@@ -50,7 +50,12 @@ function AppShell() {
               >
                 接口诊断
               </Link>
-              <Link to="/diagnostics/data" activeProps={{ 'aria-current': 'page' }}>表格与表单诊断</Link>
+              <Link
+                to="/diagnostics/data"
+                activeProps={{ 'aria-current': 'page' }}
+              >
+                表格与表单诊断
+              </Link>
             </>
           ) : null}
           {can(mockIdentity, 'drafts:edit') ? (
@@ -82,7 +87,8 @@ function OverviewPage() {
       <p className="eyebrow">Infrastructure preview</p>
       <h1>工程概览</h1>
       <p>
-        这里验证统一布局、hash 路由和能力入口。它不是登录、实验台或课程等正式业务页面。
+        这里验证统一布局、hash
+        路由和能力入口。它不是登录、实验台或课程等正式业务页面。
       </p>
       <div className="notice" role="note">
         当前身份仅包含可重复验证的模拟能力，不会触发真实写入。
@@ -175,14 +181,22 @@ function DraftPage() {
 
       {blocker.status === 'blocked' ? (
         <div className="dialog-backdrop">
-          <section className="dialog" role="alertdialog" aria-labelledby="leave-title">
+          <section
+            className="dialog"
+            role="alertdialog"
+            aria-labelledby="leave-title"
+          >
             <h2 id="leave-title">放弃未保存的修改？</h2>
             <p>继续离开会清除当前示例草稿。</p>
             <div className="dialog-actions">
               <button type="button" onClick={blocker.reset}>
                 留在这里
               </button>
-              <button type="button" className="danger" onClick={blocker.proceed}>
+              <button
+                type="button"
+                className="danger"
+                onClick={blocker.proceed}
+              >
                 继续离开
               </button>
             </div>

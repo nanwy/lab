@@ -77,7 +77,8 @@ export type TopologyEdge = {
 }
 
 export type TopologyCompatibilityIssue = {
-  code: 'unsupported-cell-shape' | 'invalid-edge-endpoint' | 'invalid-node-parent'
+  code:
+    'unsupported-cell-shape' | 'invalid-edge-endpoint' | 'invalid-node-parent'
   cellId: string
   message: string
 }
@@ -130,10 +131,16 @@ export function fromX6Graph(input: X6Graph): EditorGraph {
     if (valid) nodeDepths.set(cell.id, depth)
   }
 
-  function isUsableEndpoint(endpoint: X6Endpoint | undefined): endpoint is X6Endpoint {
+  function isUsableEndpoint(
+    endpoint: X6Endpoint | undefined,
+  ): endpoint is X6Endpoint {
     if (!endpoint || !nodeDepths.has(endpoint.cell)) return false
     if (endpoint.port === undefined) return true
-    return cellsById.get(endpoint.cell)?.ports?.items?.some((port) => port.id === endpoint.port) ?? false
+    return (
+      cellsById
+        .get(endpoint.cell)
+        ?.ports?.items?.some((port) => port.id === endpoint.port) ?? false
+    )
   }
 
   for (const cell of graph.cells) {
@@ -212,7 +219,9 @@ export function fromX6Graph(input: X6Graph): EditorGraph {
   }
 
   // React Flow requires parents to precede their children, regardless of input order.
-  nodes.sort((left, right) => nodeDepths.get(left.id)! - nodeDepths.get(right.id)!)
+  nodes.sort(
+    (left, right) => nodeDepths.get(left.id)! - nodeDepths.get(right.id)!,
+  )
   return { nodes, edges, issues, passthroughCells, rawGraph: graph }
 }
 
@@ -259,8 +268,16 @@ export function toX6Graph(editor: EditorGraph): X6Graph {
       ...raw,
       id: edge.id,
       shape: 'edge',
-      source: { ...(raw.source ?? {}), cell: edge.source, port: edge.sourceHandle },
-      target: { ...(raw.target ?? {}), cell: edge.target, port: edge.targetHandle },
+      source: {
+        ...(raw.source ?? {}),
+        cell: edge.source,
+        port: edge.sourceHandle,
+      },
+      target: {
+        ...(raw.target ?? {}),
+        cell: edge.target,
+        port: edge.targetHandle,
+      },
       vertices: clone(edge.data.vertices),
       router: clone(edge.data.router),
       connector: clone(edge.data.connector),

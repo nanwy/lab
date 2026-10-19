@@ -14,12 +14,15 @@ const MODES: Array<{ mode: DiagnosticMode; label: string }> = [
 ]
 
 export function shouldRetryDiagnostic(failureCount: number, error: Error) {
-  return error instanceof ApiError && error.kind === 'network' && failureCount < 1
+  return (
+    error instanceof ApiError && error.kind === 'network' && failureCount < 1
+  )
 }
 
 function describeError(error: Error) {
   if (!(error instanceof ApiError)) return '未知错误 · 请求未完成'
-  if (error.kind === 'http') return `HTTP ${error.status ?? '失败'} · ${error.message}`
+  if (error.kind === 'http')
+    return `HTTP ${error.status ?? '失败'} · ${error.message}`
   if (error.kind === 'business') return `业务失败 · ${error.message}`
   if (error.kind === 'timeout') return `超时 · ${error.message}`
   if (error.kind === 'cancelled') return `已取消 · ${error.message}`
@@ -52,7 +55,8 @@ export function DiagnosticsPage() {
       <p className="eyebrow">Fetch + Query diagnostics</p>
       <h1>接口状态诊断</h1>
       <p>
-        这里使用确定性模拟响应验证统一客户端和 Query 状态，不会访问或写入真实业务数据。
+        这里使用确定性模拟响应验证统一客户端和 Query
+        状态，不会访问或写入真实业务数据。
       </p>
 
       <div className="diagnostic-controls" aria-label="模拟响应">
@@ -70,7 +74,9 @@ export function DiagnosticsPage() {
 
       <div className="query-state" aria-live="polite">
         {cancelled ? (
-          <p className="state-cancelled">请求已取消，可以选择其他响应继续验证。</p>
+          <p className="state-cancelled">
+            请求已取消，可以选择其他响应继续验证。
+          </p>
         ) : query.isPending ? (
           <p>正在读取模拟响应…</p>
         ) : query.isError ? (

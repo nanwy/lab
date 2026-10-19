@@ -5,8 +5,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createAppRouter } from '../router'
 
-;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-  .IS_REACT_ACT_ENVIRONMENT = true
+;(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true
 
 let container: HTMLDivElement
 let root: Root | undefined
@@ -51,14 +52,18 @@ function findButton(name: string) {
 }
 
 function click(element: Element) {
-  element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+  element.dispatchEvent(
+    new MouseEvent('click', { bubbles: true, cancelable: true }),
+  )
 }
 
 describe('topology compatibility route', () => {
   it('mounts a custom node and keeps an edited label after save and reopen', async () => {
     await renderTopology()
 
-    expect(await waitFor(() => container.querySelector('.react-flow'))).toBeTruthy()
+    expect(
+      await waitFor(() => container.querySelector('.react-flow')),
+    ).toBeTruthy()
     expect(container.textContent).toContain('核心路由器')
     expect(container.textContent).toContain('未支持的形状 legacy-annotation')
 

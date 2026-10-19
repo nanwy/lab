@@ -118,7 +118,8 @@ function asFlowEdges(edges: TopologyEdge[]): FlowEdge[] {
 
 function asTopologyEdges(edges: FlowEdge[]): TopologyEdge[] {
   return edges.map((edge) => {
-    if (!edge.data) throw new Error(`Topology edge ${edge.id} is missing adapter data`)
+    if (!edge.data)
+      throw new Error(`Topology edge ${edge.id} is missing adapter data`)
     return {
       id: edge.id,
       source: edge.source,

@@ -3,12 +3,21 @@ import { HttpResponse, delay, http } from 'msw'
 import { setupServer } from 'msw/node'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest'
 
 import { DiagnosticsPage } from './diagnostics-page'
 
-;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-  .IS_REACT_ACT_ENVIRONMENT = true
+;(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true
 
 const server = setupServer()
 let container: HTMLDivElement
@@ -85,10 +94,16 @@ describe('browser-visible query diagnostics', () => {
       http.get('/api/diagnostics', async ({ request }) => {
         const mode = new URL(request.url).searchParams.get('mode')
         if (mode === 'http-error') {
-          return HttpResponse.json({ message: '模拟服务暂时不可用' }, { status: 503 })
+          return HttpResponse.json(
+            { message: '模拟服务暂时不可用' },
+            { status: 503 },
+          )
         }
         if (mode === 'business-error') {
-          return HttpResponse.json({ success: false, message: '模拟业务规则拒绝' })
+          return HttpResponse.json({
+            success: false,
+            message: '模拟业务规则拒绝',
+          })
         }
         await delay(300)
         return HttpResponse.json({ items: [{ id: 'late', label: '迟到响应' }] })

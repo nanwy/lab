@@ -1,12 +1,7 @@
 import type { ApiClient } from './client'
 
 export type DiagnosticMode =
-  | 'success'
-  | 'empty'
-  | 'http-error'
-  | 'business-error'
-  | 'slow'
-  | 'timeout'
+  'success' | 'empty' | 'http-error' | 'business-error' | 'slow' | 'timeout'
 
 export type DiagnosticResult = {
   items: Array<{ id: string; label: string }>

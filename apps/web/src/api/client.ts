@@ -19,12 +19,7 @@ export type RequestOptions = Omit<RequestInit, 'body' | 'signal'> & {
 }
 
 export type ApiErrorKind =
-  | 'http'
-  | 'business'
-  | 'cancelled'
-  | 'timeout'
-  | 'network'
-  | 'invalid-response'
+  'http' | 'business' | 'cancelled' | 'timeout' | 'network' | 'invalid-response'
 
 export class ApiError extends Error {
   readonly kind: ApiErrorKind
@@ -57,18 +52,27 @@ type ApiClientOptions = {
 function buildUrl(baseUrl: string, path: string) {
   const origin = globalThis.location?.origin ?? 'http://localhost'
   const resolvedBase = new URL(baseUrl, origin)
-  return new URL(path.replace(/^\//, ''), `${resolvedBase.href.replace(/\/$/, '')}/`)
+  return new URL(
+    path.replace(/^\//, ''),
+    `${resolvedBase.href.replace(/\/$/, '')}/`,
+  )
 }
 
-function combineSignals(signal: AbortSignal | undefined, timeoutMs: number | undefined) {
+function combineSignals(
+  signal: AbortSignal | undefined,
+  timeoutMs: number | undefined,
+) {
   const signals = [signal]
   if (timeoutMs !== undefined) signals.push(AbortSignal.timeout(timeoutMs))
-  const active = signals.filter((item): item is AbortSignal => item !== undefined)
+  const active = signals.filter(
+    (item): item is AbortSignal => item !== undefined,
+  )
   return active.length === 0 ? undefined : AbortSignal.any(active)
 }
 
 function safeFieldErrors(value: unknown) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    return undefined
   const safe = Object.fromEntries(
     Object.entries(value).filter(
       (entry): entry is [string, string] => typeof entry[1] === 'string',
@@ -83,7 +87,10 @@ function messageFrom(value: unknown, fallback: string) {
   return typeof message === 'string' && message.trim() ? message : fallback
 }
 
-async function readErrorBody(response: Response, signal: AbortSignal | undefined) {
+async function readErrorBody(
+  response: Response,
+  signal: AbortSignal | undefined,
+) {
   const contentType = response.headers.get('content-type') ?? ''
   if (!contentType.includes('json')) return undefined
   try {
@@ -98,8 +105,9 @@ async function readErrorBody(response: Response, signal: AbortSignal | undefined
 function isBusinessFailure(value: unknown) {
   return Boolean(
     value &&
-      typeof value === 'object' &&
-      (Reflect.get(value, 'success') === false || Reflect.get(value, 'ok') === false),
+    typeof value === 'object' &&
+    (Reflect.get(value, 'success') === false ||
+      Reflect.get(value, 'ok') === false),
   )
 }
 
@@ -116,7 +124,10 @@ async function parseResponse(response: Response, kind: ResponseKind) {
     return response.body
   }
 
-  if (response.status === 204 || response.headers.get('content-length') === '0') {
+  if (
+    response.status === 204 ||
+    response.headers.get('content-length') === '0'
+  ) {
     return null
   }
   try {
@@ -131,7 +142,9 @@ async function parseResponse(response: Response, kind: ResponseKind) {
 
 function abortError(error: unknown, signal: AbortSignal | undefined) {
   if (!signal?.aborted) return undefined
-  const timedOut = signal.reason instanceof DOMException && signal.reason.name === 'TimeoutError'
+  const timedOut =
+    signal.reason instanceof DOMException &&
+    signal.reason.name === 'TimeoutError'
   return new ApiError(
     timedOut ? 'timeout' : 'cancelled',
     timedOut ? '请求超时' : '请求已取消',
@@ -174,14 +187,18 @@ export function createApiClient(options: ApiClientOptions) {
 
       if (!response.ok) {
         const errorBody = await readErrorBody(response, signal)
-        throw new ApiError('http', messageFrom(errorBody, `请求失败（${response.status}）`), {
-          status: response.status,
-          fieldErrors: safeFieldErrors(
-            errorBody && typeof errorBody === 'object'
-              ? Reflect.get(errorBody, 'fieldErrors')
-              : undefined,
-          ),
-        })
+        throw new ApiError(
+          'http',
+          messageFrom(errorBody, `请求失败（${response.status}）`),
+          {
+            status: response.status,
+            fieldErrors: safeFieldErrors(
+              errorBody && typeof errorBody === 'object'
+                ? Reflect.get(errorBody, 'fieldErrors')
+                : undefined,
+            ),
+          },
+        )
       }
 
       let result: unknown
@@ -193,7 +210,9 @@ export function createApiClient(options: ApiClientOptions) {
       if (isBusinessFailure(result)) {
         throw new ApiError('business', messageFrom(result, '业务请求失败'), {
           status: response.status,
-          fieldErrors: safeFieldErrors(Reflect.get(result as object, 'fieldErrors')),
+          fieldErrors: safeFieldErrors(
+            Reflect.get(result as object, 'fieldErrors'),
+          ),
         })
       }
       return result as T

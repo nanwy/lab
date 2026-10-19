@@ -5,8 +5,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createAppRouter } from './router'
 
-;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-  .IS_REACT_ACT_ENVIRONMENT = true
+;(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true
 
 let container: HTMLDivElement
 let root: Root | undefined
@@ -55,7 +56,9 @@ function findByText(selector: string, text: string) {
 }
 
 function click(element: Element) {
-  element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+  element.dispatchEvent(
+    new MouseEvent('click', { bubbles: true, cancelable: true }),
+  )
 }
 
 describe('application shell navigation', () => {
@@ -106,7 +109,9 @@ describe('application shell navigation', () => {
     if (!homeLink) throw new Error('Expected overview link')
     await act(async () => click(homeLink))
 
-    const dialog = await waitFor(() => container.querySelector('[role="alertdialog"]'))
+    const dialog = await waitFor(() =>
+      container.querySelector('[role="alertdialog"]'),
+    )
     expect(dialog).toBeTruthy()
 
     const leaveButton = findByText('button', '继续离开')

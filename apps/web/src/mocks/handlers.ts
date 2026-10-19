@@ -8,7 +8,10 @@ export const handlers = [
 
     if (mode === 'empty') return HttpResponse.json({ items: [] })
     if (mode === 'http-error') {
-      return HttpResponse.json({ message: '模拟服务暂时不可用' }, { status: 503 })
+      return HttpResponse.json(
+        { message: '模拟服务暂时不可用' },
+        { status: 503 },
+      )
     }
     if (mode === 'business-error') {
       return HttpResponse.json({

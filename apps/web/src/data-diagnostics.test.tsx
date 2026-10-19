@@ -7,7 +7,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest'
 import { DataDiagnosticsPage } from './data-diagnostics'
 import { createSampleHandlers } from './mocks/sample-handlers'
 
-;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+;(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true
 const server = setupServer()
 let container: HTMLDivElement
 let root: Root
@@ -20,7 +22,11 @@ beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   act(() => {
     root = createRoot(container)
-    root.render(<QueryClientProvider client={client}><DataDiagnosticsPage /></QueryClientProvider>)
+    root.render(
+      <QueryClientProvider client={client}>
+        <DataDiagnosticsPage />
+      </QueryClientProvider>,
+    )
   })
 })
 afterEach(async () => {
@@ -34,20 +40,27 @@ afterAll(() => server.close())
 async function text(value: string) {
   for (let i = 0; i < 100; i++) {
     if (container.textContent?.includes(value)) return
-    await act(async () => new Promise(resolve => setTimeout(resolve, 10)))
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 10)))
   }
   throw new Error(`Missing ${value}: ${container.textContent}`)
 }
 function click(value: string) {
-  const button = Array.from(container.querySelectorAll('button')).find(b => b.textContent?.trim() === value)
+  const button = Array.from(container.querySelectorAll('button')).find(
+    (b) => b.textContent?.trim() === value,
+  )
   if (!button) throw new Error(`Missing button ${value}`)
   act(() => button.click())
 }
 function input(label: string, value: string) {
-  const field = container.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)
+  const field = container.querySelector<HTMLInputElement>(
+    `input[aria-label="${label}"]`,
+  )
   if (!field) throw new Error(`Missing input ${label}`)
   act(() => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(field, value)
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )!.set!.call(field, value)
     field.dispatchEvent(new Event('input', { bubbles: true }))
     field.dispatchEvent(new Event('change', { bubbles: true }))
   })
@@ -61,7 +74,9 @@ it('pages and sorts the complete mock collection, filters at the server and sele
   click('名称 ↑')
   await text('样本 12')
   expect(container.textContent).not.toContain('样本 06')
-  const select = container.querySelector<HTMLInputElement>('input[aria-label="选择 sample-12"]')!
+  const select = container.querySelector<HTMLInputElement>(
+    'input[aria-label="选择 sample-12"]',
+  )!
   act(() => select.click())
   await text('已选 1 项')
   input('筛选样本名称', '样本 02')
@@ -86,8 +101,12 @@ it('validates nested dynamic fields, attaches server errors, saves and refreshes
   input('样本名称', '样本 00 已更新')
   click('保存模拟样本')
   await text('模拟保存成功，列表已刷新')
-  expect(container.querySelector('tbody')?.textContent).toContain('样本 00 已更新')
-  expect(container.querySelector('tbody')?.textContent).toContain('新的嵌套别名')
+  expect(container.querySelector('tbody')?.textContent).toContain(
+    '样本 00 已更新',
+  )
+  expect(container.querySelector('tbody')?.textContent).toContain(
+    '新的嵌套别名',
+  )
   click('重置模拟样本')
   await text('样本 01')
   expect(container.querySelector('tbody')?.textContent).not.toContain('已更新')

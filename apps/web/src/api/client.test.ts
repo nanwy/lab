@@ -16,10 +16,11 @@ describe('request contract', () => {
   it('keeps the HTTP fallback when an error body contains malformed JSON', async () => {
     const client = createApiClient({
       baseUrl: 'http://localhost/api',
-      fetch: async () => new Response('{', {
-        status: 502,
-        headers: { 'content-type': 'application/json' },
-      }),
+      fetch: async () =>
+        new Response('{', {
+          status: 502,
+          headers: { 'content-type': 'application/json' },
+        }),
     })
     await expect(client.request('/malformed-error')).rejects.toMatchObject({
       kind: 'http',
@@ -28,31 +29,53 @@ describe('request contract', () => {
     })
   })
 
-  it.each(['timeout', 'cancelled'] as const)('preserves %s while consuming an HTTP error body', async (kind) => {
-    const controller = new AbortController()
-    const client = createApiClient({
-      baseUrl: 'http://localhost/api',
-      fetch: async (_url, init) => new Response(new ReadableStream({
-        start(stream) {
-          init?.signal?.addEventListener('abort', () => stream.error(init.signal?.reason))
-          if (kind === 'cancelled') queueMicrotask(() => controller.abort())
-        },
-      }), { status: 503, headers: { 'content-type': 'application/json' } }),
-    })
-    await expect(client.request('/error-body', { signal: controller.signal, timeoutMs: 10 })).rejects.toMatchObject({ kind })
-  })
+  it.each(['timeout', 'cancelled'] as const)(
+    'preserves %s while consuming an HTTP error body',
+    async (kind) => {
+      const controller = new AbortController()
+      const client = createApiClient({
+        baseUrl: 'http://localhost/api',
+        fetch: async (_url, init) =>
+          new Response(
+            new ReadableStream({
+              start(stream) {
+                init?.signal?.addEventListener('abort', () =>
+                  stream.error(init.signal?.reason),
+                )
+                if (kind === 'cancelled')
+                  queueMicrotask(() => controller.abort())
+              },
+            }),
+            { status: 503, headers: { 'content-type': 'application/json' } },
+          ),
+      })
+      await expect(
+        client.request('/error-body', {
+          signal: controller.signal,
+          timeoutMs: 10,
+        }),
+      ).rejects.toMatchObject({ kind })
+    },
+  )
 
   it('keeps timeout active while consuming a response body', async () => {
     const client = createApiClient({
       baseUrl: 'http://localhost/api',
-      fetch: async (_url, init) => new Response(new ReadableStream({
-        start(controller) {
-          init?.signal?.addEventListener('abort', () => controller.error(init.signal?.reason))
-        },
-      })),
+      fetch: async (_url, init) =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              init?.signal?.addEventListener('abort', () =>
+                controller.error(init.signal?.reason),
+              )
+            },
+          }),
+        ),
     })
 
-    await expect(client.request('/slow-body', { timeoutMs: 5 })).rejects.toMatchObject({ kind: 'timeout' })
+    await expect(
+      client.request('/slow-body', { timeoutMs: 5 }),
+    ).rejects.toMatchObject({ kind: 'timeout' })
   })
 
   it('merges caller and policy headers for JSON requests', async () => {
@@ -129,7 +152,9 @@ describe('request contract', () => {
     )
     const client = createApiClient({ baseUrl: 'http://localhost/api' })
 
-    const httpFailure = await client.request('/http-error').catch((error) => error)
+    const httpFailure = await client
+      .request('/http-error')
+      .catch((error) => error)
     expect(httpFailure).toMatchObject({
       name: 'ApiError',
       kind: 'http',
@@ -167,22 +192,30 @@ describe('request contract', () => {
 
   it('supports JSON empty, text, blob, and stream response boundaries', async () => {
     server.use(
-      http.get('http://localhost/api/empty-json', () =>
-        new HttpResponse(null, { status: 204 }),
+      http.get(
+        'http://localhost/api/empty-json',
+        () => new HttpResponse(null, { status: 204 }),
       ),
-      http.get('http://localhost/api/text', () => HttpResponse.text('plain text')),
+      http.get('http://localhost/api/text', () =>
+        HttpResponse.text('plain text'),
+      ),
       http.get(
         'http://localhost/api/blob',
-        () => new HttpResponse('download', { headers: { 'content-type': 'text/plain' } }),
+        () =>
+          new HttpResponse('download', {
+            headers: { 'content-type': 'text/plain' },
+          }),
       ),
-      http.get('http://localhost/api/stream', () => HttpResponse.text('streamed')),
+      http.get('http://localhost/api/stream', () =>
+        HttpResponse.text('streamed'),
+      ),
     )
     const client = createApiClient({ baseUrl: 'http://localhost/api' })
 
     await expect(client.request('/empty-json')).resolves.toBeNull()
-    await expect(
-      client.request('/text', { response: 'text' }),
-    ).resolves.toBe('plain text')
+    await expect(client.request('/text', { response: 'text' })).resolves.toBe(
+      'plain text',
+    )
     const blob = await client.request<Blob>('/blob', { response: 'blob' })
     expect(await blob.text()).toBe('download')
     const stream = await client.request<ReadableStream<Uint8Array>>('/stream', {

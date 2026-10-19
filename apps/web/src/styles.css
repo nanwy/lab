@@ -23,6 +23,7 @@ body {
 }
 
 button,
+input,
 textarea {
   font: inherit;
 }
@@ -174,6 +175,118 @@ button {
   border: 1px solid #aebbb3;
   border-radius: 0.65rem;
   resize: vertical;
+}
+
+.field input {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #aebbb3;
+  border-radius: 0.65rem;
+}
+
+.topology-page {
+  width: min(76rem, calc(100vw - 20rem));
+}
+
+.topology-workspace {
+  display: grid;
+  grid-template-columns: minmax(30rem, 1fr) 15rem;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.topology-canvas {
+  height: 34rem;
+  overflow: hidden;
+  border: 1px solid #bcc8c0;
+  border-radius: 0.85rem;
+  background: #fff;
+}
+
+.topology-inspector,
+.compatibility-report {
+  padding: 1rem;
+  border: 1px solid #c8d2cc;
+  border-radius: 0.8rem;
+  background: #fbfcfa;
+}
+
+.topology-inspector h2 {
+  margin-top: 0;
+}
+
+.compatibility-report {
+  margin-top: 1rem;
+  border-color: #d9bd84;
+  background: #fffaf0;
+}
+
+.compatibility-report ul {
+  margin-bottom: 0;
+  padding-left: 1.2rem;
+}
+
+.topology-node,
+.topology-group {
+  width: 100%;
+  height: 100%;
+}
+
+.topology-node {
+  border: 1px solid #55789f;
+  border-radius: 0.7rem;
+  background: #fff;
+  box-shadow: 0 0.45rem 1rem rgb(32 57 46 / 12%);
+}
+
+.topology-node-selected {
+  outline: 3px solid rgb(58 120 88 / 28%);
+}
+
+.topology-node-button {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  gap: 0.3rem;
+  justify-items: start;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.topology-node-button span,
+.topology-group span,
+.editor-notice {
+  color: #627068;
+  font-size: 0.78rem;
+}
+
+.topology-group {
+  padding: 0.7rem;
+  border: 1px dashed #7392bd;
+  border-radius: 0.7rem;
+  background: rgb(238 245 255 / 52%);
+}
+
+.topology-group strong,
+.topology-group span {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .topology-page {
+    width: 100%;
+  }
+
+  .topology-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .topology-canvas {
+    height: 28rem;
+    min-width: 0;
+  }
 }
 
 .dialog-backdrop {

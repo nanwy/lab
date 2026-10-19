@@ -1,6 +1,7 @@
 export type Capability =
   | 'overview:view'
   | 'resources:view'
+  | 'topology:view'
   | 'drafts:edit'
   | 'diagnostics:view'
 
@@ -16,6 +17,7 @@ export const mockIdentity: Identity = {
   capabilities: new Set<Capability>([
     'overview:view',
     'resources:view',
+    'topology:view',
     'drafts:edit',
   ]),
 }

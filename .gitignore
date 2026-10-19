@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build and test output
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Tool caches
+.eslintcache
+.vite/
+*.tsbuildinfo
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Reverse-engineering inputs remain outside this repository
+*.har
+*.map
+*.bundle.js

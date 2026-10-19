@@ -43,6 +43,13 @@ test('MSW and Query expose success, empty, failure, cancellation and timeout sta
   await expect(page.getByRole('alert')).toContainText('超时')
 })
 
+test('the route boundary displays a controlled failure and can return to the shell', async ({ page }) => {
+  await page.goto('/#/diagnostics/error')
+  await expect(page.getByRole('heading', { name: '页面暂时无法显示' })).toBeVisible()
+  await page.getByRole('link', { name: '返回工程概览', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '工程概览', exact: true })).toBeVisible()
+})
+
 test('mounts custom graph nodes, edits and reopens the sample, then unmounts safely', async ({ page }) => {
   await page.goto('/#/topology')
   const original = page.getByRole('button', { name: '编辑 核心路由器', exact: true })

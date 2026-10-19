@@ -13,8 +13,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@tanstack/react-query": "5.104.4",
+    "@tanstack/react-query-devtools": "5.104.4",
     "@tanstack/react-router": "1.170.36",
     "@tanstack/react-router-devtools": "1.167.2",
+    "msw": "3.0.3",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

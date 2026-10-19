@@ -137,11 +137,35 @@ a {
 
 .tab-list,
 .dialog-actions,
-.error-actions {
+.error-actions,
+.diagnostic-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1.5rem;
+}
+
+.diagnostic-controls button[aria-pressed='true'] {
+  border-color: #47705d;
+  background: #dcebe2;
+}
+
+.query-state {
+  min-height: 7rem;
+  margin: 1.5rem 0;
+  padding: 1rem 1.15rem;
+  border: 1px solid #bdd0c4;
+  border-radius: 0.75rem;
+  background: #f8fbf8;
+}
+
+.query-state ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.state-cancelled {
+  color: #75501a;
 }
 
 .tab-list a,

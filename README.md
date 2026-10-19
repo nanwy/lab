@@ -21,6 +21,17 @@ pnpm install --frozen-lockfile
 pnpm dev
 pnpm build
 pnpm typecheck
+pnpm lint
+pnpm format:check
+pnpm test
+pnpm exec playwright install chromium
+pnpm test:browser
+pnpm check
 ```
 
 `pnpm dev` 启动统一前端，生产构建输出到 `apps/web/dist`。工程决定与完整功能范围见 [`docs/planning`](docs/planning/README.md)。
+
+`pnpm check` 顺序执行类型、lint、格式、Vitest、生产构建和真实 Chromium
+冒烟检查。首次运行浏览器检查需安装上述 Chromium；Playwright 使用独立的本地开发服务和确定性
+MSW 响应，各测试在独立浏览器上下文中执行，不访问真实业务接口。测试捕获未处理异常与
+console.error，失败时保存 trace 和截图至忽略的测试产物目录。`pnpm format` 用于修复格式。

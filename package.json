@@ -10,6 +10,12 @@
   "scripts": {
     "dev": "pnpm --filter @xueyuan/web --fail-if-no-match dev",
     "build": "pnpm --filter @xueyuan/web --fail-if-no-match build",
-    "typecheck": "pnpm --filter @xueyuan/web --fail-if-no-match typecheck"
+    "typecheck": "pnpm --filter @xueyuan/web --fail-if-no-match typecheck",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm --filter @xueyuan/web --fail-if-no-match test",
+    "test:browser": "playwright test",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm test:browser"
   }
 }

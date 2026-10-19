@@ -1,8 +1,9 @@
 import { RouterProvider } from '@tanstack/react-router'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { lazy, Suspense } from 'react'
 
 import { router } from './router'
+import { queryClient } from './query-client'
 
 const RouterDevtools =
   import.meta.env.DEV && import.meta.env.MODE === 'development'
@@ -19,14 +20,6 @@ const QueryDevtools =
         return { default: module.ReactQueryDevtools }
       })
     : null
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-    },
-  },
-})
 
 export function App() {
   return (

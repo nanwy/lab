@@ -1,8 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
-import { ApiError, apiClient } from './api'
-import { getDiagnosticResult, type DiagnosticMode } from './api/diagnostics'
+import { ApiError } from './api'
+import { type DiagnosticMode } from './api/diagnostics'
+import { appConfig } from './config'
+import { diagnosticQueryOptions } from './query-options'
 
 const MODES: Array<{ mode: DiagnosticMode; label: string }> = [
   { mode: 'success', label: '成功响应' },
@@ -12,12 +14,6 @@ const MODES: Array<{ mode: DiagnosticMode; label: string }> = [
   { mode: 'slow', label: '可取消请求' },
   { mode: 'timeout', label: '请求超时' },
 ]
-
-export function shouldRetryDiagnostic(failureCount: number, error: Error) {
-  return (
-    error instanceof ApiError && error.kind === 'network' && failureCount < 1
-  )
-}
 
 function describeError(error: Error) {
   if (!(error instanceof ApiError)) return '未知错误 · 请求未完成'
@@ -30,15 +26,23 @@ function describeError(error: Error) {
 }
 
 export function DiagnosticsPage() {
+  if (!appConfig.mockEnabled) {
+    return (
+      <section>
+        <h1>接口状态诊断</h1>
+        <p role="note">模拟服务未启用；接口诊断已停用，不会发送诊断请求。</p>
+      </section>
+    )
+  }
+  return <MockDiagnosticsPage />
+}
+
+function MockDiagnosticsPage() {
   const [mode, setMode] = useState<DiagnosticMode>('success')
   const [cancelled, setCancelled] = useState(false)
   const queryClient = useQueryClient()
-  const queryKey = ['diagnostics', mode] as const
-  const query = useQuery({
-    queryKey,
-    queryFn: ({ signal }) => getDiagnosticResult(apiClient, mode, signal),
-    retry: shouldRetryDiagnostic,
-  })
+  const options = diagnosticQueryOptions(mode)
+  const query = useQuery(options)
 
   function selectMode(nextMode: DiagnosticMode) {
     setCancelled(false)
@@ -46,7 +50,7 @@ export function DiagnosticsPage() {
   }
 
   async function cancelCurrentRequest() {
-    await queryClient.cancelQueries({ queryKey, exact: true })
+    await queryClient.cancelQueries({ queryKey: options.queryKey, exact: true })
     setCancelled(true)
   }
 

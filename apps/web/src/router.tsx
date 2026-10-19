@@ -15,6 +15,9 @@ import { can, mockIdentity } from './identity'
 import { DiagnosticsPage } from './diagnostics-page'
 import { DataDiagnosticsPage } from './data-diagnostics'
 import { TopologyPage } from './topology/TopologyPage'
+import { appConfig } from './config'
+import { queryClient } from './query-client'
+import { diagnosticQueryOptions } from './query-options'
 
 function AppShell() {
   return (
@@ -283,6 +286,10 @@ const diagnosticErrorRoute = createRoute({
 const apiDiagnosticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/diagnostics/api',
+  loader: () =>
+    appConfig.mockEnabled
+      ? queryClient.ensureQueryData(diagnosticQueryOptions('success'))
+      : undefined,
   component: DiagnosticsPage,
 })
 

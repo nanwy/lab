@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import type { Sample, SampleInput } from '../api/samples'
+import { appConfig } from '../config'
 
 // Each handler factory owns resettable fake data. No production identifiers or writes.
 export function createSampleHandlers() {
@@ -11,7 +12,7 @@ export function createSampleHandlers() {
     }))
   let samples = initial()
   return [
-    http.get('/api/diagnostics/samples', ({ request }) => {
+    http.get(`${appConfig.apiBaseUrl}/diagnostics/samples`, ({ request }) => {
       const params = new URL(request.url).searchParams
       const page = Math.max(0, Number(params.get('page')) || 0)
       const pageSize = Math.max(
@@ -30,31 +31,37 @@ export function createSampleHandlers() {
         total: matching.length,
       })
     }),
-    http.patch('/api/diagnostics/samples/:id', async ({ params, request }) => {
-      const index = samples.findIndex((item) => item.id === params.id)
-      if (index < 0)
-        return HttpResponse.json({ message: '模拟样本不存在' }, { status: 404 })
-      const value = (await request.json()) as SampleInput
-      if (value.name === '保留名称')
-        return HttpResponse.json(
-          {
-            message: '模拟服务拒绝保存',
-            fieldErrors: { name: '该名称由模拟服务保留，请换一个名称' },
-          },
-          { status: 422 },
+    http.patch(
+      `${appConfig.apiBaseUrl}/diagnostics/samples/:id`,
+      async ({ params, request }) => {
+        const index = samples.findIndex((item) => item.id === params.id)
+        if (index < 0)
+          return HttpResponse.json(
+            { message: '模拟样本不存在' },
+            { status: 404 },
+          )
+        const value = (await request.json()) as SampleInput
+        if (value.name === '保留名称')
+          return HttpResponse.json(
+            {
+              message: '模拟服务拒绝保存',
+              fieldErrors: { name: '该名称由模拟服务保留，请换一个名称' },
+            },
+            { status: 422 },
+          )
+        if (
+          !value.name?.trim() ||
+          !Array.isArray(value.metadata?.aliases) ||
+          value.metadata.aliases.some(
+            (alias) => typeof alias !== 'string' || !alias.trim(),
+          )
         )
-      if (
-        !value.name?.trim() ||
-        !Array.isArray(value.metadata?.aliases) ||
-        value.metadata.aliases.some(
-          (alias) => typeof alias !== 'string' || !alias.trim(),
-        )
-      )
-        return HttpResponse.json({ message: '模拟字段无效' }, { status: 422 })
-      samples[index] = { id: samples[index]!.id, ...value }
-      return HttpResponse.json(samples[index])
-    }),
-    http.post('/api/diagnostics/samples/reset', () => {
+          return HttpResponse.json({ message: '模拟字段无效' }, { status: 422 })
+        samples[index] = { id: samples[index]!.id, ...value }
+        return HttpResponse.json(samples[index])
+      },
+    ),
+    http.post(`${appConfig.apiBaseUrl}/diagnostics/samples/reset`, () => {
       samples = initial()
       return HttpResponse.json({ reset: true })
     }),

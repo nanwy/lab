@@ -13,6 +13,109 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 describe('request contract', () => {
+  it.each(['text', 'blob'] as const)(
+    'normalizes failures while consuming %s bodies without exposing private details',
+    async (response) => {
+      const client = createApiClient({
+        baseUrl: 'http://localhost/api',
+        fetch: async () =>
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.error(new Error('private-body-data'))
+              },
+            }),
+          ),
+      })
+      const failure: unknown = await client
+        .request('/broken-body', { response })
+        .catch((error: unknown) => error)
+      expect(failure).toMatchObject({
+        name: 'ApiError',
+        kind: 'network',
+        message: '读取响应失败',
+      })
+      expect(failure).not.toHaveProperty('cause')
+    },
+  )
+  it.each(['timeout', 'cancelled', 'network'] as const)(
+    'normalizes %s after the response stream is returned',
+    async (kind) => {
+      const abort = new AbortController()
+      let source!: ReadableStreamDefaultController<Uint8Array>
+      const client = createApiClient({
+        baseUrl: 'http://localhost/api',
+        fetch: async () =>
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                source = controller
+              },
+            }),
+          ),
+      })
+      const stream = await client.request<ReadableStream<Uint8Array>>(
+        '/stream',
+        {
+          response: 'stream',
+          signal: abort.signal,
+          timeoutMs: kind === 'timeout' ? 5 : undefined,
+        },
+      )
+      const read = stream.getReader().read()
+      if (kind === 'cancelled') abort.abort(new Error('private-cancel-reason'))
+      if (kind === 'network') source.error(new Error('private-network-details'))
+      const failure: unknown = await read.catch((error: unknown) => error)
+      expect(failure).toMatchObject({ name: 'ApiError', kind })
+      expect(failure).not.toHaveProperty('cause')
+    },
+  )
+  it('forwards consumer stream cancellation to the response body', async () => {
+    let cancelled = false
+    const client = createApiClient({
+      baseUrl: 'http://localhost/api',
+      fetch: async () =>
+        new Response(
+          new ReadableStream({
+            cancel() {
+              cancelled = true
+            },
+          }),
+        ),
+    })
+    const stream = await client.request<ReadableStream<Uint8Array>>('/stream', {
+      response: 'stream',
+    })
+    await stream.cancel()
+    expect(cancelled).toBe(true)
+  })
+  it('does not guess alternate business protocol keys', async () => {
+    const client = createApiClient({
+      baseUrl: 'http://localhost/api',
+      fetch: async () => Response.json({ ok: false }),
+    })
+    await expect(client.request('/other-protocol')).resolves.toEqual({
+      ok: false,
+    })
+  })
+  it('does not expose untrusted server messages, fields or transport causes', async () => {
+    const client = createApiClient({
+      baseUrl: 'http://localhost/api',
+      fetch: async () =>
+        Response.json(
+          { message: 'secret-token', fieldErrors: { name: 'private-value' } },
+          { status: 422 },
+        ),
+    })
+    const failure = await client
+      .request('/private')
+      .catch((error: unknown) => error)
+    expect(failure).toMatchObject({
+      message: '请求失败（422）',
+      fieldErrors: undefined,
+    })
+    expect(failure).not.toHaveProperty('cause')
+  })
   it('keeps the HTTP fallback when an error body contains malformed JSON', async () => {
     const client = createApiClient({
       baseUrl: 'http://localhost/api',
@@ -159,12 +262,25 @@ describe('request contract', () => {
       name: 'ApiError',
       kind: 'http',
       status: 422,
-      message: '请求参数无效',
-      fieldErrors: { name: '名称不能为空' },
+      message: '请求失败（422）',
+      fieldErrors: undefined,
     })
     expect(JSON.stringify(httpFailure)).not.toContain('must-not-leak')
 
-    await expect(client.request('/business-error')).rejects.toMatchObject({
+    await expect(
+      client.request('/business-error', {
+        isBusinessFailure: (value) =>
+          Boolean(
+            value &&
+            typeof value === 'object' &&
+            Reflect.get(value, 'success') === false,
+          ),
+        errorDisplay: {
+          messages: { 资源状态不允许此操作: '资源状态不允许此操作' },
+          fieldErrors: { state: { 资源已锁定: '资源已锁定' } },
+        },
+      }),
+    ).rejects.toMatchObject({
       kind: 'business',
       status: 200,
       message: '资源状态不允许此操作',

@@ -14,8 +14,9 @@ import { z } from 'zod'
 
 import { ApiError, apiClient } from './api'
 import { getSamples, updateSample, type Sample } from './api/samples'
-import { Button } from './components/ui/button'
-import { Input } from './components/ui/input'
+import { Button } from '@workspace/ui/components/button'
+import { Input } from '@workspace/ui/components/input'
+import { appConfig } from './config'
 import {
   Table,
   TableBody,
@@ -23,7 +24,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from './components/ui/table'
+} from '@workspace/ui/components/table'
 
 const schema = z.object({
   name: z.string().trim().min(2, '名称至少 2 个字符'),
@@ -191,7 +192,7 @@ function SampleEditor({
 }
 
 export function DataDiagnosticsPage() {
-  if (!import.meta.env.DEV || import.meta.env.VITE_ENABLE_MSW === 'false') {
+  if (!appConfig.mockEnabled) {
     return (
       <section>
         <h1>表格与表单诊断</h1>

@@ -3,13 +3,50 @@ import { describe, expect, it } from 'vitest'
 import { deterministicX6Graph } from './sample'
 import { fromX6Graph, toX6Graph } from './x6-adapter'
 
+describe('拓扑输入契约', () => {
+  it('拒绝重复标识及缺失的节点坐标和名称，而不是生成可编辑的默认图', () => {
+    const duplicate = structuredClone(deterministicX6Graph)
+    duplicate.cells.push(structuredClone(duplicate.cells[0]!))
+    expect(() => fromX6Graph(duplicate)).toThrow(/重复/)
+    const invalid = structuredClone(deterministicX6Graph)
+    delete invalid.cells[1]!.x
+    expect(() => fromX6Graph(invalid)).toThrow(/x/)
+    const missingLabel = structuredClone(deterministicX6Graph)
+    delete missingLabel.cells[1]!.data!.label
+    expect(() => fromX6Graph(missingLabel)).toThrow(/label/)
+  })
+  it('保留折点上的未知元数据', () => {
+    const input = structuredClone(deterministicX6Graph)
+    const edge = input.cells.find((cell) => cell.id === 'link-a-b')!
+    edge.vertices = [{ x: 360, y: 160, routingHint: 'legacy' }]
+    const output = toX6Graph(fromX6Graph(input))
+    expect(
+      output.cells.find((cell) => cell.id === 'link-a-b')!.vertices,
+    ).toEqual([{ x: 360, y: 160, routingHint: 'legacy' }])
+  })
+})
+
 describe('X6 topology adapter contract', () => {
   it('orders nested parents before children even when the source lists children first', () => {
     const opened = fromX6Graph({
       cells: [
-        { id: 'child', shape: 'device', parent: 'inner' },
-        { id: 'inner', shape: 'group', parent: 'outer' },
-        { id: 'outer', shape: 'group' },
+        {
+          id: 'child',
+          shape: 'device',
+          parent: 'inner',
+          x: 1,
+          y: 2,
+          data: { label: '子节点' },
+        },
+        {
+          id: 'inner',
+          shape: 'group',
+          parent: 'outer',
+          x: 3,
+          y: 4,
+          data: { label: '内组' },
+        },
+        { id: 'outer', shape: 'group', x: 5, y: 6, data: { label: '外组' } },
       ],
     })
     expect(opened.issues).toEqual([])
@@ -56,7 +93,11 @@ describe('X6 topology adapter contract', () => {
           source: { cell: 'descendant' },
           target: { cell: 'valid' },
         },
-      ],
+      ].map((cell) =>
+        cell.shape === 'device' || cell.shape === 'group'
+          ? { ...cell, x: 10, y: 20, data: { label: cell.id } }
+          : cell,
+      ),
     }
     const opened = fromX6Graph(input)
     expect(opened.nodes.map((node) => node.id)).toEqual(['valid'])

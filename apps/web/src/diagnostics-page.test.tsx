@@ -14,6 +14,7 @@ import {
 } from 'vitest'
 
 import { DiagnosticsPage } from './diagnostics-page'
+import { diagnosticQueryOptions } from './query-options'
 
 ;(
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -68,6 +69,29 @@ function click(label: string) {
 }
 
 describe('browser-visible query diagnostics', () => {
+  it('复用路由预加载后的 Query 数据，不在组件挂载时重复请求', async () => {
+    let requests = 0
+    server.use(
+      http.get('/api/diagnostics', () => {
+        requests += 1
+        return HttpResponse.json({
+          items: [{ id: 'cached', label: '预加载结果' }],
+        })
+      }),
+    )
+    queryClient = new QueryClient()
+    await queryClient.ensureQueryData(diagnosticQueryOptions('success'))
+    await act(async () => {
+      root = createRoot(container)
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <DiagnosticsPage />
+        </QueryClientProvider>,
+      )
+    })
+    await waitForText('预加载结果')
+    expect(requests).toBe(1)
+  })
   it('moves from loading to success and empty states', async () => {
     server.use(
       http.get('/api/diagnostics', async ({ request }) => {
@@ -102,7 +126,7 @@ describe('browser-visible query diagnostics', () => {
         if (mode === 'business-error') {
           return HttpResponse.json({
             success: false,
-            message: '模拟业务规则拒绝',
+            message: '模拟资源状态不允许此操作',
           })
         }
         await delay(300)
@@ -115,7 +139,7 @@ describe('browser-visible query diagnostics', () => {
     await waitForText('HTTP 503 · 模拟服务暂时不可用')
 
     click('业务错误')
-    await waitForText('业务失败 · 模拟业务规则拒绝')
+    await waitForText('业务失败 · 模拟资源状态不允许此操作')
 
     click('可取消请求')
     await waitForText('正在读取模拟响应')

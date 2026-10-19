@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 export type JsonObject = Record<string, unknown>
 
 export type X6Endpoint = {
@@ -17,7 +19,7 @@ export type X6Cell = JsonObject & {
   parent?: string
   source?: X6Endpoint
   target?: X6Endpoint
-  vertices?: Array<{ x: number; y: number }>
+  vertices?: Array<JsonObject & { x: number; y: number }>
   data?: JsonObject
   attrs?: JsonObject
   ports?: {
@@ -59,7 +61,7 @@ export type TopologyNode = {
 }
 
 export type TopologyEdgeData = JsonObject & {
-  vertices: Array<{ x: number; y: number }>
+  vertices: Array<JsonObject & { x: number; y: number }>
   router?: unknown
   connector?: unknown
   style: JsonObject
@@ -97,12 +99,83 @@ function clone<T>(value: T): T {
   return structuredClone(value)
 }
 
-function asString(value: unknown, fallback = ''): string {
-  return typeof value === 'string' ? value : fallback
-}
+const objectSchema = z.record(z.string(), z.unknown())
+const cellSchema = z
+  .looseObject({
+    id: z.string().min(1),
+    shape: z.string().min(1),
+    x: z.number().finite().optional(),
+    y: z.number().finite().optional(),
+    width: z.number().positive().optional(),
+    height: z.number().positive().optional(),
+    angle: z.number().finite().optional(),
+    zIndex: z.number().finite().optional(),
+    parent: z.string().min(1).optional(),
+    data: objectSchema.optional(),
+    attrs: objectSchema.optional(),
+    vertices: z
+      .array(z.looseObject({ x: z.number().finite(), y: z.number().finite() }))
+      .optional(),
+    ports: z
+      .looseObject({
+        groups: z.record(z.string(), objectSchema).optional(),
+        items: z.array(
+          z.looseObject({
+            id: z.string().min(1),
+            group: z.string().optional(),
+          }),
+        ),
+      })
+      .optional(),
+  })
+  .superRefine((cell, context) => {
+    if (!supportedNodeShapes.has(cell.shape)) return
+    for (const coordinate of ['x', 'y'] as const) {
+      if (cell[coordinate] === undefined)
+        context.addIssue({
+          code: 'custom',
+          path: [coordinate],
+          message: '模拟节点必须提供坐标',
+        })
+    }
+    const data = z
+      .object({
+        label: z.string().min(1),
+        deviceId: z.string().min(1).optional(),
+        kind: z.string().optional(),
+      })
+      .safeParse(cell.data)
+    if (!data.success)
+      for (const issue of data.error.issues)
+        context.addIssue({
+          code: 'custom',
+          path: ['data', ...issue.path],
+          message: issue.message,
+        })
+    const ids = cell.ports?.items.map((port) => port.id) ?? []
+    if (new Set(ids).size !== ids.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['ports'],
+        message: '端口标识重复',
+      })
+  })
 
-export function fromX6Graph(input: X6Graph): EditorGraph {
-  const graph = clone(input)
+const graphSchema = z
+  .looseObject({ cells: z.array(cellSchema) })
+  .superRefine((graph, context) => {
+    const ids = graph.cells.map((cell) => cell.id)
+    if (new Set(ids).size !== ids.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['cells'],
+        message: '图元标识重复',
+      })
+  })
+
+export function fromX6Graph(input: unknown): EditorGraph {
+  // 该契约描述本地样本，不把未知生产格式猜测为当前模型。
+  const graph = clone(graphSchema.parse(input)) as X6Graph
   const nodes: TopologyNode[] = []
   const edges: TopologyEdge[] = []
   const issues: TopologyCompatibilityIssue[] = []
@@ -196,16 +269,16 @@ export function fromX6Graph(input: X6Graph): EditorGraph {
     nodes.push({
       id: cell.id,
       type: cell.shape === 'group' ? 'topologyGroup' : 'topologyNode',
-      position: { x: cell.x ?? 0, y: cell.y ?? 0 },
+      position: { x: cell.x!, y: cell.y! },
       parentId: cell.parent,
       extent: cell.parent ? 'parent' : undefined,
       width: cell.width,
       height: cell.height,
       zIndex: typeof cell.zIndex === 'number' ? cell.zIndex : undefined,
       data: {
-        label: asString(data.label, cell.id),
-        deviceId: asString(data.deviceId) || undefined,
-        kind: asString(data.kind) || undefined,
+        label: data.label as string,
+        deviceId: data.deviceId as string | undefined,
+        kind: data.kind as string | undefined,
         rotation: cell.angle ?? 0,
         ports: (cell.ports?.items ?? []).map((port) => ({
           id: port.id,

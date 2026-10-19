@@ -1,9 +1,9 @@
-@import 'tailwindcss';
+@import '@workspace/ui/globals.css';
 
 @layer base {
   :root {
-    color: #16202a;
-    background: #f3f6f9;
+    color: var(--foreground);
+    background: var(--background);
     font-family:
       Inter,
       ui-sans-serif,
@@ -17,10 +17,12 @@
   }
 
   * {
+    @apply border-border outline-ring/50;
     box-sizing: border-box;
   }
 
   body {
+    @apply bg-background text-foreground;
     min-width: 320px;
     min-height: 100vh;
     margin: 0;
@@ -180,7 +182,7 @@
   .tab-list a,
   .button-link,
   .error-actions a,
-  button {
+  button:not([data-slot='button']) {
     display: inline-flex;
     align-items: center;
     min-height: 2.65rem;
@@ -209,7 +211,7 @@
     resize: vertical;
   }
 
-  .field input {
+  .field input:not([data-slot='input']) {
     width: 100%;
     padding: 0.7rem 0.8rem;
     border: 1px solid #aebbb3;

@@ -1,9 +1,10 @@
 import { HttpResponse, delay, http } from 'msw'
 import { createSampleHandlers } from './sample-handlers'
+import { appConfig } from '../config'
 
 export const handlers = [
   ...createSampleHandlers(),
-  http.get('/api/diagnostics', async ({ request }) => {
+  http.get(`${appConfig.apiBaseUrl}/diagnostics`, async ({ request }) => {
     const mode = new URL(request.url).searchParams.get('mode')
 
     if (mode === 'empty') return HttpResponse.json({ items: [] })

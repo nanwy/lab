@@ -4,6 +4,43 @@ import { deterministicX6Graph } from './sample'
 import { fromX6Graph, toX6Graph } from './x6-adapter'
 
 describe('X6 topology adapter contract', () => {
+  it('orders nested parents before children even when the source lists children first', () => {
+    const opened = fromX6Graph({ cells: [
+      { id: 'child', shape: 'device', parent: 'inner' },
+      { id: 'inner', shape: 'group', parent: 'outer' },
+      { id: 'outer', shape: 'group' },
+    ] })
+    expect(opened.issues).toEqual([])
+    expect(opened.nodes.map((node) => node.id)).toEqual(['outer', 'inner', 'child'])
+  })
+
+  it('preserves invalid relations without exposing unusable nodes or edges', () => {
+    const input = { cells: [
+      { id: 'valid', shape: 'device', ports: { items: [{ id: 'eth0' }] } },
+      { id: 'unknown', shape: 'annotation' },
+      { id: 'orphan', shape: 'group', parent: 'missing' },
+      { id: 'descendant', shape: 'device', parent: 'orphan' },
+      { id: 'wrong-parent', shape: 'device', parent: 'valid' },
+      { id: 'cycle-a', shape: 'group', parent: 'cycle-b' },
+      { id: 'cycle-b', shape: 'group', parent: 'cycle-a' },
+      { id: 'cycle-child', shape: 'device', parent: 'cycle-a' },
+      { id: 'unsupported-parent', shape: 'device', parent: 'unknown' },
+      { id: 'missing-link', shape: 'edge', source: { cell: 'missing' }, target: { cell: 'valid' } },
+      { id: 'unknown-link', shape: 'edge', source: { cell: 'unknown' }, target: { cell: 'valid' } },
+      { id: 'port-link', shape: 'edge', source: { cell: 'valid', port: 'missing' }, target: { cell: 'valid' } },
+      { id: 'descendant-link', shape: 'edge', source: { cell: 'descendant' }, target: { cell: 'valid' } },
+    ] }
+    const opened = fromX6Graph(input)
+    expect(opened.nodes.map((node) => node.id)).toEqual(['valid'])
+    expect(opened.edges).toEqual([])
+    expect(opened.issues.map((issue) => issue.cellId).sort()).toEqual([
+      'cycle-a', 'cycle-b', 'cycle-child', 'descendant', 'descendant-link', 'missing-link', 'orphan', 'port-link', 'unknown', 'unknown-link', 'unsupported-parent', 'wrong-parent',
+    ])
+    for (const raw of input.cells.slice(1)) {
+      expect(toX6Graph(opened).cells.find((cell) => cell.id === raw.id)).toEqual(raw)
+    }
+  })
+
   it('round-trips supported topology semantics and preserves unknown data', () => {
     const opened = fromX6Graph(deterministicX6Graph)
 

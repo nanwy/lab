@@ -13,6 +13,35 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 describe('request contract', () => {
+  it('keeps the HTTP fallback when an error body contains malformed JSON', async () => {
+    const client = createApiClient({
+      baseUrl: 'http://localhost/api',
+      fetch: async () => new Response('{', {
+        status: 502,
+        headers: { 'content-type': 'application/json' },
+      }),
+    })
+    await expect(client.request('/malformed-error')).rejects.toMatchObject({
+      kind: 'http',
+      status: 502,
+      message: '请求失败（502）',
+    })
+  })
+
+  it.each(['timeout', 'cancelled'] as const)('preserves %s while consuming an HTTP error body', async (kind) => {
+    const controller = new AbortController()
+    const client = createApiClient({
+      baseUrl: 'http://localhost/api',
+      fetch: async (_url, init) => new Response(new ReadableStream({
+        start(stream) {
+          init?.signal?.addEventListener('abort', () => stream.error(init.signal?.reason))
+          if (kind === 'cancelled') queueMicrotask(() => controller.abort())
+        },
+      }), { status: 503, headers: { 'content-type': 'application/json' } }),
+    })
+    await expect(client.request('/error-body', { signal: controller.signal, timeoutMs: 10 })).rejects.toMatchObject({ kind })
+  })
+
   it('keeps timeout active while consuming a response body', async () => {
     const client = createApiClient({
       baseUrl: 'http://localhost/api',

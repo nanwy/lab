@@ -83,12 +83,14 @@ function messageFrom(value: unknown, fallback: string) {
   return typeof message === 'string' && message.trim() ? message : fallback
 }
 
-async function readErrorBody(response: Response) {
+async function readErrorBody(response: Response, signal: AbortSignal | undefined) {
   const contentType = response.headers.get('content-type') ?? ''
   if (!contentType.includes('json')) return undefined
   try {
     return (await response.json()) as unknown
-  } catch {
+  } catch (cause) {
+    const normalizedAbort = abortError(cause, signal)
+    if (normalizedAbort) throw normalizedAbort
     return undefined
   }
 }
@@ -171,7 +173,7 @@ export function createApiClient(options: ApiClientOptions) {
       }
 
       if (!response.ok) {
-        const errorBody = await readErrorBody(response)
+        const errorBody = await readErrorBody(response, signal)
         throw new ApiError('http', messageFrom(errorBody, `请求失败（${response.status}）`), {
           status: response.status,
           fieldErrors: safeFieldErrors(

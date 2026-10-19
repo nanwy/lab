@@ -13,6 +13,7 @@ import { useState } from 'react'
 
 import { can, mockIdentity } from './identity'
 import { DiagnosticsPage } from './diagnostics-page'
+import { DataDiagnosticsPage } from './data-diagnostics'
 import { TopologyPage } from './topology/TopologyPage'
 
 function AppShell() {
@@ -49,6 +50,7 @@ function AppShell() {
               >
                 接口诊断
               </Link>
+              <Link to="/diagnostics/data" activeProps={{ 'aria-current': 'page' }}>表格与表单诊断</Link>
             </>
           ) : null}
           {can(mockIdentity, 'drafts:edit') ? (
@@ -270,12 +272,19 @@ const apiDiagnosticsRoute = createRoute({
   component: DiagnosticsPage,
 })
 
+const dataDiagnosticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/diagnostics/data',
+  component: DataDiagnosticsPage,
+})
+
 const routeTree = rootRoute.addChildren([
   overviewRoute,
   resourcesRoute,
   resourceRoute,
   draftRoute,
   apiDiagnosticsRoute,
+  dataDiagnosticsRoute,
   topologyRoute,
   diagnosticErrorRoute,
 ])

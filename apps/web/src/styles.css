@@ -1,3 +1,6 @@
+@import 'tailwindcss';
+
+@layer base {
 :root {
   color: #16202a;
   background: #f3f6f9;
@@ -365,4 +368,5 @@ button.danger {
   .site-nav a {
     white-space: nowrap;
   }
+}
 }

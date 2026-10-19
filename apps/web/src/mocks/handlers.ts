@@ -1,6 +1,8 @@
 import { HttpResponse, delay, http } from 'msw'
+import { createSampleHandlers } from './sample-handlers'
 
 export const handlers = [
+  ...createSampleHandlers(),
   http.get('/api/diagnostics', async ({ request }) => {
     const mode = new URL(request.url).searchParams.get('mode')
 

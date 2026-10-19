@@ -13,6 +13,7 @@ import { DiagnosticsPage } from './diagnostics-page'
 const server = setupServer()
 let container: HTMLDivElement
 let root: Root
+let queryClient: QueryClient
 
 beforeAll(() => server.listen())
 beforeEach(() => {
@@ -21,13 +22,14 @@ beforeEach(() => {
 })
 afterEach(async () => {
   await act(async () => root.unmount())
+  queryClient.clear()
   container.remove()
   server.resetHandlers()
 })
 afterAll(() => server.close())
 
 function renderPage() {
-  const queryClient = new QueryClient({
+  queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
   act(() => {

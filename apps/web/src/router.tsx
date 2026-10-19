@@ -5,7 +5,9 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  Navigate,
   useBlocker,
+  useRouterState,
   type ErrorComponentProps,
   type RouterHistory,
 } from '@tanstack/react-router'
@@ -18,14 +20,53 @@ import { TopologyPage } from './topology/TopologyPage'
 import { appConfig } from './config'
 import { queryClient } from './query-client'
 import { diagnosticQueryOptions } from './query-options'
+import { LoginPage } from './auth/LoginPage'
+import { ActivatePage } from './auth/ActivatePage'
+import { AccessEvents, ForbiddenPage } from './auth/access'
+import { ProtectedShell } from './portal/ProtectedShell'
+import { HomePage } from './portal/HomePage'
+import { PlatformBranding } from './portal/PlatformBranding'
+import { navigation } from './portal/navigation'
+
+function RootLayout() {
+  const path = useRouterState({ select: (s) => s.location.pathname })
+  const business =
+    path === '/' ||
+    path === '/login' ||
+    path === '/activate' ||
+    path === '/forbidden' ||
+    path === '/basic' ||
+    path.startsWith('/basic/')
+  return (
+    <>
+      {business ? (
+        <>
+          <AccessEvents />
+          <PlatformBranding />
+        </>
+      ) : null}
+      <AppShell />
+    </>
+  )
+}
 
 function AppShell() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  if (
+    !['/overview', '/resources', '/draft', '/topology', '/diagnostics'].some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`),
+    )
+  )
+    return <Outlet />
+
   return (
     <div className="site-shell">
       <header className="site-header">
         <div>
           <p className="eyebrow">工程初始化</p>
-          <Link className="brand" to="/">
+          <Link className="brand" to="/overview">
             学员端统一前端
           </Link>
         </div>
@@ -38,7 +79,7 @@ function AppShell() {
       <div className="site-body">
         <nav className="site-nav" aria-label="主导航">
           {can(mockIdentity, 'overview:view') ? (
-            <Link to="/" activeProps={{ 'aria-current': 'page' }}>
+            <Link to="/overview" activeProps={{ 'aria-current': 'page' }}>
               工程概览
             </Link>
           ) : null}
@@ -178,7 +219,7 @@ function DraftPage() {
           rows={6}
         />
       </label>
-      <Link className="button-link" to="/">
+      <Link className="button-link" to="/overview">
         返回概览
       </Link>
 
@@ -220,7 +261,7 @@ function RouteError({ reset }: ErrorComponentProps) {
         <button type="button" onClick={reset}>
           重试
         </button>
-        <Link to="/">返回工程概览</Link>
+        <Link to="/overview">返回工程概览</Link>
       </div>
     </section>
   )
@@ -228,25 +269,115 @@ function RouteError({ reset }: ErrorComponentProps) {
 
 function NotFoundPage() {
   return (
-    <section className="error-state">
+    <section className="mx-auto max-w-xl space-y-5 p-8">
       <p className="eyebrow">404</p>
       <h1>没有找到这个入口</h1>
-      <p>请检查 hash 深链，或返回工程概览继续。</p>
-      <Link to="/">返回工程概览</Link>
+      <p>请检查 hash 深链，或返回首页继续。</p>
+      <Link to="/">返回首页</Link>
     </section>
   )
 }
 
 const rootRoute = createRootRoute({
-  component: AppShell,
+  component: RootLayout,
   errorComponent: RouteError,
   notFoundComponent: NotFoundPage,
 })
 
 const overviewRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/',
+  path: '/overview',
   component: OverviewPage,
+})
+
+type LoginSearch = {
+  reason?: 'expired' | 'signed-out'
+}
+
+function parseLoginSearch(search: Record<string, unknown>): LoginSearch {
+  return {
+    reason:
+      search.reason === 'expired' || search.reason === 'signed-out'
+        ? search.reason
+        : undefined,
+  }
+}
+
+function LoginRoutePage() {
+  const { reason } = loginRoute.useSearch()
+  return <LoginPage reason={reason} />
+}
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  validateSearch: parseLoginSearch,
+  component: LoginRoutePage,
+})
+
+const entryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: () => <Navigate to="/login" replace />,
+})
+const activationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/activate',
+  component: ActivatePage,
+})
+const forbiddenRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/forbidden',
+  component: ForbiddenPage,
+})
+const basicRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/basic',
+  component: ProtectedShell,
+})
+const basicIndexRoute = createRoute({
+  getParentRoute: () => basicRoute,
+  path: '/',
+  component: () => <Navigate to="/basic/home" replace />,
+})
+const futureRoute = createRoute({
+  getParentRoute: () => basicRoute,
+  path: '$',
+  component: FutureBusinessPage,
+})
+
+function FutureBusinessPage() {
+  const { _splat = '' } = futureRoute.useParams()
+  if (_splat === 'training/task')
+    return (
+      <Navigate to="/basic/$" params={{ _splat: 'training/task/1' }} replace />
+    )
+  const path = `/basic/${_splat}`
+  const item = navigation
+    .flatMap((group) => [...group.items])
+    .find((item) => path === item.path || path.startsWith(`${item.path}/`))
+  const personal =
+    _splat === 'personal/info' ||
+    _splat === 'personal/password' ||
+    _splat === 'personal/enshrine'
+  if (!item && !personal) return <NotFoundPage />
+  return (
+    <section className="space-y-4">
+      <h1 className="text-2xl font-semibold">{item?.name ?? '个人中心'}</h1>
+      <p role="note">
+        此业务页面属于后续实施切片，尚未实现。当前只验证应用导航和访问守卫，不代表业务可用。
+      </p>
+      <Link className="text-primary underline" to="/basic/home">
+        返回首页
+      </Link>
+    </section>
+  )
+}
+
+const sessionHomeRoute = createRoute({
+  getParentRoute: () => basicRoute,
+  path: '/home',
+  component: HomePage,
 })
 
 const resourcesRoute = createRoute({
@@ -301,6 +432,11 @@ const dataDiagnosticsRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   overviewRoute,
+  entryRoute,
+  loginRoute,
+  activationRoute,
+  forbiddenRoute,
+  basicRoute.addChildren([basicIndexRoute, sessionHomeRoute, futureRoute]),
   resourcesRoute,
   resourceRoute,
   draftRoute,

@@ -9,12 +9,12 @@ export default defineConfig({
   projects: [
     {
       name: 'production',
-      testMatch: 'runtime.spec.ts',
+      testMatch: ['runtime.spec.ts', 's02.spec.ts'],
       use: { baseURL: 'http://127.0.0.1:4174' },
     },
     {
       name: 'mock-disabled',
-      testMatch: 'runtime.spec.ts',
+      testMatch: ['runtime.spec.ts', 's02.spec.ts'],
       use: { baseURL: 'http://127.0.0.1:4175' },
     },
     {
@@ -29,19 +29,34 @@ export default defineConfig({
         'pnpm build && pnpm --filter @xueyuan/web exec vite preview --host 127.0.0.1 --port 4174 --strictPort',
       url: 'http://127.0.0.1:4174',
       reuseExistingServer: false,
-      env: { VITE_ENABLE_MSW: 'true' },
+      env: {
+        VITE_ENABLE_MSW: 'true',
+        VITE_API_BASE_URL: '/api',
+        LOCAL_API_TARGET: '',
+        LOCAL_API_BASIC_AUTH: '',
+      },
     },
     {
       command: 'pnpm dev --host 127.0.0.1 --port 4175 --strictPort',
       url: 'http://127.0.0.1:4175',
       reuseExistingServer: false,
-      env: { VITE_ENABLE_MSW: 'false' },
+      env: {
+        VITE_ENABLE_MSW: 'false',
+        VITE_API_BASE_URL: '/api',
+        LOCAL_API_TARGET: '',
+        LOCAL_API_BASIC_AUTH: '',
+      },
     },
     {
       command: 'pnpm dev --host 127.0.0.1 --port 4176 --strictPort',
       url: 'http://127.0.0.1:4176',
       reuseExistingServer: false,
-      env: { VITE_ENABLE_MSW: 'true', VITE_API_BASE_URL: '/custom-api' },
+      env: {
+        VITE_ENABLE_MSW: 'true',
+        VITE_API_BASE_URL: '/custom-api',
+        LOCAL_API_TARGET: '',
+        LOCAL_API_BASIC_AUTH: '',
+      },
     },
   ],
 })

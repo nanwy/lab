@@ -15,6 +15,7 @@
 - 当前为独立 pnpm monorepo，统一前端位于 `apps/web`，用户明确指定的共享 shadcn 组件位于 `packages/ui`。不预建空后端或无使用者的公共包。
 - 工程选型、初始化边界：修改工程基础时读取 `docs/planning/frontend-initialization.spec.md`。
 - 业务行为与阶段：实现业务前读取 `docs/planning/spec.md`，按涉及功能查阅 `function-catalog.md`、`route-coverage.md` 和 `permissions.md`（均位于 `docs/planning/`）。
+- 实施或拆分页面还原任务时，先读取 `docs/planning/page-rebuild-implementation.md`；该文件是实施顺序、依赖、切片状态和 F 编号覆盖关系的唯一来源，P1–P6 仅作产品范围视图。
 - 当前交付与验证记录见 `docs/implementation-status.md`。代码、实际运行证据与文档冲突时，调查并如实记录差异，不能用“已完成”文字替代实现。
 - 仓库外逆向资料是证据输入，不默认复制原始 bundle、大型产物或凭据入库。源码推断、模拟验证和真实服务验证分别记录。
 

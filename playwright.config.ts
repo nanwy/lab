@@ -16,6 +16,11 @@ export default defineConfig({
     command: 'pnpm dev --host 127.0.0.1 --port 4173 --strictPort',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: false,
-    env: { VITE_ENABLE_MSW: 'true' },
+    env: {
+      VITE_ENABLE_MSW: 'true',
+      VITE_API_BASE_URL: '/api',
+      LOCAL_API_TARGET: '',
+      LOCAL_API_BASIC_AUTH: '',
+    },
   },
 })

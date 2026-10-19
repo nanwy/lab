@@ -11,8 +11,10 @@ export type RequestPolicy = {
 export type ResponseKind = 'json' | 'empty' | 'text' | 'blob' | 'stream'
 
 export type ErrorDisplayPolicy = {
+  serviceErrors?: Readonly<Record<string, string>>
   messages?: Readonly<Record<string, string>>
   fieldErrors?: Readonly<Record<string, Readonly<Record<string, string>>>>
+  fieldErrorSource?: 'fieldErrors' | 'root'
 }
 
 export type RequestOptions = Omit<RequestInit, 'body' | 'signal'> & {
@@ -29,6 +31,7 @@ export type ApiErrorKind =
   'http' | 'business' | 'cancelled' | 'timeout' | 'network' | 'invalid-response'
 
 export class ApiError extends Error {
+  readonly serviceError?: string
   readonly kind: ApiErrorKind
   readonly status?: number
   readonly fieldErrors?: Readonly<Record<string, string>>
@@ -37,12 +40,14 @@ export class ApiError extends Error {
     kind: ApiErrorKind,
     message: string,
     options: {
+      serviceError?: string
       status?: number
       fieldErrors?: Readonly<Record<string, string>>
     } = {},
   ) {
     super(message)
     this.name = 'ApiError'
+    this.serviceError = options.serviceError
     this.kind = kind
     this.status = options.status
     this.fieldErrors = options.fieldErrors
@@ -92,6 +97,22 @@ function safeFieldErrors(value: unknown, policy?: ErrorDisplayPolicy) {
     }),
   )
   return Object.keys(safe).length > 0 ? safe : undefined
+}
+
+function fieldErrorValue(value: unknown, policy?: ErrorDisplayPolicy) {
+  if (policy?.fieldErrorSource === 'root') return value
+  return value && typeof value === 'object'
+    ? Reflect.get(value, 'fieldErrors')
+    : undefined
+}
+
+function serviceErrorValue(value: unknown, policy?: ErrorDisplayPolicy) {
+  if (!value || typeof value !== 'object') return undefined
+  const code = Reflect.get(value, 'error')
+  const approved = policy?.serviceErrors
+  return typeof code === 'string' && approved && Object.hasOwn(approved, code)
+    ? approved[code]
+    : undefined
 }
 
 function messageFrom(
@@ -249,11 +270,10 @@ export function createApiClient(options: ApiClientOptions) {
             request.errorDisplay,
           ),
           {
+            serviceError: serviceErrorValue(errorBody, request.errorDisplay),
             status: response.status,
             fieldErrors: safeFieldErrors(
-              errorBody && typeof errorBody === 'object'
-                ? Reflect.get(errorBody, 'fieldErrors')
-                : undefined,
+              fieldErrorValue(errorBody, request.errorDisplay),
               request.errorDisplay,
             ),
           },
@@ -284,9 +304,7 @@ export function createApiClient(options: ApiClientOptions) {
           {
             status: response.status,
             fieldErrors: safeFieldErrors(
-              result && typeof result === 'object'
-                ? Reflect.get(result, 'fieldErrors')
-                : undefined,
+              fieldErrorValue(result, request.errorDisplay),
               request.errorDisplay,
             ),
           },

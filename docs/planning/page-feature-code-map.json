@@ -74,7 +74,7 @@
           "candidate_only": true
         }
       ],
-      "current_business_status": "正式业务未实现；存在工程样例"
+      "current_business_status": "完成（S01 前端复刻验收）；原后端未联调；差异见 docs/architecture/account-session.md"
     },
     {
       "id": "F002",
@@ -84,7 +84,7 @@
       "operations": "读取激活状态；显示激活流程；限制未登录/未激活访问",
       "api_families": "/api/admin/system/active/",
       "permission_checks": "未激活与无权访问是不同状态",
-      "unknowns": "真实激活权限和流程；该入口是否对学员开放",
+      "unknowns": "真实授权权限、License 内容与当前线上响应未联调",
       "acceptance": "深链刷新、未登录、未激活分别有明确结果",
       "phase": "P1",
       "status": "原站本地静态证据；未执行运行验收",
@@ -120,17 +120,17 @@
           "candidate_only": true
         }
       ],
-      "current_business_status": "正式业务未实现"
+      "current_business_status": "完成（S02 前端复刻验收）；契约及差异见 docs/architecture/application-shell.md"
     },
     {
       "id": "F003",
       "module": "公共",
       "name": "布局与首页",
       "entry": "/basic/home",
-      "operations": "导航、首页概览、平台配置、用户菜单、主题设置",
+      "operations": "导航、首页概览、平台配置、用户菜单、主题消费、首次岗位选择、推荐设置及首页只读待办/收藏投影",
       "api_families": "/api/admin/system/logo/; /api/admin/system/background/; /api/front/user/recommend/",
-      "permission_checks": "菜单可见性、功能开关待核对",
-      "unknowns": "首页卡片、布局配置与角色条件",
+      "permission_checks": "会话守卫；静态导航不按未知角色裁剪；工具/漏洞设置未参与菜单过滤",
+      "unknowns": "当前线上响应和角色矩阵未联调；未发现原站主题切换 UI",
       "acceptance": "主入口可达；刷新保留当前路由",
       "phase": "P1",
       "status": "原站本地静态证据；未执行运行验收",
@@ -185,7 +185,7 @@
           "candidate_only": true
         }
       ],
-      "current_business_status": "正式业务未实现；存在工程样例"
+      "current_business_status": "完成（S02 前端复刻验收）；契约及差异见 docs/architecture/application-shell.md"
     },
     {
       "id": "F004",
@@ -5283,13 +5283,13 @@
       "module": "演练",
       "name": "统计与排行",
       "entry": "/basic/skits/statistics; /basic/skits/rank",
-      "operations": "训练数据统计、排行和筛选",
-      "api_families": "/api/front/rehearsal/",
-      "permission_checks": "统计范围、时间与身份",
-      "unknowns": "接口、统计口径、维度需逐页追踪",
-      "acceptance": "无数据、筛选、排序和翻页正确",
+      "operations": "统计中心与排行榜占位页面",
+      "api_families": "无；原 bundle 页面未发起统计或排行请求",
+      "permission_checks": "沿用演练模块入口可见性",
+      "unknowns": "无；bundle 功能边界不扩展占位页面",
+      "acceptance": "两个路由分别显示原 bundle 中的占位文字",
       "phase": "P4",
-      "status": "原站本地静态证据；未执行运行验收",
+      "status": "按原 bundle 仅复刻占位入口",
       "story_ids": [75],
       "route_ids": ["R042", "R057", "R058"],
       "original_symbols": [
@@ -8990,7 +8990,7 @@
       "operations": "默认跳转、404、加载/空/失败、取消请求、定时器清理、未保存离页处理",
       "api_families": "通用客户端与各模块接口",
       "permission_checks": "401/403、禁用/锁定/不可用状态",
-      "unknowns": "原行为中的异常规则与改进差异",
+      "unknowns": "后续切片继续逐项验收；公共异常与取消改进见应用壳文档",
       "acceptance": "刷新深链、断网、拒绝访问、重复点击均验收",
       "phase": "P1",
       "status": "原站本地静态证据；未执行运行验收",
@@ -9014,7 +9014,7 @@
         }
       ],
       "api_candidates": [],
-      "current_business_status": "正式业务未实现；存在工程样例"
+      "current_business_status": "S02 公共基础完成；后续切片继续验收"
     }
   ],
   "routes": [

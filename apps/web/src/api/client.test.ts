@@ -4,7 +4,7 @@ import { HttpResponse, delay, http } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
-import { createApiClient } from './client'
+import { ApiError, createApiClient } from './client'
 
 const server = setupServer()
 
@@ -115,6 +115,33 @@ describe('request contract', () => {
       fieldErrors: undefined,
     })
     expect(failure).not.toHaveProperty('cause')
+  })
+  it('reads a whitelisted root field-error contract without guessing wrappers', async () => {
+    const client = createApiClient({
+      baseUrl: 'http://localhost/api',
+      fetch: async () =>
+        Response.json(
+          { code: '验证码错误', privateField: 'private-value' },
+          { status: 400 },
+        ),
+    })
+
+    const failure = await client
+      .request('/login', {
+        errorDisplay: {
+          fieldErrorSource: 'root',
+          fieldErrors: { code: { 验证码错误: '验证码错误' } },
+        },
+      })
+      .catch((error: unknown) => error)
+
+    expect(failure).toMatchObject({
+      kind: 'http',
+      status: 400,
+      fieldErrors: { code: '验证码错误' },
+    })
+    expect(failure).toBeInstanceOf(ApiError)
+    expect((failure as ApiError).fieldErrors).not.toHaveProperty('privateField')
   })
   it('keeps the HTTP fallback when an error body contains malformed JSON', async () => {
     const client = createApiClient({

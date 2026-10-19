@@ -19,7 +19,7 @@ const test = base.extend<{ runtimeErrors: string[] }>({
 test('loads the shell and preserves typed hash deep links after refresh', async ({
   page,
 }) => {
-  await page.goto('/')
+  await page.goto('/#/overview')
   await expect(
     page.getByRole('heading', { name: '工程概览', exact: true }),
   ).toBeVisible()
@@ -34,6 +34,84 @@ test('loads the shell and preserves typed hash deep links after refresh', async 
   await expect(
     page.getByRole('heading', { name: '没有找到这个入口' }),
   ).toBeVisible()
+})
+
+test('validates login, restores the current user and handles session expiry', async ({
+  page,
+  runtimeErrors,
+}) => {
+  await page.goto('/#/login')
+  await expect(
+    page.getByRole('heading', { name: '平台登录', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByRole('img', { name: '验证码' })).toBeVisible()
+
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page.getByText('请输入用户名', { exact: true })).toBeVisible()
+  await expect(page.getByText('请输入密码', { exact: true })).toBeVisible()
+  await expect(page.getByText('请输入验证码', { exact: true })).toBeVisible()
+
+  await page
+    .getByRole('textbox', { name: '用户名', exact: true })
+    .fill('learner')
+  await page.getByLabel('密码', { exact: true }).fill('wrong-password')
+  await page.getByRole('textbox', { name: '验证码', exact: true }).fill('0000')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page.getByText('验证码错误', { exact: true })).toBeVisible()
+
+  await page.getByRole('textbox', { name: '验证码', exact: true }).fill('2468')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(
+    page.getByText('用户名或密码错误', { exact: true }),
+  ).toBeVisible()
+
+  await page.getByLabel('密码', { exact: true }).fill('xueyuan123')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(
+    page.getByRole('heading', { name: '首页', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByText('learner-001', { exact: true })).toBeVisible()
+
+  await page.reload()
+  await expect(
+    page.getByRole('heading', { name: '首页', exact: true }),
+  ).toBeVisible()
+
+  await page.evaluate(() => localStorage.removeItem('token'))
+  await page.reload()
+  await expect(page.getByText('会话已失效，请重新登录。')).toBeVisible()
+
+  expect(runtimeErrors.splice(0)).toEqual([
+    'Failed to load resource: the server responded with a status of 403 (Forbidden)',
+    'Failed to load resource: the server responded with a status of 400 (Bad Request)',
+    'Failed to load resource: the server responded with a status of 400 (Bad Request)',
+    'Failed to load resource: the server responded with a status of 403 (Forbidden)',
+  ])
+})
+
+test('signs out and clears account-specific client state', async ({
+  page,
+  runtimeErrors,
+}) => {
+  await page.goto('/#/login')
+  await page
+    .getByRole('textbox', { name: '用户名', exact: true })
+    .fill('learner')
+  await page.getByLabel('密码', { exact: true }).fill('xueyuan123')
+  await page.getByRole('textbox', { name: '验证码', exact: true }).fill('2468')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(
+    page.getByRole('heading', { name: '首页', exact: true }),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: '退出登录', exact: true }).click()
+  await expect(page.getByText('已安全退出。')).toBeVisible()
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('token')))
+    .toBeNull()
+  expect(runtimeErrors.splice(0)).toEqual([
+    'Failed to load resource: the server responded with a status of 403 (Forbidden)',
+  ])
 })
 
 test('MSW and Query expose success, empty, failure, cancellation and timeout states', async ({

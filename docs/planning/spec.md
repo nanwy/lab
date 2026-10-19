@@ -1,7 +1,7 @@
 # 学员端功能与逻辑还原规格
 
-状态：用户已确认全站范围、本机单人运行、测试边界及前端技术选型；技术选型与初始化已拆至独立规格，尚未创建仓库或开始代码实施，也未发布issue。
-发布标签：`ready-for-agent`。目标issue tracker尚未配置，不能猜测目标项目或创建无关issue。
+状态：用户已确认全站范围、本机单人运行、测试边界及前端技术选型；工程初始化、S01 登录与会话、S02 应用入口与公共壳前端验收完成，后续按实施计划推进 S03。真实后端联调另行记录。
+目标issue tracker尚未配置，不能猜测目标项目或创建无关issue。
 
 ## Problem Statement
 
@@ -13,7 +13,7 @@
 
 ## Solution
 
-在本机单人运行的环境中重建学员端，通过统一适配层对接原后端。首先完成登录、实验台、拓扑编辑、节点配置、保存并重新打开的完整流程，再按阶段补齐全站功能。教师端和管理员端只作为发布、分配、配置、评价等上游业务关联，不在本次界面重建范围。
+在本机单人运行的环境中重建学员端，通过统一适配层对接原后端。第一个实现单元是 F001“登录与会话”；完成并验收 F001 后，再完成实验台、拓扑编辑、节点配置、保存并重新打开的首条跨功能流程，随后按阶段补齐全站功能。教师端和管理员端只作为发布、分配、配置、评价等上游业务关联，不在本次界面重建范围。
 
 功能还原覆盖页面、表单、校验、状态迁移、接口、权限分支、异步任务、错误处理和持久化结果。模拟模式用于确定的开发验证；原后端读取和真实写入分别验收，写操作在明确测试账号与对象范围后开放。视觉层先满足可用，后续独立翻新。
 
@@ -109,7 +109,7 @@
 72. As an assigned rehearsal participant, I want to open drill tasks, their subjects and subtasks, so that I can perform my assigned rehearsal work.
 73. As an assigned support-task participant, I want to open support tasks and use the actions permitted for my assignment, so that I can fulfill the support workflow.
 74. As an assigned task member, I want to use the applicable seat, message, evaluation and outcome features, so that I can collaborate within the task rules.
-75. As a learner, I want to view rehearsal statistics and rankings in my permitted scope, so that I can review rehearsal outcomes.
+75. As a learner, I want the rehearsal statistics and ranking routes to reproduce their original placeholder pages, so that the bundle-visible navigation remains complete without inventing unavailable functionality.
 
 ### Resources and personal workspace
 
@@ -198,8 +198,10 @@
 用户已确认以下测试边界。
 
 - 主要测试边界是浏览器可见的完整业务流程，通过可替换的原后端适配层提供确定的模拟响应；另以少量接口契约检查验证真实兼容性。真实写入只在明确测试账号及对象范围内执行。
+- 原 bundle 静态可见的页面、操作、状态分支和请求调用是业务复刻边界；不新增 bundle 外功能，也不要求通过真实环境追加业务验证。
+- 构建、类型检查和必要自动化测试用于保证新工程实现可工作，不将静态推断冒充当前线上后端契约或扩张复刻范围。
 - 好测试验证用户行为和外部结果：保存后重开是否一致、无权限是否被正确阻止、失败是否保留编辑、提交是否改变正确对象的状态。不得测试压缩变量名、内部组件层级或复制实现细节。
-- 当前目录只有分析资料，没有应用源码、现有测试框架、相似测试或可复用的运行验收边界。需要新增一个浏览器流程测试入口；不为每个内部store或组件另造测试边界。
+- 当前已经具备应用源码、单元测试和浏览器测试入口，正式业务按切片增加浏览器流程及必要契约测试，实际覆盖见实施状态，不为每个内部store或组件另造测试边界。
 - 在统一适配层验证少量关键契约的参数、认证/CSRF、响应转换和错误含义；不把全量接口探测当测试，也不以GET当无副作用保证。协议专属能力如WS重连或视频进度算法，仅在浏览器主边界不足以准确定位问题时补充必要的协议/纯逻辑测试。
 - 测试范围覆盖所有业务域、独立入口、状态清理、错误恢复及账号能力组合；按阶段增量验收并保持此前通过的业务回归。
 
@@ -237,5 +239,5 @@
 - bundle静态分析已确认主要前端技术和业务入口；REA在语义图阶段因内存限制未完成全覆盖。已保存的源码摘录与独立核对支持局部业务结论，不支持全局执行可达性结论。
 - 已确认完整枚举原始104条路由定义；49个功能组是当前覆盖基线。隐藏按钮、任务类型和配置裁剪仍要补证并增补操作条目。
 - 真实角色名称、权限字段、计分/进度/次数、状态枚举、下载/预览/WS契约及后端测试范围均是调查事实，不能靠推测定稿。
-- 当前没有Git仓库、项目issue tracker或标签词汇配置。按to-spec要求，发布前需运行 `/setup-matt-pocock-skills`；目标确定后发布此规格并应用 `ready-for-agent`。本地完成不等同issue已发布。
-- 用户已确认测试边界；未生成测试代码，未初始化应用，未对原后端执行请求或写入。
+- 当前已有本地Git仓库，但没有远程仓库或项目issue tracker配置；目标确定前不发布issue。本地完成不等同issue已发布。
+- 用户已确认测试与证据边界；工程与已交付切片的正式业务测试已经建立。已验证的原后端只读请求与未获授权的真实写入分开记录，详见实施状态。

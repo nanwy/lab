@@ -63,7 +63,7 @@ function click(element: Element) {
 
 describe('application shell navigation', () => {
   it('shows only the entries granted by the mock identity capabilities', async () => {
-    await renderAt('/')
+    await renderAt('/overview')
 
     expect(findByText('h1', '工程概览')).toBeTruthy()
     expect(findByText('span', '林晓')).toBeTruthy()

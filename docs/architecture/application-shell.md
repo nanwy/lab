@@ -19,7 +19,7 @@
 
 ## 契约与状态
 
-- 平台标识使用 `admin/system/logo/default/` 的 `platform_name/front_logo/icon`；空值采用默认名称或不展示图片，不从其他字段猜测。
+- 平台标识使用 `admin/system/logo/default/` 的 `platform_name/front_logo/icon`；字段缺省或为空时采用默认名称或不展示图片，不从其他字段猜测。2026-10-20 本地代理真实只读确认：未配置品牌时该接口可省略这三个字段；存在但类型错误仍报告契约错误。
 - 统计及推荐为 `{status:1,data:...}`；logo、岗位、待办、收藏、课程 brief 为直接对象或数组。统计天数在原 UI 中仅按标量显示，本地接受 number/string，不声称已验证后端具体类型。
 - 推荐权重六字段为 `position/direction/learning_content/knowledge_system_width/knowledge_system_depth/failed_skills`，在适配边界用 Zod 校验。未经批准的服务错误详情不进入 UI；status 2 激活结果显示通用可恢复提示，不伪报成功。
 - 当前用户仍只有一份 Query 缓存；S02 扩展 username 和首次进入所需 extend_info，不复制本地账号模型。工具、漏洞配置按对象解析，不猜测 enabled 或角色字段。

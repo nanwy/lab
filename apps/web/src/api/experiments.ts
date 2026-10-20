@@ -20,7 +20,8 @@ export const experimentDetailSchema = experimentSchema
     overview: z.string().nullable(),
     release_type: z.number().int(),
     max_duration: z.number().nullable(),
-    tags_category: id.nullable(),
+    // 原详情以空字符串表达未分类；保留原值，不放宽其他实体 ID。
+    tags_category: id.or(z.literal('')).nullable(),
     topo_id: id.nullable().optional(),
   })
 export type Experiment = z.infer<typeof experimentSchema>

@@ -54,11 +54,14 @@ it('历史实验与场景库按原 URL 拼写提交分页搜索，详情不要�
         overview: null,
         release_type: 2,
         max_duration: 2,
-        tags_category: null,
+        tags_category: '',
       })
     }),
   )
-  expect((await getExperiment('a/b')).name).toBe('实验')
+  expect(await getExperiment('a/b')).toMatchObject({
+    name: '实验',
+    tags_category: '',
+  })
 })
 
 it('创建和编辑以返回 id 判成功，删除 POST ids，场景导入 GET status 判成功', async () => {

@@ -4,9 +4,26 @@ import {
   saveRecommendationSettings,
   recommendationSettingsSchema,
   getCourseAvailability,
+  getPlatformLogo,
 } from './portal'
 
 afterEach(() => vi.unstubAllGlobals())
+it('未设置品牌标识时允许原接口省略品牌字段，错误类型仍拒绝', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () =>
+      Response.json({ email_certif: false, onlyoffice_url: '' }),
+    ),
+  )
+  await expect(getPlatformLogo()).resolves.toEqual({})
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => Response.json({ platform_name: 123 })),
+  )
+  await expect(getPlatformLogo()).rejects.toMatchObject({
+    kind: 'invalid-response',
+  })
+})
 it('推荐读取包裹协议、保存六项权重保留 data 层，课程入口检查 is_open', async () => {
   vi.stubGlobal(
     'fetch',

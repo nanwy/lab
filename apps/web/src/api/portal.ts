@@ -49,9 +49,9 @@ export function getPlatformLogo(signal?: AbortSignal) {
   return read(
     '/admin/system/logo/default/',
     z.object({
-      platform_name: z.string(),
-      front_logo: z.string(),
-      icon: z.string(),
+      platform_name: z.string().optional(),
+      front_logo: z.string().optional(),
+      icon: z.string().optional(),
     }),
     signal,
   )

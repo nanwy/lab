@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
   const target = env.LOCAL_API_TARGET
   const authorization = env.LOCAL_API_BASIC_AUTH
   return {
+    // 隔离测试可指定独立缓存，避免与5173互相清理优化依赖。
+    cacheDir: env.LOCAL_VITE_CACHE_DIR || 'node_modules/.vite',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
@@ -15,12 +17,13 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: target
         ? {
-            '/api': {
+            '^/(api|media)(/|$)': {
               target,
               changeOrigin: true,
               configure(proxy) {
                 proxy.on('proxyReq', (request) => {
-                  // Basic 仅存在服务端；公共背景接口使用上游认证，其余请求保留应用认证。
+                  // API 与媒体共用上游；Basic 仅在服务端补入，保留已有应用认证。
+                  // 公共背景接口仍使用上游认证。
                   if (
                     authorization &&
                     (!request.hasHeader('authorization') ||

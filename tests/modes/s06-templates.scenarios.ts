@@ -349,7 +349,9 @@ test('图片跨域和字体失败阻止不完整产物，恢复资源后可重�
   await expect(page.locator('.react-flow__node img')).toBeVisible()
   await page.getByRole('button', { name: '导出SVG', exact: true }).click()
   await expect(
-    page.locator('[data-sonner-toast]').filter({ hasText: '画布导出失败' }),
+    page
+      .locator('[data-sonner-toast]')
+      .filter({ hasText: '画布导出失败：图标读取或解码失败' }),
   ).toBeVisible()
   expect(downloads).toBe(0)
   allowCors = true
@@ -370,6 +372,11 @@ test('图片跨域和字体失败阻止不完整产物，恢复资源后可重�
   await expect(
     page.getByRole('button', { name: '导出PNG', exact: true }),
   ).toBeEnabled()
+  await expect(
+    page
+      .locator('[data-sonner-toast]')
+      .filter({ hasText: '画布导出失败：字体加载失败' }),
+  ).toBeVisible()
   expect(downloads).toBe(1)
   await stylesheet.evaluate((element) => element.remove())
   await page.getByRole('button', { name: '导出PNG', exact: true }).click()

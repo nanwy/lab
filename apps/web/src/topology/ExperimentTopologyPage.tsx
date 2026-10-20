@@ -40,7 +40,7 @@ import { NodeConfiguration } from './NodeConfiguration'
 import { CanvasNode, CanvasNodeContext } from './CanvasNode'
 import { CanvasLabel } from './CanvasLabel'
 import { intersectsRotatedNode } from './canvas-geometry'
-import { exportCanvas } from './canvas-export'
+import { CanvasExportError, exportCanvas } from './canvas-export'
 import {
   LinkConfiguration,
   nicIndices,
@@ -707,9 +707,13 @@ export function ExperimentTopologyEditor({
     setExporting(true)
     try {
       await exportCanvas(canvas.current, format, operation.current.signal)
-    } catch {
+    } catch (error) {
       if (!operation.current.signal.aborted)
-        toast.error('画布导出失败，请检查图片和字体资源后重试。')
+        toast.error(
+          error instanceof CanvasExportError
+            ? error.message
+            : '画布导出失败，请重试。',
+        )
     } finally {
       if (!operation.current.signal.aborted) setExporting(false)
     }

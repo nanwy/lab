@@ -50,6 +50,7 @@ export default defineConfig({
         VITE_API_BASE_URL: '/api',
         LOCAL_API_TARGET: '',
         LOCAL_API_BASIC_AUTH: '',
+        LOCAL_VITE_CACHE_DIR: 'node_modules/.vite-playwright-production',
       },
     },
     {
@@ -61,6 +62,7 @@ export default defineConfig({
         VITE_API_BASE_URL: '/api',
         LOCAL_API_TARGET: '',
         LOCAL_API_BASIC_AUTH: '',
+        LOCAL_VITE_CACHE_DIR: 'node_modules/.vite-playwright-mock-disabled',
       },
     },
     {
@@ -72,6 +74,7 @@ export default defineConfig({
         VITE_API_BASE_URL: '/custom-api',
         LOCAL_API_TARGET: '',
         LOCAL_API_BASIC_AUTH: '',
+        LOCAL_VITE_CACHE_DIR: 'node_modules/.vite-playwright-custom-api',
       },
     },
   ],

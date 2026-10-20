@@ -4,6 +4,54 @@ import { deterministicX6Graph } from './sample'
 import { fromX6Graph, toX6Graph } from './x6-adapter'
 
 describe('拓扑输入契约', () => {
+  it('文本和区域编辑尺寸角度层级后保存重开，成员可移出并保持绝对坐标', () => {
+    const opened = fromX6Graph({
+      cells: [
+        {
+          id: 'area',
+          shape: 'custom-rect',
+          position: { x: 100, y: 200 },
+          size: { width: 350, height: 200 },
+          children: ['text'],
+          data: { parent: true, name: '区域' },
+          custom: 'keep',
+        },
+        {
+          id: 'text',
+          shape: 'custom-react-text',
+          parent: 'area',
+          position: { x: 140, y: 240 },
+          data: { name: '旧文本', nodeInfo: { type: 3 } },
+        },
+      ],
+    })
+    expect(opened.issues).toEqual([])
+    const text = opened.nodes.find((n) => n.id === 'text')!
+    expect(text.position).toEqual({ x: 40, y: 40 })
+    text.data.label = '新文本'
+    text.width = 240
+    text.height = 120
+    text.data.rotation = 90
+    text.zIndex = 7
+    const output = toX6Graph(opened)
+    expect(output.cells.find((c) => c.id === 'text')).toMatchObject({
+      position: { x: 140, y: 240 },
+      size: { width: 240, height: 120 },
+      angle: 90,
+      zIndex: 7,
+      data: { name: '新文本' },
+    })
+    const reopened = fromX6Graph(output)
+    expect(reopened.nodes.find((n) => n.id === 'text')).toMatchObject({
+      width: 240,
+      height: 120,
+      data: { label: '新文本', rotation: 90 },
+    })
+    expect(output.cells.find((c) => c.id === 'area')).toMatchObject({
+      custom: 'keep',
+      data: { name: '区域' },
+    })
+  })
   it('拒绝重复标识及缺失的节点坐标和名称，而不是生成可编辑的默认图', () => {
     const duplicate = structuredClone(deterministicX6Graph)
     duplicate.cells.push(structuredClone(duplicate.cells[0]!))

@@ -37,6 +37,31 @@ export async function saveExperimentTopology(
 ): Promise<void> {
   if (graph.rawGraph.lock)
     throw new ApiError('business', '拓扑已锁定，无法保存。')
+  await submitTopology(id, graph, signal, lastNode)
+}
+
+/** 原工具栏的锁切换明确提交新 lock；普通图保存继续拒绝锁图。 */
+export async function setExperimentTopologyLock(
+  id: string | number,
+  graph: EditorGraph,
+  locked: boolean,
+  signal?: AbortSignal,
+  lastNode?: Array<string | number>,
+): Promise<void> {
+  await submitTopology(
+    id,
+    { ...graph, rawGraph: { ...graph.rawGraph, lock: locked } },
+    signal,
+    lastNode,
+  )
+}
+
+async function submitTopology(
+  id: string | number,
+  graph: EditorGraph,
+  signal?: AbortSignal,
+  lastNode?: Array<string | number>,
+) {
   await apiClient.request(
     `/front/topo/${encodeURIComponent(id)}/draw/?task_type=6`,
     {

@@ -5,20 +5,19 @@ import {
   Background,
   BaseEdge,
   EdgeText,
-  Controls,
+  Panel,
   ConnectionMode,
-  Handle,
-  Position,
   ReactFlow,
   useNodesState,
   useEdgesState,
   getSmoothStepPath,
+  useInternalNode,
+  SelectionMode,
   type ReactFlowInstance,
   type Connection as FlowConnection,
   type Edge,
   type EdgeProps,
   type Node,
-  type NodeProps,
 } from '@xyflow/react'
 import { Button } from '@workspace/ui/components/button'
 import {
@@ -30,10 +29,17 @@ import {
 } from '@workspace/ui/components/dialog'
 import { toast } from '@workspace/ui/components/sonner'
 import { ApiError } from '../api'
-import { getExperimentTopology, saveExperimentTopology } from '../api/topology'
+import {
+  getExperimentTopology,
+  saveExperimentTopology,
+  setExperimentTopologyLock,
+} from '../api/topology'
 import { useExperiment } from '../experiments/ExperimentContext'
 import { DeviceResources } from './DeviceResources'
 import { NodeConfiguration } from './NodeConfiguration'
+import { CanvasNode, CanvasNodeContext } from './CanvasNode'
+import { CanvasLabel } from './CanvasLabel'
+import { intersectsRotatedNode } from './canvas-geometry'
 import {
   LinkConfiguration,
   nicIndices,
@@ -55,79 +61,70 @@ import {
   type EditorGraph,
   type TopologyNodeData,
   type TopologyEdgeData,
+  type X6Graph,
 } from './x6-adapter'
 
 type FlowNode = Node<TopologyNodeData, 'topologyNode' | 'topologyGroup'>
 type FlowEdge = Edge<TopologyEdgeData, 'topologyEdge'> & {
   data: TopologyEdgeData
 }
-const positions = {
-  left: Position.Left,
-  right: Position.Right,
-  top: Position.Top,
-  bottom: Position.Bottom,
-}
-
-function Device({ data }: NodeProps<FlowNode>) {
-  return (
-    <div
-      className="topology-node"
-      style={{ transform: `rotate(${data.rotation}deg)` }}
-    >
-      {data.ports.map((port) => (
-        <Handle
-          key={port.id}
-          id={port.id}
-          type="source"
-          position={
-            positions[port.group as keyof typeof positions] ?? Position.Right
-          }
-        />
-      ))}
-      {data.ports.length === 0 ? (
-        <Handle
-          type="source"
-          position={Position.Right}
-          isConnectable={false}
-          style={{ visibility: 'hidden' }}
-        />
-      ) : null}
-      {typeof data.raw.data?.logo === 'string' && data.raw.data.logo ? (
-        <img
-          src={data.raw.data.logo}
-          alt=""
-          className="mx-auto size-8 object-contain"
-        />
-      ) : null}
-      <strong>{data.label}</strong>
-    </div>
-  )
-}
-function Group({ data }: NodeProps<FlowNode>) {
-  return (
-    <div className="topology-group">
-      <Handle
-        type="source"
-        position={Position.Right}
-        isConnectable={false}
-        style={{ visibility: 'hidden' }}
-      />
-      <strong>{data.label}</strong>
-    </div>
-  )
-}
 function Connection({
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
+  sourceX: anchorSourceX,
+  sourceY: anchorSourceY,
+  targetX: anchorTargetX,
+  targetY: anchorTargetY,
+  source,
+  target,
+  sourceHandleId,
+  targetHandleId,
+  sourcePosition,
+  targetPosition,
   data,
 }: EdgeProps<FlowEdge>) {
+  const sourceNode = useInternalNode(source),
+    targetNode = useInternalNode(target)
+  const sourceHandle = sourceNode?.internals.handleBounds?.source?.find(
+    (handle) => handle.id === sourceHandleId,
+  )
+  const targetHandle = targetNode?.internals.handleBounds?.source?.find(
+    (handle) => handle.id === targetHandleId,
+  )
+  const sourceX =
+    sourceHandle && sourceNode
+      ? sourceNode.internals.positionAbsolute.x +
+        sourceHandle.x +
+        sourceHandle.width / 2
+      : anchorSourceX
+  const sourceY =
+    sourceHandle && sourceNode
+      ? sourceNode.internals.positionAbsolute.y +
+        sourceHandle.y +
+        sourceHandle.height / 2
+      : anchorSourceY
+  const targetX =
+    targetHandle && targetNode
+      ? targetNode.internals.positionAbsolute.x +
+        targetHandle.x +
+        targetHandle.width / 2
+      : anchorTargetX
+  const targetY =
+    targetHandle && targetNode
+      ? targetNode.internals.positionAbsolute.y +
+        targetHandle.y +
+        targetHandle.height / 2
+      : anchorTargetY
   const path =
     data?.router &&
     asObject(data.router).name === 'orth' &&
     !data.vertices.length
-      ? getSmoothStepPath({ sourceX, sourceY, targetX, targetY })[0]
+      ? getSmoothStepPath({
+          sourceX,
+          sourceY,
+          targetX,
+          targetY,
+          sourcePosition,
+          targetPosition,
+        })[0]
       : [
           `M ${sourceX} ${sourceY}`,
           ...(data?.vertices ?? []).map((point) => `L ${point.x} ${point.y}`),
@@ -170,7 +167,7 @@ function Connection({
     </>
   )
 }
-const nodeTypes = { topologyNode: Device, topologyGroup: Group }
+const nodeTypes = { topologyNode: CanvasNode, topologyGroup: CanvasNode }
 const edgeTypes = { topologyEdge: Connection }
 
 export function ExperimentTopologyPage() {
@@ -241,17 +238,23 @@ export function ExperimentTopologyEditor({
   const [lastNode, setLastNode] = useState<Array<string | number>>([])
   const [resource, setResource] = useState<DeviceResource | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
-  const [editing, setEditing] = useState<'node' | 'link' | null>(null)
+  const [editing, setEditing] = useState<'node' | 'link' | 'label' | null>(null)
   const [linkSource, setLinkSource] = useState<string | null>(null)
   const [pendingConnection, setPendingConnection] =
     useState<FlowConnection | null>(null)
   const [busy, setBusy] = useState(false)
   const [context, setContext] = useState<{ x: number; y: number } | null>(null)
   const [inspectorDirty, setInspectorDirty] = useState(false)
+  const [locked, setLocked] = useState(Boolean(initial.rawGraph.lock))
+  const clipboard = useRef<X6Graph | null>(null)
+  const pasteCount = useRef(0)
+  const panCleanup = useRef<(() => void) | null>(null)
+  const selectionOrigin = useRef<{ x: number; y: number } | null>(null)
   const flow = useRef<ReactFlowInstance<FlowNode, FlowEdge> | null>(null)
   const operation = useRef(new AbortController())
   const draft: EditorGraph = {
     ...initial,
+    rawGraph: { ...initial.rawGraph, lock: locked },
     edges: edges.map((edge) => ({
       ...edge,
       type: 'topologyEdge',
@@ -271,7 +274,6 @@ export function ExperimentTopologyEditor({
   const [saving, setSaving] = useState(false)
   const saveController = useRef<AbortController | null>(null)
   const dirty = serialized !== baseline
-  const locked = Boolean(initial.rawGraph.lock)
   const editable = !readOnly && !shared && !locked
   const blocker = useBlocker({
     shouldBlockFn: () => dirty || inspectorDirty || busy,
@@ -283,6 +285,7 @@ export function ExperimentTopologyEditor({
     return () => {
       saveController.current?.abort()
       operation.current.abort()
+      panCleanup.current?.()
     }
   }, [])
 
@@ -310,16 +313,405 @@ export function ExperimentTopologyEditor({
       if (!controller.signal.aborted) setSaving(false)
     }
   }
+  async function toggleLock() {
+    if (readOnly || shared || busy || saving) return
+    const controller = new AbortController()
+    saveController.current = controller
+    const nextLock = !locked,
+      submittedLast = lastNode
+    const submitted = {
+      ...draft,
+      rawGraph: { ...draft.rawGraph, lock: nextLock },
+    }
+    setBusy(true)
+    setSaving(true)
+    try {
+      await setExperimentTopologyLock(
+        id,
+        draft,
+        nextLock,
+        controller.signal,
+        submittedLast,
+      )
+      if (controller.signal.aborted) return
+      setLocked(nextLock)
+      setBaseline(JSON.stringify(toX6Graph(submitted)))
+      setLastNode((current) => current.slice(submittedLast.length))
+      setContext(null)
+      setResource(null)
+    } catch (error) {
+      report(error)
+    } finally {
+      if (!controller.signal.aborted) {
+        setBusy(false)
+        setSaving(false)
+      }
+    }
+  }
 
-  const selectedNode = nodes.find(
-    (node) => node.id === selected && node.type === 'topologyNode',
-  )
+  const selectedNodes = nodes.filter((node) => node.selected)
+  const selectedNode =
+    nodes.find((node) => node.id === selected) ?? selectedNodes[0]
+  const graphical =
+    selectedNode &&
+    (selectedNode.type === 'topologyGroup' ||
+      selectedNode.data.raw.data?.nodeType === 'base_element')
+  function editSelected() {
+    if (!editable || busy) return
+    if (selectedNode?.data.raw.shape === 'custom-react-text') return
+    setEditing(selectedEdge ? 'link' : graphical ? 'label' : 'node')
+  }
+  function installGraph(graph: X6Graph) {
+    const opened = fromX6Graph(graph)
+    setNodes(opened.nodes)
+    setEdges(opened.edges)
+    setPassthroughCells(opened.passthroughCells)
+  }
+  function changeLabel(uuid: string, label: string) {
+    if (!editable || busy) return
+    setNodes((current) =>
+      current.map((node) =>
+        node.id === uuid ? { ...node, data: { ...node.data, label } } : node,
+      ),
+    )
+  }
+  function groupSelection() {
+    if (!editable || busy || !selectedNodes.length) return
+    const graph = toX6Graph(draft)
+    const ids = new Set(
+      selectedNodes.filter((node) => !node.parentId).map((node) => node.id),
+    )
+    const members = graph.cells.filter((cell) => ids.has(cell.id))
+    if (!members.length) return
+    const x =
+      Math.min(...members.map((cell) => cell.position?.x ?? cell.x!)) - 50
+    const y =
+      Math.min(...members.map((cell) => cell.position?.y ?? cell.y!)) - 50
+    const right =
+      Math.max(
+        ...members.map(
+          (cell) =>
+            (cell.position?.x ?? cell.x!) +
+            (cell.size?.width ?? cell.width ?? 80),
+        ),
+      ) + 50
+    const bottom =
+      Math.max(
+        ...members.map(
+          (cell) =>
+            (cell.position?.y ?? cell.y!) +
+            (cell.size?.height ?? cell.height ?? 80),
+        ),
+      ) + 50
+    const uuid = crypto.randomUUID()
+    members.forEach((cell) => {
+      cell.parent = uuid
+    })
+    graph.cells.push({
+      id: uuid,
+      shape: 'custom-rect',
+      shapeType: 'parent',
+      position: { x, y },
+      size: { width: right - x, height: bottom - y },
+      children: [...ids],
+      zIndex: 1,
+      visible: true,
+      data: { parent: true, name: '' },
+      attrs: {
+        label: {
+          fontSize: 16,
+          refX: '50%',
+          refY: 30,
+          textAnchor: 'middle',
+          textVerticalAnchor: 'middle',
+        },
+      },
+    })
+    installGraph(graph)
+    setSelected(uuid)
+  }
+  function finishSelection(event: React.MouseEvent) {
+    if (!editable || !selectionOrigin.current || !flow.current) return
+    const start = selectionOrigin.current,
+      end = flow.current.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      })
+    selectionOrigin.current = null
+    const rect = {
+      x: Math.min(start.x, end.x),
+      y: Math.min(start.y, end.y),
+      width: Math.abs(end.x - start.x),
+      height: Math.abs(end.y - start.y),
+    }
+    const cells = new Map(toX6Graph(draft).cells.map((cell) => [cell.id, cell]))
+    setNodes((current) =>
+      current.map((node) => ({
+        ...node,
+        selected: intersectsRotatedNode(rect, cells.get(node.id)!, {
+          width: node.width ?? 80,
+          height: node.height ?? 80,
+        }),
+      })),
+    )
+  }
+  function ungroup(uuid = selectedNode?.id) {
+    if (!editable || busy || !uuid) return
+    const graph = toX6Graph(draft)
+    const group = graph.cells.find((cell) => cell.id === uuid)
+    if (!group || !group.data?.parent) return
+    for (const cell of graph.cells) {
+      if (cell.parent === uuid) delete cell.parent
+      if (cell.children)
+        cell.children = cell.children.filter((id) => id !== uuid)
+    }
+    graph.cells = graph.cells.filter((cell) => cell.id !== uuid)
+    installGraph(graph)
+    setSelected(null)
+    setContext(null)
+  }
+  function embed(uuid: string) {
+    if (!editable || busy || !flow.current) return
+    const current = flow.current.getNodes()
+    const graph = toX6Graph({
+      ...draft,
+      nodes: current.map((node) => ({ ...node, extent: undefined })),
+    })
+    const cell = graph.cells.find((cell) => cell.id === uuid)!
+    const pos = cell.position ?? { x: cell.x!, y: cell.y! }
+    const width = cell.size?.width ?? cell.width ?? 80,
+      height = cell.size?.height ?? cell.height ?? 80
+    const descendants = new Set([uuid])
+    for (let i = 0; i < graph.cells.length; i++)
+      for (const child of graph.cells)
+        if (child.parent && descendants.has(child.parent))
+          descendants.add(child.id)
+    const parent = graph.cells
+      .filter((candidate) => {
+        if (!candidate.data?.parent || descendants.has(candidate.id))
+          return false
+        const p = candidate.position ?? { x: candidate.x!, y: candidate.y! }
+        return (
+          pos.x + width >= p.x &&
+          pos.x <= p.x + (candidate.size?.width ?? candidate.width ?? 70) &&
+          pos.y + height >= p.y &&
+          pos.y <= p.y + (candidate.size?.height ?? candidate.height ?? 40)
+        )
+      })
+      .at(-1)
+    if (cell.parent === parent?.id) return
+    if (parent) cell.parent = parent.id
+    else delete cell.parent
+    for (const group of graph.cells)
+      if (group.data?.parent)
+        group.children = graph.cells
+          .filter((c) => c.parent === group.id)
+          .map((c) => c.id)
+    installGraph(graph)
+  }
+  function copySelection() {
+    if (!editable || busy) return
+    const graph = toX6Graph(draft),
+      ids = new Set(selectedNodes.map((node) => node.id))
+    for (let i = 0; i < graph.cells.length; i++)
+      for (const cell of graph.cells)
+        if (cell.parent && ids.has(cell.parent)) ids.add(cell.id)
+    clipboard.current = {
+      cells: graph.cells.filter(
+        (cell) =>
+          ids.has(cell.id) ||
+          (cell.source &&
+            cell.target &&
+            ids.has(cell.source.cell) &&
+            ids.has(cell.target.cell)),
+      ),
+    }
+    pasteCount.current = 0
+  }
+  async function pasteSelection() {
+    if (!editable || busy || !clipboard.current?.cells.length) return
+    const cells = structuredClone(clipboard.current.cells),
+      ids = new Map(cells.map((cell) => [cell.id, crypto.randomUUID()]))
+    const ports = new Map<string, string>()
+    const offset = 50 * ++pasteCount.current
+    for (const cell of cells) {
+      const previous = cell.id
+      cell.id = ids.get(previous)!
+      if (cell.position) {
+        cell.position.x += offset
+        cell.position.y += offset
+      } else if (cell.x !== undefined && cell.y !== undefined) {
+        cell.x += offset
+        cell.y += offset
+      }
+      if (cell.parent && ids.has(cell.parent))
+        cell.parent = ids.get(cell.parent)
+      else delete cell.parent
+      if (cell.children)
+        cell.children = cell.children.flatMap((child) =>
+          ids.has(child) ? [ids.get(child)!] : [],
+        )
+      for (const port of cell.ports?.items ?? []) {
+        const uuid = crypto.randomUUID()
+        ports.set(`${previous}:${port.id}`, uuid)
+        port.id = uuid
+      }
+      for (const vertex of cell.vertices ?? []) {
+        vertex.x += offset
+        vertex.y += offset
+      }
+    }
+    for (const cell of cells)
+      for (const endpoint of [cell.source, cell.target])
+        if (endpoint) {
+          if (endpoint.port)
+            endpoint.port = ports.get(`${endpoint.cell}:${endpoint.port}`)!
+          endpoint.cell = ids.get(endpoint.cell)!
+        }
+    const graph = toX6Graph(draft)
+    const added: typeof cells = []
+    function publish() {
+      const combined = [...graph.cells, ...added]
+      for (const cell of added)
+        if (cell.children)
+          cell.children = added
+            .filter((child) => child.parent === cell.id)
+            .map((child) => child.id)
+      const opened = fromX6Graph({ ...graph, cells: combined })
+      const pasted = new Set(added.map((cell) => cell.id))
+      setNodes(
+        opened.nodes.map((node) => ({
+          ...node,
+          selected: pasted.has(node.id),
+        })),
+      )
+      setEdges(opened.edges)
+      setPassthroughCells(opened.passthroughCells)
+    }
+    setBusy(true)
+    try {
+      // 区域先建立，部分创建失败时，已成功的业务对象仍可见、可保存和删除。
+      for (const cell of cells.filter(
+        (cell) => cell.shape !== 'edge' && cell.data?.data_id === undefined,
+      ))
+        added.push(cell)
+      for (const cell of cells.filter(
+        (cell) => cell.shape !== 'edge' && cell.data?.data_id !== undefined,
+      )) {
+        const info = asObject(cell.data?.nodeInfo)
+        if (
+          (typeof info.id !== 'string' && typeof info.id !== 'number') ||
+          typeof info.name !== 'string'
+        )
+          throw new Error('复制设备缺少有效业务资源标识或名称')
+        const created = await createTopologyNode(
+          id,
+          {
+            ...info,
+            id: info.id,
+            name: info.name,
+            config_info: asObject(info.config_info),
+          },
+          cell.id,
+          operation.current.signal,
+        )
+        if (operation.current.signal.aborted) return
+        cell.data = {
+          ...cell.data,
+          data_id: created.id,
+          nodeInfo: created,
+          action: 'create',
+        }
+        added.push(cell)
+      }
+      for (const cell of cells.filter((cell) => cell.shape === 'edge')) {
+        const source = cells.find((node) => node.id === cell.source?.cell)!,
+          target = cells.find((node) => node.id === cell.target?.cell)!
+        if (
+          source.data?.nodeType !== 'base_element' &&
+          target.data?.nodeType !== 'base_element'
+        ) {
+          const sourcePort = cell.data?.source,
+            targetPort = cell.data?.target
+          if (typeof sourcePort !== 'number' || typeof targetPort !== 'number')
+            throw new Error('复制链路缺少已确认的网卡索引')
+          const created = await createTopologyEdge(
+            id,
+            cell.id,
+            {
+              id: source.id,
+              rowId: source.data?.data_id,
+              name: String(source.data?.name),
+              port: sourcePort,
+            },
+            {
+              id: target.id,
+              rowId: target.data?.data_id,
+              name: String(target.data?.name),
+              port: targetPort,
+            },
+            operation.current.signal,
+          )
+          if (operation.current.signal.aborted) return
+          cell.data = { ...cell.data, data_id: created.id, action: 'create' }
+        }
+        added.push(cell)
+      }
+    } catch (error) {
+      report(error)
+    } finally {
+      if (!operation.current.signal.aborted) {
+        publish()
+        setBusy(false)
+        setSelected(added.find((cell) => cell.shape !== 'edge')?.id ?? null)
+      }
+    }
+  }
   const selectedEdge = edges.find((edge) => edge.id === selected)
   function report(error: unknown) {
     if (error instanceof ApiError) {
       if (!error.handled && error.kind !== 'cancelled')
         toast.error(error.message)
     } else toast.error(error instanceof Error ? error.message : '拓扑操作失败')
+  }
+  function pan(event: React.PointerEvent<HTMLDivElement>) {
+    if (
+      !editable ||
+      !event.ctrlKey ||
+      event.button !== 0 ||
+      !flow.current ||
+      (event.target as Element).closest(
+        '.react-flow__node,.react-flow__edge,button',
+      )
+    )
+      return
+    event.preventDefault()
+    event.stopPropagation()
+    panCleanup.current?.()
+    const element = event.currentTarget,
+      origin = flow.current.getViewport(),
+      x = event.clientX,
+      y = event.clientY
+    element.setPointerCapture(event.pointerId)
+    const move = (event: PointerEvent) => {
+      void flow.current?.setViewport({
+        ...origin,
+        x: origin.x + event.clientX - x,
+        y: origin.y + event.clientY - y,
+      })
+    }
+    const end = () => {
+      element.removeEventListener('pointermove', move)
+      element.removeEventListener('pointerup', end)
+      element.removeEventListener('pointercancel', end)
+      element.removeEventListener('lostpointercapture', end)
+      panCleanup.current = null
+    }
+    element.addEventListener('pointermove', move)
+    element.addEventListener('pointerup', end)
+    element.addEventListener('pointercancel', end)
+    element.addEventListener('lostpointercapture', end)
+    panCleanup.current = end
   }
   function patchNode(
     uuid: string,
@@ -361,6 +753,43 @@ export function ExperimentTopologyEditor({
     if (!editable || busy || !flow.current) return
     const point = flow.current.screenToFlowPosition(client)
     const uuid = crypto.randomUUID()
+    if (item.nodeType === 'base_element') {
+      const area = item.type === 1,
+        text = item.type === 3
+      const ports = {
+        items: ['top', 'right', 'bottom', 'left'].map((group) => ({
+          id: `${uuid}-${group}`,
+          group,
+        })),
+      }
+      const cell = {
+        id: uuid,
+        shape: area
+          ? 'custom-rect'
+          : text
+            ? 'custom-react-text'
+            : 'custom-react-node',
+        position: point,
+        size: area
+          ? { width: 350, height: 200 }
+          : text
+            ? { width: 180, height: 80 }
+            : { width: 80, height: 80 },
+        data: {
+          name: item.name,
+          nodeType: 'base_element',
+          nodeInfo: item,
+          ...(area ? { parent: true } : {}),
+        },
+        ports,
+      }
+      setNodes((current) => [
+        ...current,
+        ...fromX6Graph({ cells: [cell] }).nodes,
+      ])
+      setResource(null)
+      return
+    }
     setBusy(true)
     try {
       const created = await createTopologyNode(
@@ -402,24 +831,41 @@ export function ExperimentTopologyEditor({
     }
   }
   async function remove() {
+    const selected = selectedEdge?.id ?? selectedNode?.id
     if (!editable || busy || !selected || (!selectedNode && !selectedEdge))
       return
-    const removeIds = new Set([selected])
+    if (selectedNode?.type === 'topologyGroup') {
+      ungroup(selectedNode.id)
+      return
+    }
+    const removeIds = new Set(
+      selectedEdge
+        ? [selected]
+        : selectedNodes.some((node) => node.id === selected)
+          ? selectedNodes
+              .filter((node) => node.type !== 'topologyGroup')
+              .map((node) => node.id)
+          : [selected],
+    )
     const linked = edges.filter(
       (edge) =>
-        edge.source === selected ||
-        edge.target === selected ||
+        removeIds.has(edge.source) ||
+        removeIds.has(edge.target) ||
         edge.id === selected,
     )
     for (const edge of linked) removeIds.add(edge.id)
     const extra = passthroughCells.filter(
       (cell) =>
-        cell.source?.cell === selected || cell.target?.cell === selected,
+        (cell.source && removeIds.has(cell.source.cell)) ||
+        (cell.target && removeIds.has(cell.target.cell)),
     )
-    const nodeIds =
-      selectedNode?.data.raw.data?.data_id === undefined
-        ? []
-        : [selectedNode.data.raw.data.data_id]
+    const nodeIds = nodes
+      .filter((node) => removeIds.has(node.id))
+      .flatMap((node) =>
+        node.data.raw.data?.data_id === undefined
+          ? []
+          : [node.data.raw.data.data_id],
+      )
     const edgeIds = [...linked.map((edge) => edge.data.raw), ...extra].flatMap(
       (cell) => (cell.data?.data_id === undefined ? [] : [cell.data.data_id]),
     )
@@ -437,7 +883,7 @@ export function ExperimentTopologyEditor({
         current
           .filter((node) => !removeIds.has(node.id))
           .map((node) =>
-            node.data.raw.children?.includes(selected)
+            node.data.raw.children?.some((child) => removeIds.has(child))
               ? {
                   ...node,
                   data: {
@@ -445,7 +891,7 @@ export function ExperimentTopologyEditor({
                     raw: {
                       ...node.data.raw,
                       children: node.data.raw.children.filter(
-                        (child) => child !== selected,
+                        (child) => !removeIds.has(child),
                       ),
                     },
                   },
@@ -458,10 +904,12 @@ export function ExperimentTopologyEditor({
         current
           .filter((cell) => !extra.includes(cell))
           .map((cell) =>
-            cell.children?.includes(selected)
+            cell.children?.some((child) => removeIds.has(child))
               ? {
                   ...cell,
-                  children: cell.children.filter((child) => child !== selected),
+                  children: cell.children.filter(
+                    (child) => !removeIds.has(child),
+                  ),
                 }
               : cell,
           ),
@@ -475,18 +923,49 @@ export function ExperimentTopologyEditor({
   }
   function connect(connection: FlowConnection) {
     if (!editable || busy || connection.source === connection.target) return
+    const source = nodes.find((node) => node.id === connection.source),
+      target = nodes.find((node) => node.id === connection.target)
+    if (
+      source?.data.raw.data?.nodeType === 'base_element' ||
+      target?.data.raw.data?.nodeType === 'base_element'
+    ) {
+      const uuid = crypto.randomUUID()
+      const raw = {
+        id: uuid,
+        shape: 'edge',
+        source: {
+          cell: connection.source,
+          port: connection.sourceHandle ?? undefined,
+        },
+        target: {
+          cell: connection.target,
+          port: connection.targetHandle ?? undefined,
+        },
+        data: { nodeType: 'base_element' },
+      }
+      setEdges((current) => [
+        ...current,
+        ...fromX6Graph({
+          cells: [...toX6Graph(draft).cells, raw],
+        }).edges.filter((edge) => edge.id === uuid),
+      ])
+      return
+    }
     setSelected(null)
     setPendingConnection(connection)
     setLinkSource(connection.source)
     setEditing('link')
   }
   async function openNodeMenu(node: FlowNode, point: { x: number; y: number }) {
-    if (!editable || busy || node.type !== 'topologyNode') return
+    if (!editable || busy) return
     setContext(null)
     setSelected(node.id)
     setBusy(true)
     try {
-      if (node.data.raw.data?.nodeType !== 'base_element')
+      if (
+        node.type !== 'topologyGroup' &&
+        node.data.raw.data?.nodeType !== 'base_element'
+      )
         await queryClient.fetchQuery({
           queryKey: ['topology-node-menu', node.id],
           queryFn: ({ signal }) =>
@@ -507,467 +986,689 @@ export function ExperimentTopologyEditor({
   }
 
   return (
-    <section className="space-y-4" aria-label="实验场景拓扑">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">场景拓扑</h2>
-          <p role="status">
-            {locked
-              ? '拓扑已锁定，仅可查看'
-              : readOnly || shared
-                ? '共享只读拓扑'
-                : dirty || inspectorDirty
-                  ? '有未保存的修改'
-                  : '所有修改已保存'}
-          </p>
-        </div>
-        <Button
-          disabled={!editable || !dirty || saving}
-          onClick={() => void save()}
-        >
-          {saving ? '正在保存拓扑…' : '保存拓扑'}
-        </Button>
-      </header>
-      {editable ? (
-        <div className="flex gap-2" aria-label="选中对象操作">
-          <Button
-            variant="outline"
-            disabled={busy || (!selectedNode && !selectedEdge)}
-            onClick={() => setEditing(selectedEdge ? 'link' : 'node')}
-          >
-            编辑选中对象
-          </Button>
-          <Button
-            variant="outline"
-            disabled={busy || !selectedNode || !nicIndices(selectedNode).length}
-            onClick={() => {
-              setLinkSource(selectedNode!.id)
-              setPendingConnection(null)
-              setEditing('link')
-            }}
-          >
-            连接设备
-          </Button>
-          <Button
-            variant="destructive"
-            disabled={busy || (!selectedNode && !selectedEdge)}
-            onClick={() => void remove()}
-          >
-            删除选中对象
-          </Button>
-          {resource ? <p role="status">点击画布放置：{resource.name}</p> : null}
-          {busy ? <p role="status">正在提交拓扑操作…</p> : null}
-        </div>
-      ) : null}
-      {initial.issues.length ? (
-        <div role="status" className="compatibility-report">
-          <strong>兼容性报告：未支持的图元将原样保存</strong>
-          <ul>
-            {initial.issues.map((issue) => (
-              <li key={`${issue.code}:${issue.cellId}`}>{issue.message}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {!nodes.length && !edges.length ? <p>暂无可显示的拓扑图元</p> : null}
-      <div className="flex gap-3">
+    <CanvasNodeContext.Provider
+      value={{
+        editable: editable && !busy,
+        onLabel: changeLabel,
+        onTransform: (uuid, value) => {
+          if (!editable || busy) return
+          setNodes((current) =>
+            current.map((node) => {
+              if (node.id !== uuid) return node
+              return {
+                ...node,
+                position: {
+                  x:
+                    node.position.x -
+                    ((value.width ?? node.width ?? 80) - (node.width ?? 80)) /
+                      2,
+                  y:
+                    node.position.y -
+                    ((value.height ?? node.height ?? 80) -
+                      (node.height ?? 80)) /
+                      2,
+                },
+                width: value.width ?? node.width,
+                height: value.height ?? node.height,
+                data: {
+                  ...node.data,
+                  rotation: value.rotation ?? node.data.rotation,
+                },
+              }
+            }),
+          )
+        },
+      }}
+    >
+      <section className="space-y-4" aria-label="实验场景拓扑">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">场景拓扑</h2>
+            <p role="status">
+              {locked
+                ? '拓扑已锁定，仅可查看'
+                : readOnly || shared
+                  ? '共享只读拓扑'
+                  : dirty || inspectorDirty
+                    ? '有未保存的修改'
+                    : '所有修改已保存'}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            {!readOnly && !shared ? (
+              <Button
+                variant="outline"
+                disabled={busy || saving}
+                onClick={() => void toggleLock()}
+              >
+                {locked ? '解锁拓扑' : '锁定拓扑'}
+              </Button>
+            ) : null}
+            <Button
+              disabled={!editable || !dirty || saving}
+              onClick={() => void save()}
+            >
+              {saving ? '正在保存拓扑…' : '保存拓扑'}
+            </Button>
+          </div>
+        </header>
         {editable ? (
-          <DeviceResources disabled={busy} onChoose={setResource} />
-        ) : null}
-        <div
-          className="h-[32rem] min-w-0 flex-1 border bg-white"
-          aria-label="场景拓扑画布"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (
-              (event.key === 'Delete' || event.key === 'Backspace') &&
-              !(event.target instanceof HTMLInputElement) &&
-              !(event.target instanceof HTMLTextAreaElement) &&
-              !(event.target instanceof HTMLSelectElement)
-            ) {
-              event.preventDefault()
-              void remove()
-            }
-          }}
-          onDragOver={(event) => {
-            if (editable) event.preventDefault()
-          }}
-          onDrop={(event) => {
-            event.preventDefault()
-            if (!editable || busy) return
-            try {
-              const item = JSON.parse(
-                event.dataTransfer.getData('application/x-topology-resource'),
-              ) as DeviceResource
-              setResource(item)
-              void place(item, { x: event.clientX, y: event.clientY })
-            } catch (error) {
-              report(error)
-            }
-          }}
-        >
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            connectionMode={ConnectionMode.Loose}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            onInit={(instance) => {
-              flow.current = instance
-            }}
-            onPaneClick={(event) => {
-              setContext(null)
-              if (resource)
-                void place(resource, { x: event.clientX, y: event.clientY })
-              else setSelected(null)
-            }}
-            onNodeClick={(_event, node) => setSelected(node.id)}
-            onEdgeClick={(_event, edge) => setSelected(edge.id)}
-            onNodeDoubleClick={(_event, node) => {
-              if (editable && !busy && node.type === 'topologyNode') {
-                setSelected(node.id)
-                setEditing('node')
+          <div className="flex gap-2" aria-label="选中对象操作">
+            <Button
+              variant="outline"
+              disabled={busy || (!selectedNode && !selectedEdge)}
+              onClick={editSelected}
+            >
+              编辑选中对象
+            </Button>
+            <Button
+              variant="outline"
+              disabled={busy || !selectedNodes.some((node) => !node.parentId)}
+              onClick={groupSelection}
+            >
+              创建分组
+            </Button>
+            <Button
+              variant="outline"
+              disabled={busy || selectedNode?.type !== 'topologyGroup'}
+              onClick={() => ungroup()}
+            >
+              解除分组
+            </Button>
+            <Button
+              variant="outline"
+              disabled={
+                busy || !selectedNode || !nicIndices(selectedNode).length
               }
-            }}
-            onEdgeDoubleClick={(_event, edge) => {
-              if (editable && !busy) {
-                setSelected(edge.id)
+              onClick={() => {
+                setLinkSource(selectedNode!.id)
+                setPendingConnection(null)
                 setEditing('link')
+              }}
+            >
+              连接设备
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={
+                busy ||
+                (!selectedNode && !selectedEdge) ||
+                selectedNode?.type === 'topologyGroup'
+              }
+              onClick={() => void remove()}
+            >
+              删除选中对象
+            </Button>
+            {resource ? (
+              <p role="status">点击画布放置：{resource.name}</p>
+            ) : null}
+            {busy ? <p role="status">正在提交拓扑操作…</p> : null}
+          </div>
+        ) : null}
+        {initial.issues.length ? (
+          <div role="status" className="compatibility-report">
+            <strong>兼容性报告：未支持的图元将原样保存</strong>
+            <ul>
+              {initial.issues.map((issue) => (
+                <li key={`${issue.code}:${issue.cellId}`}>{issue.message}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {!nodes.length && !edges.length ? <p>暂无可显示的拓扑图元</p> : null}
+        <div className="flex gap-3">
+          {editable ? (
+            <DeviceResources disabled={busy} onChoose={setResource} />
+          ) : null}
+          <div
+            className="h-[32rem] min-w-0 flex-1 border bg-white"
+            aria-label="场景拓扑画布"
+            tabIndex={0}
+            onPointerDownCapture={pan}
+            onKeyDown={(event) => {
+              if (
+                event.target instanceof HTMLInputElement ||
+                event.target instanceof HTMLTextAreaElement ||
+                event.target instanceof HTMLSelectElement ||
+                !editable ||
+                busy
+              )
+                return
+              if (event.ctrlKey || event.metaKey) {
+                if (event.key.toLowerCase() === 'a') {
+                  event.preventDefault()
+                  setNodes((current) =>
+                    current.map((node) => ({ ...node, selected: true })),
+                  )
+                  return
+                }
+                if (event.key.toLowerCase() === 'c') {
+                  event.preventDefault()
+                  copySelection()
+                  return
+                }
+                if (event.key.toLowerCase() === 'v') {
+                  event.preventDefault()
+                  void pasteSelection()
+                  return
+                }
+              }
+              if (
+                (event.key === 'Delete' || event.key === 'Backspace') &&
+                !(event.target instanceof HTMLInputElement) &&
+                !(event.target instanceof HTMLTextAreaElement) &&
+                !(event.target instanceof HTMLSelectElement)
+              ) {
+                event.preventDefault()
+                void remove()
               }
             }}
-            onNodeContextMenu={(event, node) => {
+            onDragOver={(event) => {
+              if (editable) event.preventDefault()
+            }}
+            onDrop={(event) => {
               event.preventDefault()
-              void openNodeMenu(node, { x: event.clientX, y: event.clientY })
-            }}
-            onEdgeContextMenu={(event, edge) => {
-              event.preventDefault()
-              setSelected(edge.id)
-              if (editable) setContext({ x: event.clientX, y: event.clientY })
-            }}
-            onConnect={connect}
-            isValidConnection={(connection) =>
-              connection.source !== connection.target &&
-              Boolean(
-                nodes.find(
-                  (node) =>
-                    node.id === connection.source && nicIndices(node).length,
-                ),
-              ) &&
-              Boolean(
-                nodes.find(
-                  (node) =>
-                    node.id === connection.target && nicIndices(node).length,
-                ),
-              )
-            }
-            onNodesChange={(changes) =>
-              changeNodes(
-                changes.filter(
-                  (change) =>
-                    change.type === 'dimensions' ||
-                    change.type === 'select' ||
-                    (editable && change.type === 'position'),
-                ),
-              )
-            }
-            nodesDraggable={editable}
-            onEdgesChange={(changes) =>
-              changeEdges(changes.filter((change) => change.type === 'select'))
-            }
-            nodesConnectable={editable && !busy}
-            edgesReconnectable={false}
-            deleteKeyCode={null}
-            fitView={initial.nodes.length > 0}
-            minZoom={0.2}
-            maxZoom={2}
-          >
-            <Background />
-            <Controls showInteractive={false} />
-          </ReactFlow>
-        </div>
-      </div>
-      {editable && context ? (
-        <div
-          role="menu"
-          aria-label="拓扑对象菜单"
-          className="fixed z-50 grid gap-1 rounded border bg-background p-2 shadow-lg"
-          style={{
-            left: Math.max(0, Math.min(context.x, window.innerWidth - 180)),
-            top: Math.max(0, Math.min(context.y, window.innerHeight - 110)),
-          }}
-        >
-          <Button
-            role="menuitem"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => {
-              setContext(null)
-              setEditing(selectedEdge ? 'link' : 'node')
+              if (!editable || busy) return
+              try {
+                const item = JSON.parse(
+                  event.dataTransfer.getData('application/x-topology-resource'),
+                ) as DeviceResource
+                setResource(item)
+                void place(item, { x: event.clientX, y: event.clientY })
+              } catch (error) {
+                report(error)
+              }
             }}
           >
-            编辑
-          </Button>
-          <Button
-            role="menuitem"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => {
-              setContext(null)
-              void remove()
-            }}
-          >
-            删除
-          </Button>
-        </div>
-      ) : null}
-      <Dialog
-        open={editing !== null}
-        onOpenChange={(open) => {
-          if (busy) return
-          if (!open) {
-            setEditing(null)
-            setLinkSource(null)
-            setPendingConnection(null)
-          }
-        }}
-      >
-        <DialogContent className="max-h-[85vh] overflow-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editing === 'node'
-                ? '节点配置'
-                : selectedEdge
-                  ? '链路配置'
-                  : '连接设备'}
-            </DialogTitle>
-            <DialogDescription>
-              配置成功后保存拓扑以持久化画布。
-            </DialogDescription>
-          </DialogHeader>
-          {editable && editing === 'node' && selectedNode ? (
-            <NodeConfiguration
-              isBlue={Boolean(selectedNode.data.raw.data?.is_blue)}
-              connectedPorts={[
-                ...edges.map((edge) => edge.data.raw),
-                ...passthroughCells,
-              ].flatMap((cell) => {
-                const indices: unknown[] = []
-                if (cell.source?.cell === selectedNode.id)
-                  indices.push(cell.data?.source)
-                if (cell.target?.cell === selectedNode.id)
-                  indices.push(cell.data?.target)
-                return indices.filter(
-                  (index): index is number =>
-                    typeof index === 'number' &&
-                    Number.isInteger(index) &&
-                    index >= 0,
-                )
-              })}
-              onDirtyChange={setInspectorDirty}
-              key={selectedNode.id}
-              info={asObject(selectedNode.data.raw.data?.nodeInfo)}
-              logo={selectedNode.data.raw.data?.logo}
-              signal={() => operation.current.signal}
-              onError={report}
-              onSave={async (value, isBlue) => {
-                if (!editable) return
-                const uuid = selectedNode.id
-                const ports = asObject(value.config_info).ports
-                if (
-                  Array.isArray(ports) &&
-                  edges.some(
-                    (edge) =>
-                      (edge.source === uuid &&
-                        Number(edge.data.raw.data?.source) >= ports.length) ||
-                      (edge.target === uuid &&
-                        Number(edge.data.raw.data?.target) >= ports.length),
-                  )
-                )
-                  throw new Error('该网卡仍有链路连接，请先删除关联链路')
-                setBusy(true)
-                try {
-                  await updateTopologyNode(
-                    id,
-                    uuid,
-                    value,
-                    operation.current.signal,
-                  )
-                  if (operation.current.signal.aborted) return
-                  patchNode(uuid, value, isBlue)
-                  setEditing(null)
-                } finally {
-                  if (!operation.current.signal.aborted) setBusy(false)
-                }
-              }}
-            />
-          ) : null}
-          {editable &&
-          editing === 'link' &&
-          nodes.find(
-            (node) => node.id === (selectedEdge?.source ?? linkSource),
-          ) ? (
-            <LinkConfiguration
-              onDirtyChange={setInspectorDirty}
-              key={selectedEdge?.id ?? linkSource}
-              source={nodes.find(
-                (node) => node.id === (selectedEdge?.source ?? linkSource),
-              )!}
+            <ReactFlow
               nodes={nodes}
               edges={edges}
-              edge={selectedEdge}
-              onError={report}
-              onSave={async (value) => {
-                if (!editable) return
-                if (selectedEdge) {
-                  setEdges((current) =>
-                    current.map((edge) =>
-                      edge.id !== selectedEdge.id
-                        ? edge
-                        : {
-                            ...edge,
-                            data: {
-                              ...edge.data,
-                              router: {
-                                ...asObject(edge.data.router),
-                                name: value.lineType,
-                              },
-                              raw: {
-                                ...edge.data.raw,
-                                data: {
-                                  ...edge.data.raw.data,
-                                  lineType: value.lineType,
-                                  action: 'update',
+              connectionMode={ConnectionMode.Loose}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              onInit={(instance) => {
+                flow.current = instance
+              }}
+              onPaneClick={(event) => {
+                setContext(null)
+                if (resource)
+                  void place(resource, { x: event.clientX, y: event.clientY })
+                else setSelected(null)
+              }}
+              onPaneContextMenu={(event) => {
+                event.preventDefault()
+                if (editable && selectedNodes.length)
+                  setContext({ x: event.clientX, y: event.clientY })
+              }}
+              onNodeClick={(_event, node) => {
+                setSelected(node.id)
+                if (editable)
+                  setNodes((current) =>
+                    current.map((item) =>
+                      item.id === node.id
+                        ? {
+                            ...item,
+                            zIndex:
+                              node.type === 'topologyGroup'
+                                ? 0
+                                : Math.max(
+                                    2,
+                                    ...current.map((n) => n.zIndex ?? 0),
+                                  ) + 1,
+                          }
+                        : item,
+                    ),
+                  )
+              }}
+              onEdgeClick={(_event, edge) => setSelected(edge.id)}
+              onNodeDoubleClick={(_event, node) => {
+                if (editable && !busy) {
+                  setSelected(node.id)
+                  if (node.data.raw.shape !== 'custom-react-text')
+                    setEditing(
+                      node.type === 'topologyGroup' ||
+                        node.data.raw.data?.nodeType === 'base_element'
+                        ? 'label'
+                        : 'node',
+                    )
+                }
+              }}
+              onEdgeDoubleClick={(_event, edge) => {
+                if (editable && !busy) {
+                  setSelected(edge.id)
+                  setEditing('link')
+                }
+              }}
+              onNodeContextMenu={(event, node) => {
+                event.preventDefault()
+                void openNodeMenu(node, { x: event.clientX, y: event.clientY })
+              }}
+              onEdgeContextMenu={(event, edge) => {
+                event.preventDefault()
+                setSelected(edge.id)
+                if (editable) setContext({ x: event.clientX, y: event.clientY })
+              }}
+              onConnect={connect}
+              isValidConnection={(connection) =>
+                connection.source !== connection.target &&
+                Boolean(
+                  nodes.find(
+                    (node) =>
+                      node.id === connection.source &&
+                      (nicIndices(node).length ||
+                        node.data.raw.data?.nodeType === 'base_element'),
+                  ),
+                ) &&
+                Boolean(
+                  nodes.find(
+                    (node) =>
+                      node.id === connection.target &&
+                      (nicIndices(node).length ||
+                        node.data.raw.data?.nodeType === 'base_element'),
+                  ),
+                )
+              }
+              onNodesChange={(changes) =>
+                changeNodes(
+                  changes.filter(
+                    (change) =>
+                      change.type === 'dimensions' ||
+                      change.type === 'select' ||
+                      (editable && change.type === 'position'),
+                  ),
+                )
+              }
+              nodesDraggable={editable && !busy}
+              onNodeDragStop={(_event, node) => embed(node.id)}
+              selectionOnDrag={editable}
+              onSelectionStart={(event) => {
+                selectionOrigin.current =
+                  flow.current?.screenToFlowPosition({
+                    x: event.clientX,
+                    y: event.clientY,
+                  }) ?? null
+              }}
+              onSelectionEnd={finishSelection}
+              selectionMode={SelectionMode.Partial}
+              multiSelectionKeyCode={editable ? ['Control', 'Meta'] : null}
+              selectionKeyCode={null}
+              panOnDrag={editable ? [1, 2] : true}
+              panActivationKeyCode={null}
+              zoomActivationKeyCode={['Control', 'Meta']}
+              zoomOnScroll={!editable}
+              zoomOnDoubleClick={false}
+              onEdgesChange={(changes) =>
+                changeEdges(
+                  changes.filter((change) => change.type === 'select'),
+                )
+              }
+              nodesConnectable={editable && !busy}
+              edgesReconnectable={false}
+              deleteKeyCode={null}
+              fitView={initial.nodes.length > 0}
+              minZoom={0.2}
+              maxZoom={2}
+            >
+              <Background />
+              <Panel position="bottom-left" className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="放大拓扑"
+                  onClick={() => {
+                    if (flow.current)
+                      void flow.current.zoomTo(
+                        Math.min(2, flow.current.getZoom() + 0.2),
+                      )
+                  }}
+                >
+                  ＋
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="缩小拓扑"
+                  onClick={() => {
+                    if (flow.current)
+                      void flow.current.zoomTo(
+                        Math.max(0.2, flow.current.getZoom() - 0.2),
+                      )
+                  }}
+                >
+                  −
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="居中拓扑"
+                  onClick={() => void flow.current?.fitView()}
+                >
+                  居中
+                </Button>
+              </Panel>
+            </ReactFlow>
+          </div>
+        </div>
+        {editable && context ? (
+          <div
+            role="menu"
+            aria-label="拓扑对象菜单"
+            className="fixed z-50 grid gap-1 rounded border bg-background p-2 shadow-lg"
+            style={{
+              left: Math.max(0, Math.min(context.x, window.innerWidth - 180)),
+              top: Math.max(0, Math.min(context.y, window.innerHeight - 110)),
+            }}
+          >
+            {selectedNode?.data.raw.shape !== 'custom-react-text' ? (
+              <Button
+                role="menuitem"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => {
+                  setContext(null)
+                  editSelected()
+                }}
+              >
+                编辑
+              </Button>
+            ) : null}
+            {selectedNodes.length ? (
+              <Button
+                role="menuitem"
+                variant="ghost"
+                onClick={() => {
+                  groupSelection()
+                  setContext(null)
+                }}
+              >
+                创建分组
+              </Button>
+            ) : null}
+            {selectedNode?.type === 'topologyGroup' ? (
+              <Button role="menuitem" variant="ghost" onClick={() => ungroup()}>
+                解除分组
+              </Button>
+            ) : null}
+            {selectedNode?.type !== 'topologyGroup' ? (
+              <Button
+                role="menuitem"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => {
+                  setContext(null)
+                  void remove()
+                }}
+              >
+                删除
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+        <Dialog
+          open={editing !== null}
+          onOpenChange={(open) => {
+            if (busy) return
+            if (!open) {
+              setEditing(null)
+              setLinkSource(null)
+              setPendingConnection(null)
+            }
+          }}
+        >
+          <DialogContent className="max-h-[85vh] overflow-auto sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editing === 'label'
+                  ? '图元名称'
+                  : editing === 'node'
+                    ? '节点配置'
+                    : selectedEdge
+                      ? '链路配置'
+                      : '连接设备'}
+              </DialogTitle>
+              <DialogDescription>
+                配置成功后保存拓扑以持久化画布。
+              </DialogDescription>
+            </DialogHeader>
+            {editable && editing === 'label' && selectedNode ? (
+              <CanvasLabel
+                allowEmpty={selectedNode.type === 'topologyGroup'}
+                key={selectedNode.id}
+                name={selectedNode.data.label}
+                onDirtyChange={setInspectorDirty}
+                onSave={(name) => {
+                  changeLabel(selectedNode.id, name)
+                  setEditing(null)
+                }}
+              />
+            ) : null}
+            {editable && editing === 'node' && selectedNode ? (
+              <NodeConfiguration
+                isBlue={Boolean(selectedNode.data.raw.data?.is_blue)}
+                connectedPorts={[
+                  ...edges.map((edge) => edge.data.raw),
+                  ...passthroughCells,
+                ].flatMap((cell) => {
+                  const indices: unknown[] = []
+                  if (cell.source?.cell === selectedNode.id)
+                    indices.push(cell.data?.source)
+                  if (cell.target?.cell === selectedNode.id)
+                    indices.push(cell.data?.target)
+                  return indices.filter(
+                    (index): index is number =>
+                      typeof index === 'number' &&
+                      Number.isInteger(index) &&
+                      index >= 0,
+                  )
+                })}
+                onDirtyChange={setInspectorDirty}
+                key={selectedNode.id}
+                info={asObject(selectedNode.data.raw.data?.nodeInfo)}
+                logo={selectedNode.data.raw.data?.logo}
+                signal={() => operation.current.signal}
+                onError={report}
+                onSave={async (value, isBlue) => {
+                  if (!editable) return
+                  const uuid = selectedNode.id
+                  const ports = asObject(value.config_info).ports
+                  if (
+                    Array.isArray(ports) &&
+                    edges.some(
+                      (edge) =>
+                        (edge.source === uuid &&
+                          Number(edge.data.raw.data?.source) >= ports.length) ||
+                        (edge.target === uuid &&
+                          Number(edge.data.raw.data?.target) >= ports.length),
+                    )
+                  )
+                    throw new Error('该网卡仍有链路连接，请先删除关联链路')
+                  setBusy(true)
+                  try {
+                    await updateTopologyNode(
+                      id,
+                      uuid,
+                      value,
+                      operation.current.signal,
+                    )
+                    if (operation.current.signal.aborted) return
+                    patchNode(uuid, value, isBlue)
+                    setEditing(null)
+                  } finally {
+                    if (!operation.current.signal.aborted) setBusy(false)
+                  }
+                }}
+              />
+            ) : null}
+            {editable &&
+            editing === 'link' &&
+            nodes.find(
+              (node) => node.id === (selectedEdge?.source ?? linkSource),
+            ) ? (
+              <LinkConfiguration
+                onDirtyChange={setInspectorDirty}
+                key={selectedEdge?.id ?? linkSource}
+                source={nodes.find(
+                  (node) => node.id === (selectedEdge?.source ?? linkSource),
+                )!}
+                nodes={nodes}
+                edges={edges}
+                edge={selectedEdge}
+                onError={report}
+                onSave={async (value) => {
+                  if (!editable) return
+                  if (selectedEdge) {
+                    setEdges((current) =>
+                      current.map((edge) =>
+                        edge.id !== selectedEdge.id
+                          ? edge
+                          : {
+                              ...edge,
+                              data: {
+                                ...edge.data,
+                                router: {
+                                  ...asObject(edge.data.router),
+                                  name: value.lineType,
+                                },
+                                raw: {
+                                  ...edge.data.raw,
+                                  data: {
+                                    ...edge.data.raw.data,
+                                    lineType: value.lineType,
+                                    action: 'update',
+                                  },
                                 },
                               },
                             },
-                          },
-                    ),
-                  )
-                  setEditing(null)
-                  return
-                }
-                const source = nodes.find((node) => node.id === linkSource),
-                  target = nodes.find((node) => node.id === value.target)
-                if (
-                  !source ||
-                  !target ||
-                  source.id === target.id ||
-                  !nicIndices(source).includes(value.sourcePort) ||
-                  !nicIndices(target).includes(value.targetPort) ||
-                  occupied(source.id, value.sourcePort, edges) ||
-                  occupied(target.id, value.targetPort, edges)
-                )
-                  throw new Error('网卡不可用，请重新选择合法端点')
-                const uuid = crypto.randomUUID()
-                setBusy(true)
-                try {
-                  const created = await createTopologyEdge(
-                    id,
-                    uuid,
-                    {
-                      id: source.id,
-                      rowId: source.data.raw.data?.data_id,
-                      name: source.data.label,
-                      port: value.sourcePort,
-                    },
-                    {
-                      id: target.id,
-                      rowId: target.data.raw.data?.data_id,
-                      name: target.data.label,
-                      port: value.targetPort,
-                    },
-                    operation.current.signal,
-                  )
-                  if (operation.current.signal.aborted) return
-                  const sourceHandle =
-                    pendingConnection?.sourceHandle ??
-                    source.data.ports.find((port) => port.group === 'right')?.id
-                  const targetHandle =
-                    pendingConnection?.targetHandle ??
-                    target.data.ports.find((port) => port.group === 'left')?.id
-                  const raw = {
-                    id: uuid,
-                    shape: 'edge',
-                    source: {
-                      cell: source.id,
-                      port: sourceHandle ?? undefined,
-                    },
-                    target: {
-                      cell: target.id,
-                      port: targetHandle ?? undefined,
-                    },
-                    router: { name: value.lineType },
-                    labels: [
-                      {
-                        position: 0.2,
-                        attrs: {
-                          label: { text: nicLabel(source, value.sourcePort) },
-                        },
-                      },
-                      {
-                        position: 0.8,
-                        attrs: {
-                          label: { text: nicLabel(target, value.targetPort) },
-                        },
-                      },
-                    ],
-                    data: {
-                      source: value.sourcePort,
-                      target: value.targetPort,
-                      lineType: value.lineType,
-                      data_id: created.id,
-                      action: 'create',
-                    },
+                      ),
+                    )
+                    setEditing(null)
+                    return
                   }
-                  setEdges((current) => [
-                    ...current,
-                    {
-                      id: uuid,
-                      source: source.id,
-                      target: target.id,
-                      sourceHandle: sourceHandle ?? undefined,
-                      targetHandle: targetHandle ?? undefined,
-                      type: 'topologyEdge',
-                      data: {
-                        vertices: [],
-                        router: raw.router,
-                        style: {},
-                        raw,
+                  const source = nodes.find((node) => node.id === linkSource),
+                    target = nodes.find((node) => node.id === value.target)
+                  if (
+                    !source ||
+                    !target ||
+                    source.id === target.id ||
+                    !nicIndices(source).includes(value.sourcePort) ||
+                    !nicIndices(target).includes(value.targetPort) ||
+                    occupied(source.id, value.sourcePort, edges) ||
+                    occupied(target.id, value.targetPort, edges)
+                  )
+                    throw new Error('网卡不可用，请重新选择合法端点')
+                  const uuid = crypto.randomUUID()
+                  setBusy(true)
+                  try {
+                    const created = await createTopologyEdge(
+                      id,
+                      uuid,
+                      {
+                        id: source.id,
+                        rowId: source.data.raw.data?.data_id,
+                        name: source.data.label,
+                        port: value.sourcePort,
                       },
-                    },
-                  ])
-                  setEditing(null)
-                  setLinkSource(null)
-                  setPendingConnection(null)
-                } finally {
-                  if (!operation.current.signal.aborted) setBusy(false)
-                }
-              }}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={blocker.status === 'blocked'}
-        onOpenChange={(open) => {
-          if (!open) blocker.reset?.()
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>放弃未保存的拓扑？</DialogTitle>
-            <DialogDescription>
-              继续离开会丢失尚未保存的拓扑修改。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={blocker.reset}>
-              继续编辑
-            </Button>
-            <Button onClick={blocker.proceed}>放弃并离开</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </section>
+                      {
+                        id: target.id,
+                        rowId: target.data.raw.data?.data_id,
+                        name: target.data.label,
+                        port: value.targetPort,
+                      },
+                      operation.current.signal,
+                    )
+                    if (operation.current.signal.aborted) return
+                    const sourceHandle =
+                      pendingConnection?.sourceHandle ??
+                      source.data.ports.find((port) => port.group === 'right')
+                        ?.id
+                    const targetHandle =
+                      pendingConnection?.targetHandle ??
+                      target.data.ports.find((port) => port.group === 'left')
+                        ?.id
+                    const raw = {
+                      id: uuid,
+                      shape: 'edge',
+                      source: {
+                        cell: source.id,
+                        port: sourceHandle ?? undefined,
+                      },
+                      target: {
+                        cell: target.id,
+                        port: targetHandle ?? undefined,
+                      },
+                      router: { name: value.lineType },
+                      labels: [
+                        {
+                          position: 0.2,
+                          attrs: {
+                            label: { text: nicLabel(source, value.sourcePort) },
+                          },
+                        },
+                        {
+                          position: 0.8,
+                          attrs: {
+                            label: { text: nicLabel(target, value.targetPort) },
+                          },
+                        },
+                      ],
+                      data: {
+                        source: value.sourcePort,
+                        target: value.targetPort,
+                        lineType: value.lineType,
+                        data_id: created.id,
+                        action: 'create',
+                      },
+                    }
+                    setEdges((current) => [
+                      ...current,
+                      {
+                        id: uuid,
+                        source: source.id,
+                        target: target.id,
+                        sourceHandle: sourceHandle ?? undefined,
+                        targetHandle: targetHandle ?? undefined,
+                        type: 'topologyEdge',
+                        data: {
+                          vertices: [],
+                          router: raw.router,
+                          style: {},
+                          raw,
+                        },
+                      },
+                    ])
+                    setEditing(null)
+                    setLinkSource(null)
+                    setPendingConnection(null)
+                  } finally {
+                    if (!operation.current.signal.aborted) setBusy(false)
+                  }
+                }}
+              />
+            ) : null}
+          </DialogContent>
+        </Dialog>
+        <Dialog
+          open={blocker.status === 'blocked'}
+          onOpenChange={(open) => {
+            if (!open) blocker.reset?.()
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>放弃未保存的拓扑？</DialogTitle>
+              <DialogDescription>
+                继续离开会丢失尚未保存的拓扑修改。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={blocker.reset}>
+                继续编辑
+              </Button>
+              <Button onClick={blocker.proceed}>放弃并离开</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </section>
+    </CanvasNodeContext.Provider>
   )
 }

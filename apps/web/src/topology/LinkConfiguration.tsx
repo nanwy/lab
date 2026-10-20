@@ -64,6 +64,7 @@ export function LinkConfiguration({
   onError: (error: unknown) => void
   onDirtyChange: (dirty: boolean) => void
 }) {
+  const graphical = edge?.data.raw.data?.nodeType === 'base_element'
   const form = useForm({
     defaultValues: {
       target: edge?.target ?? '',
@@ -80,8 +81,10 @@ export function LinkConfiguration({
     validators: {
       onSubmit: z.object({
         target: z.string().min(1, '请选择目标设备'),
-        sourcePort: z.string().min(1, '请选择源网卡'),
-        targetPort: z.string().min(1, '请选择目标网卡'),
+        sourcePort: graphical ? z.string() : z.string().min(1, '请选择源网卡'),
+        targetPort: graphical
+          ? z.string()
+          : z.string().min(1, '请选择目标网卡'),
         lineType: z.string(),
       }),
     },
@@ -135,7 +138,9 @@ export function LinkConfiguration({
                   {nodes
                     .filter(
                       (node) =>
-                        node.id !== source.id && nicIndices(node).length,
+                        node.id !== source.id &&
+                        (nicIndices(node).length ||
+                          (graphical && node.id === edge?.target)),
                     )
                     .map((node) => (
                       <option key={node.id} value={node.id}>
@@ -148,69 +153,72 @@ export function LinkConfiguration({
             )
           }}
         />
-        <form.Subscribe
-          selector={(state) => state.values.target}
-          children={(target) => {
-            const targetNode = nodes.find((node) => node.id === target)
-            return (
-              <>
-                {(['sourcePort', 'targetPort'] as const).map((name) => (
-                  <form.Field
-                    key={name}
-                    name={name}
-                    children={(field) => {
-                      const isInvalid =
-                        field.state.meta.isTouched && !field.state.meta.isValid
-                      const node = name === 'sourcePort' ? source : targetNode
-                      return (
-                        <Field data-invalid={isInvalid}>
-                          <FieldLabel htmlFor={field.name}>
-                            {name === 'sourcePort' ? '源网卡' : '目标网卡'}
-                          </FieldLabel>
-                          <select
-                            id={field.name}
-                            name={field.name}
-                            disabled={Boolean(edge)}
-                            aria-invalid={isInvalid}
-                            value={field.state.value}
-                            onBlur={field.handleBlur}
-                            onChange={(event) =>
-                              field.handleChange(event.target.value)
-                            }
-                          >
-                            <option value="">请选择</option>
-                            {node
-                              ? nicIndices(node).map((index) => (
-                                  <option
-                                    key={index}
-                                    value={index}
-                                    disabled={occupied(
-                                      node.id,
-                                      index,
-                                      edges,
-                                      edge?.id,
-                                    )}
-                                  >
-                                    {nicLabel(node, index)}
-                                    {occupied(node.id, index, edges, edge?.id)
-                                      ? '（已占用）'
-                                      : ''}
-                                  </option>
-                                ))
-                              : null}
-                          </select>
-                          {isInvalid && (
-                            <FieldError errors={field.state.meta.errors} />
-                          )}
-                        </Field>
-                      )
-                    }}
-                  />
-                ))}
-              </>
-            )
-          }}
-        />
+        {!graphical ? (
+          <form.Subscribe
+            selector={(state) => state.values.target}
+            children={(target) => {
+              const targetNode = nodes.find((node) => node.id === target)
+              return (
+                <>
+                  {(['sourcePort', 'targetPort'] as const).map((name) => (
+                    <form.Field
+                      key={name}
+                      name={name}
+                      children={(field) => {
+                        const isInvalid =
+                          field.state.meta.isTouched &&
+                          !field.state.meta.isValid
+                        const node = name === 'sourcePort' ? source : targetNode
+                        return (
+                          <Field data-invalid={isInvalid}>
+                            <FieldLabel htmlFor={field.name}>
+                              {name === 'sourcePort' ? '源网卡' : '目标网卡'}
+                            </FieldLabel>
+                            <select
+                              id={field.name}
+                              name={field.name}
+                              disabled={Boolean(edge)}
+                              aria-invalid={isInvalid}
+                              value={field.state.value}
+                              onBlur={field.handleBlur}
+                              onChange={(event) =>
+                                field.handleChange(event.target.value)
+                              }
+                            >
+                              <option value="">请选择</option>
+                              {node
+                                ? nicIndices(node).map((index) => (
+                                    <option
+                                      key={index}
+                                      value={index}
+                                      disabled={occupied(
+                                        node.id,
+                                        index,
+                                        edges,
+                                        edge?.id,
+                                      )}
+                                    >
+                                      {nicLabel(node, index)}
+                                      {occupied(node.id, index, edges, edge?.id)
+                                        ? '（已占用）'
+                                        : ''}
+                                    </option>
+                                  ))
+                                : null}
+                            </select>
+                            {isInvalid && (
+                              <FieldError errors={field.state.meta.errors} />
+                            )}
+                          </Field>
+                        )
+                      }}
+                    />
+                  ))}
+                </>
+              )
+            }}
+          />
+        ) : null}
         <form.Field
           name="lineType"
           children={(field) => {

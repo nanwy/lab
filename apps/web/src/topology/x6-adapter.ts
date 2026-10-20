@@ -101,8 +101,20 @@ const supportedNodeShapes = new Set([
   'device',
   ...groupShapes,
   'custom-react-node',
+  'custom-react-text',
 ])
 const isOriginalShape = (cell: X6Cell) => cell.shape.startsWith('custom-')
+const defaultSizes: Record<string, { width: number; height: number }> = {
+  'custom-react-node': { width: 80, height: 80 },
+  'custom-react-text': { width: 180, height: 80 },
+  'custom-rect': { width: 66, height: 36 },
+  'custom-parent': { width: 70, height: 40 },
+}
+function originalLabel(cell: X6Cell) {
+  return typeof cell.data?.name === 'string'
+    ? cell.data.name
+    : String((cell.attrs?.label as JsonObject | undefined)?.text ?? '')
+}
 const coordinates = (cell: X6Cell) =>
   cell.position ?? { x: cell.x!, y: cell.y! }
 
@@ -166,7 +178,8 @@ const cellSchema = z
           message: '图元必须提供坐标',
         })
       if (
-        cell.shape === 'custom-react-node' &&
+        (cell.shape === 'custom-react-node' ||
+          cell.shape === 'custom-react-text') &&
         typeof cell.data?.name !== 'string'
       )
         context.addIssue({
@@ -338,16 +351,18 @@ export function fromX6Graph(input: unknown): EditorGraph {
             }
           : coordinates(cell),
       parentId: cell.parent,
-      extent: cell.parent ? 'parent' : undefined,
+      extent: cell.parent && !isOriginalShape(cell) ? 'parent' : undefined,
       width:
         cell.size?.width ??
         cell.width ??
         (isOriginalShape(cell)
           ? cell.shape === 'custom-react-node'
             ? 80
-            : cell.shape === 'custom-rect'
-              ? 66
-              : 70
+            : cell.shape === 'custom-react-text'
+              ? 180
+              : cell.shape === 'custom-rect'
+                ? 66
+                : 70
           : undefined),
       height:
         cell.size?.height ??
@@ -355,16 +370,23 @@ export function fromX6Graph(input: unknown): EditorGraph {
         (isOriginalShape(cell)
           ? cell.shape === 'custom-react-node'
             ? 80
-            : cell.shape === 'custom-rect'
-              ? 36
-              : 40
+            : cell.shape === 'custom-react-text'
+              ? 80
+              : cell.shape === 'custom-rect'
+                ? 36
+                : 40
           : undefined),
       zIndex: typeof cell.zIndex === 'number' ? cell.zIndex : undefined,
       data: {
         label: isOriginalShape(cell)
-          ? cell.shape === 'custom-react-node'
+          ? cell.shape === 'custom-react-node' ||
+            cell.shape === 'custom-react-text'
             ? (data.name as string)
-            : String((cell.attrs?.label as JsonObject | undefined)?.text ?? '')
+            : typeof data.name === 'string'
+              ? data.name
+              : String(
+                  (cell.attrs?.label as JsonObject | undefined)?.text ?? '',
+                )
           : (data.label as string),
         deviceId: data.deviceId as string | undefined,
         kind: data.kind as string | undefined,
@@ -408,12 +430,34 @@ export function toX6Graph(editor: EditorGraph): X6Graph {
         raw.y = position.y
       }
       if (node.parentId !== raw.parent) raw.parent = node.parentId
+      const children = editor.nodes
+        .filter((child) => child.parentId === node.id)
+        .map((child) => child.id)
+      if (
+        groupShapes.has(raw.shape) &&
+        (raw.children !== undefined || children.length)
+      )
+        raw.children = children
+      const originalWidth =
+        raw.size?.width ?? raw.width ?? defaultSizes[raw.shape]?.width
+      const originalHeight =
+        raw.size?.height ?? raw.height ?? defaultSizes[raw.shape]?.height
+      if (
+        node.width !== undefined &&
+        node.height !== undefined &&
+        (node.width !== originalWidth || node.height !== originalHeight)
+      ) {
+        if (raw.size || (raw.width === undefined && raw.height === undefined))
+          raw.size = { ...raw.size, width: node.width, height: node.height }
+        else {
+          raw.width = node.width
+          raw.height = node.height
+        }
+      }
+      if (node.zIndex !== raw.zIndex) raw.zIndex = node.zIndex
       if (node.data.rotation !== (raw.angle ?? 0))
         raw.angle = node.data.rotation
-      if (
-        raw.shape === 'custom-react-node' &&
-        raw.data?.name !== node.data.label
-      )
+      if (originalLabel(raw) !== node.data.label)
         raw.data = { ...raw.data, name: node.data.label }
       cells.push(raw)
       continue

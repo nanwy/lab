@@ -19,6 +19,30 @@ type ResourceGroup = {
   items: DeviceResource[]
   children?: ResourceGroup[]
 }
+const basicElements: DeviceResource[] = [
+  { id: 'basic-person', name: '人员', nodeType: 'base_element', type: 2 },
+  { id: 'basic-text', name: '文本框', nodeType: 'base_element', type: 3 },
+  {
+    id: 'basic-area',
+    name: '区域',
+    nodeType: 'base_element',
+    type: 1,
+    className: 'area-node',
+  },
+]
+const positions: DeviceResource[] = [
+  '安全检测岗',
+  '日常运维岗',
+  '应急响应岗',
+  '安全管理岗',
+  '渗透测试岗',
+  '自定义岗位',
+].map((name, index) => ({
+  id: `position-${index}`,
+  name,
+  nodeType: 'base_element',
+  type: 2,
+}))
 export function DeviceResources({
   onChoose,
   disabled,
@@ -43,6 +67,13 @@ export function DeviceResources({
       groups.push({ name: '最近使用', items: resources.data.recent })
     if (resources.data.personal.length)
       groups.push({ name: '我的节点', items: resources.data.personal })
+    for (const [name, items] of [
+      ['基本元素', basicElements],
+      ['防御岗位', positions],
+    ] as const) {
+      const matches = items.filter((item) => item.name.includes(query))
+      if (matches.length) groups.push({ name, items: matches })
+    }
     for (const item of resources.data.templates.toSorted(
       (a, b) =>
         Number(a.classify) - Number(b.classify) ||

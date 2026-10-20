@@ -490,13 +490,13 @@ flowchart TD
 ### F036 实验台 / 场景拓扑编辑
 
 - **入口**：/basic/user/bench/experiment/:id/scene。路由索引：R080、R081。
-- **功能**：设备面板、图元、拖入、端口连线、分组、框选、缩放平移、配置、保存、导入导出候选。
+- **功能**：设备面板、图元、拖入、端口连线、分组、框选、缩放平移、配置、保存、节点模板复用、PNG/SVG视觉导出。
 - **权限/状态**：readOnly、shared、lock、topo_edit、task_type组合。
 - **原站代码**：`Ojs` @ `12682300`；`QOe` @ `8018585`；`gVn` @ `6807362`；`j3a` @ `6893971`。
 - **接口定位线索**：/api/front/topo/; /api/front/node/; /api/topo/。
   - 词法候选示例（非调用链）：`/api/front/topo/template/${e}/` @ `6074233`；`/api/front/topo/template/${e}/?detail=1` @ `6074277`。
 - **验收**：节点/边/位置/配置保存后重开一致。
-- **仍需补证**：不同入口能力裁剪、资源上限、数据契约。
+- **仍需补证**：其他入口能力裁剪、资源上限、在线数据契约；实验task_type=6无可达拓扑文件导入，范围依据见[S06记录](s06-implementation.md)。
 - **需求/阶段**：US 16, 17, 18, 19, 20, 21, 22, 23, 24, 25；P1。
 
 ### F037 实验台 / 环境与节点生命周期
@@ -562,13 +562,13 @@ flowchart TD
 ### F042 实验台 / 流量模拟、镜像与模板
 
 - **入口**：共享拓扑组件内部。路由索引：R080、R081。
-- **功能**：流量模拟节点选择、PCAP包回放/脚本回放、配置与执行/停止、流量镜像开始/停止/删除、拓扑/分块模板管理与导入导出；适用入口和能力待核对。
+- **功能**：流量模拟、PCAP/脚本回放、流量镜像、按入口裁剪的模板；实验task_type=6可达节点模板保存/复用/删除，完整拓扑模板与拓扑文件导入不可达；blocking_template为流量拦截策略而非分块拓扑。
 - **权限/状态**：具体入口、task_type、资源类型与权限分支。
 - **原站代码**：`Ojs` @ `12682300`；`QOe` @ `8018585`；`s$a` @ `7597792`；`HWt` @ `7599146`。
-- **接口定位线索**：/api/topo/; /api/front/topo/template/; /api/front/topo/blocking_template/; /api/front/scene/。
+- **接口定位线索**：/api/topo/; /api/front/topo/template/; /api/front/topo/blocking_template/; /api/front/scene/; /api/front/node/template/; /api/front/node/list/。
   - 词法候选示例（非调用链）：`/api/front/scene/${e.id}/backgroud_flow/?${Vt(e.filter)}` @ `1828767`；`/api/front/scene/${e.id}/backgroud_flow/${e.node_id}/config/?${Vt(e.filter)}` @ `1828837`。
 - **验收**：按真实入口逐项确认并记录不适用原因。
-- **仍需补证**：包格式、客户端、同步冲突与日志协议；删除使用GET仍属写操作。
+- **仍需补证**：其他入口模板能力、流量与镜像的配置及状态契约；实验入口裁剪依据见[S06记录](s06-implementation.md)。
 - **需求/阶段**：US 16, 17, 18, 19, 20, 21, 22, 23, 29；P2。
 
 ### F043 个人 / 离线学习

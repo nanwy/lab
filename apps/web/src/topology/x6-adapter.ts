@@ -13,10 +13,13 @@ export type X6Cell = JsonObject & {
   shape: string
   x?: number
   y?: number
+  position?: { x: number; y: number }
+  size?: { width: number; height: number }
   width?: number
   height?: number
   angle?: number
   parent?: string
+  children?: string[]
   source?: X6Endpoint
   target?: X6Endpoint
   vertices?: Array<JsonObject & { x: number; y: number }>
@@ -93,7 +96,15 @@ export type EditorGraph = {
   rawGraph: X6Graph
 }
 
-const supportedNodeShapes = new Set(['device', 'group'])
+const groupShapes = new Set(['group', 'custom-parent', 'custom-rect'])
+const supportedNodeShapes = new Set([
+  'device',
+  ...groupShapes,
+  'custom-react-node',
+])
+const isOriginalShape = (cell: X6Cell) => cell.shape.startsWith('custom-')
+const coordinates = (cell: X6Cell) =>
+  cell.position ?? { x: cell.x!, y: cell.y! }
 
 function clone<T>(value: T): T {
   return structuredClone(value)
@@ -106,11 +117,21 @@ const cellSchema = z
     shape: z.string().min(1),
     x: z.number().finite().optional(),
     y: z.number().finite().optional(),
+    position: z
+      .looseObject({ x: z.number().finite(), y: z.number().finite() })
+      .optional(),
+    size: z
+      .looseObject({
+        width: z.number().positive(),
+        height: z.number().positive(),
+      })
+      .optional(),
     width: z.number().positive().optional(),
     height: z.number().positive().optional(),
     angle: z.number().finite().optional(),
     zIndex: z.number().finite().optional(),
     parent: z.string().min(1).optional(),
+    children: z.array(z.string().min(1)).optional(),
     data: objectSchema.optional(),
     attrs: objectSchema.optional(),
     vertices: z
@@ -130,6 +151,31 @@ const cellSchema = z
   })
   .superRefine((cell, context) => {
     if (!supportedNodeShapes.has(cell.shape)) return
+    const ids = cell.ports?.items.map((port) => port.id) ?? []
+    if (new Set(ids).size !== ids.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['ports'],
+        message: '端口标识重复',
+      })
+    if (isOriginalShape(cell)) {
+      if (!cell.position && (cell.x === undefined || cell.y === undefined))
+        context.addIssue({
+          code: 'custom',
+          path: ['position'],
+          message: '图元必须提供坐标',
+        })
+      if (
+        cell.shape === 'custom-react-node' &&
+        typeof cell.data?.name !== 'string'
+      )
+        context.addIssue({
+          code: 'custom',
+          path: ['data', 'name'],
+          message: '设备缺少名称',
+        })
+      return
+    }
     for (const coordinate of ['x', 'y'] as const) {
       if (cell[coordinate] === undefined)
         context.addIssue({
@@ -152,17 +198,10 @@ const cellSchema = z
           path: ['data', ...issue.path],
           message: issue.message,
         })
-    const ids = cell.ports?.items.map((port) => port.id) ?? []
-    if (new Set(ids).size !== ids.length)
-      context.addIssue({
-        code: 'custom',
-        path: ['ports'],
-        message: '端口标识重复',
-      })
   })
 
 const graphSchema = z
-  .looseObject({ cells: z.array(cellSchema) })
+  .looseObject({ cells: z.array(cellSchema), lock: z.boolean().optional() })
   .superRefine((graph, context) => {
     const ids = graph.cells.map((cell) => cell.id)
     if (new Set(ids).size !== ids.length)
@@ -174,7 +213,7 @@ const graphSchema = z
   })
 
 export function fromX6Graph(input: unknown): EditorGraph {
-  // 该契约描述本地样本，不把未知生产格式猜测为当前模型。
+  // 原 X6 注册形状与工程初始化样本分别读取其已确认的字段。
   const graph = clone(graphSchema.parse(input)) as X6Graph
   const nodes: TopologyNode[] = []
   const edges: TopologyEdge[] = []
@@ -182,6 +221,19 @@ export function fromX6Graph(input: unknown): EditorGraph {
   const passthroughCells: X6Cell[] = []
   const cellsById = new Map(graph.cells.map((cell) => [cell.id, cell]))
   const nodeDepths = new Map<string, number>()
+  const invalidGroups = new Set<string>()
+  for (const cell of graph.cells) {
+    if (!groupShapes.has(cell.shape) || cell.children === undefined) continue
+    const children = new Set(cell.children)
+    if (
+      children.size !== cell.children.length ||
+      cell.children.some((id) => cellsById.get(id)?.parent !== cell.id) ||
+      graph.cells.some(
+        (child) => child.parent === cell.id && !children.has(child.id),
+      )
+    )
+      invalidGroups.add(cell.id)
+  }
 
   // Validate the entire ancestor chain so children of unsupported groups also
   // remain raw rather than reaching React Flow with a dangling parent.
@@ -189,11 +241,16 @@ export function fromX6Graph(input: unknown): EditorGraph {
     if (!supportedNodeShapes.has(cell.shape)) continue
     const visited = new Set([cell.id])
     let ancestor = cell
-    let valid = true
+    let valid = !invalidGroups.has(cell.id)
     let depth = 0
     while (ancestor.parent !== undefined) {
       const parent = cellsById.get(ancestor.parent)
-      if (!parent || parent.shape !== 'group' || visited.has(parent.id)) {
+      if (
+        !parent ||
+        !groupShapes.has(parent.shape) ||
+        invalidGroups.has(parent.id) ||
+        visited.has(parent.id)
+      ) {
         valid = false
         break
       }
@@ -249,7 +306,7 @@ export function fromX6Graph(input: unknown): EditorGraph {
       issues.push({
         code: 'invalid-node-parent',
         cellId: cell.id,
-        message: `图元 ${cell.id} 的分组父级不存在、不受支持或形成循环，已原样保留。`,
+        message: `图元 ${cell.id} 的分组父级或 children 引用无效、不受支持或形成循环，已原样保留。`,
       })
       passthroughCells.push(cell)
       continue
@@ -268,15 +325,47 @@ export function fromX6Graph(input: unknown): EditorGraph {
     const data = cell.data ?? {}
     nodes.push({
       id: cell.id,
-      type: cell.shape === 'group' ? 'topologyGroup' : 'topologyNode',
-      position: { x: cell.x!, y: cell.y! },
+      type: groupShapes.has(cell.shape) ? 'topologyGroup' : 'topologyNode',
+      position:
+        isOriginalShape(cell) && cell.parent
+          ? {
+              x:
+                coordinates(cell).x -
+                coordinates(cellsById.get(cell.parent)!).x,
+              y:
+                coordinates(cell).y -
+                coordinates(cellsById.get(cell.parent)!).y,
+            }
+          : coordinates(cell),
       parentId: cell.parent,
       extent: cell.parent ? 'parent' : undefined,
-      width: cell.width,
-      height: cell.height,
+      width:
+        cell.size?.width ??
+        cell.width ??
+        (isOriginalShape(cell)
+          ? cell.shape === 'custom-react-node'
+            ? 80
+            : cell.shape === 'custom-rect'
+              ? 66
+              : 70
+          : undefined),
+      height:
+        cell.size?.height ??
+        cell.height ??
+        (isOriginalShape(cell)
+          ? cell.shape === 'custom-react-node'
+            ? 80
+            : cell.shape === 'custom-rect'
+              ? 36
+              : 40
+          : undefined),
       zIndex: typeof cell.zIndex === 'number' ? cell.zIndex : undefined,
       data: {
-        label: data.label as string,
+        label: isOriginalShape(cell)
+          ? cell.shape === 'custom-react-node'
+            ? (data.name as string)
+            : String((cell.attrs?.label as JsonObject | undefined)?.text ?? '')
+          : (data.label as string),
         deviceId: data.deviceId as string | undefined,
         kind: data.kind as string | undefined,
         rotation: cell.angle ?? 0,
@@ -300,10 +389,35 @@ export function fromX6Graph(input: unknown): EditorGraph {
 
 export function toX6Graph(editor: EditorGraph): X6Graph {
   const cells: X6Cell[] = []
+  const byId = new Map(editor.nodes.map((node) => [node.id, node]))
+  function absolutePosition(node: TopologyNode): { x: number; y: number } {
+    const parent = node.parentId ? byId.get(node.parentId) : undefined
+    if (!parent) return node.position
+    const origin = absolutePosition(parent)
+    return { x: origin.x + node.position.x, y: origin.y + node.position.y }
+  }
 
   for (const node of editor.nodes) {
     const data = node.data.raw.data ?? {}
     const raw = clone(node.data.raw)
+    if (isOriginalShape(raw)) {
+      const position = absolutePosition(node)
+      if (raw.position) raw.position = { ...raw.position, ...position }
+      else {
+        raw.x = position.x
+        raw.y = position.y
+      }
+      if (node.parentId !== raw.parent) raw.parent = node.parentId
+      if (node.data.rotation !== (raw.angle ?? 0))
+        raw.angle = node.data.rotation
+      if (
+        raw.shape === 'custom-react-node' &&
+        raw.data?.name !== node.data.label
+      )
+        raw.data = { ...raw.data, name: node.data.label }
+      cells.push(raw)
+      continue
+    }
     cells.push({
       ...raw,
       id: node.id,
@@ -351,15 +465,32 @@ export function toX6Graph(editor: EditorGraph): X6Graph {
         cell: edge.target,
         port: edge.targetHandle,
       },
-      vertices: clone(edge.data.vertices),
+      ...(raw.vertices !== undefined || edge.data.vertices.length
+        ? { vertices: clone(edge.data.vertices) }
+        : {}),
       router: clone(edge.data.router),
       connector: clone(edge.data.connector),
-      attrs: clone(edge.data.style),
+      ...(raw.attrs !== undefined || Object.keys(edge.data.style).length
+        ? { attrs: clone(edge.data.style) }
+        : {}),
     })
   }
 
+  const serialized = new Map(
+    [...cells, ...clone(editor.passthroughCells)].map((cell) => [
+      cell.id,
+      cell,
+    ]),
+  )
   return {
     ...clone(editor.rawGraph),
-    cells: [...cells, ...clone(editor.passthroughCells)],
+    cells: editor.rawGraph.cells
+      .flatMap((cell) => {
+        const saved = serialized.get(cell.id)
+        if (!saved) return []
+        serialized.delete(cell.id)
+        return [saved]
+      })
+      .concat([...serialized.values()]),
   }
 }

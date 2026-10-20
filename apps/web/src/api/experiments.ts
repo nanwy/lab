@@ -21,6 +21,7 @@ export const experimentDetailSchema = experimentSchema
     release_type: z.number().int(),
     max_duration: z.number().nullable(),
     tags_category: id.nullable(),
+    topo_id: id.nullable().optional(),
   })
 export type Experiment = z.infer<typeof experimentSchema>
 export type ExperimentDetail = z.infer<typeof experimentDetailSchema>

@@ -77,8 +77,17 @@ export function ExperimentLayout({ id }: { id: string }) {
             >
               场景说明
             </Link>
+            <Link
+              to="/basic/user/bench/experiment/$id/scene"
+              params={{ id }}
+              activeProps={{
+                'aria-current': 'page',
+                className: 'font-semibold text-primary',
+              }}
+            >
+              场景拓扑
+            </Link>
             {[
-              ['scene', '场景拓扑'],
               ['simulate', '模拟蓝军'],
               ['flow', '流量监控'],
               ['notes', '场景笔记'],

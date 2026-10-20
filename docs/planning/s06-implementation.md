@@ -1,5 +1,16 @@
 # S06 实施记录
 
+## 04范围补证：节点模板与视觉导出（2026-10-20）
+
+复用既有有界静态研究 `contracts-02-04.md`，本节保存结论以免依赖临时目录。位置为原bundle的Unicode全局字符偏移；未执行bundle或追加真实写入。
+
+- 当前实验入口为 Ojs（12682300）→QOe（8018585）→M4a（8007455）→r$a（7554565），`model=topo, task_type=6, id=experiment.topo_id`。设备配置 P3a（6875713）支持“保存并设为模板”：节点PATCH成功后POST `/front/node/template/`，发送完整nodeInfo并覆盖当前name/config_info/logo；成功以响应id确认。我的节点GET `/front/node/list/?nopage=0`，拖入仍经新业务节点创建，不复用模板ID作为业务行ID；删除DELETE `/front/node/list/`，body为`{id_list:[资源ID]}`，status=1后刷新资源。
+- 画布导出 Pe（7569929）先检查graph cells非空；菜单key1调用SVG、key2调用PNG。两者输入均为实际画布DOM container，`cacheBust:true`，输出下载名“拓扑.svg”“拓扑.png”。它们是视觉产物，不是含设备配置的可恢复文件协议。空图提示“请绘制拓扑图！”，重建的失败反馈不得吞掉错误。
+- `getTopoTemplate`（6842295）仅有定义，无当前资源面板调用；残留template拖入分支（r$a）没有面板来源。nPa（69158xx）的完整拓扑save_as窗口经更多菜单case0打开，但N3a（6861798）的实际菜单没有key0，故当前入口不可达。不能因接口或死分支存在补按钮。
+- 隐藏file input是向运行节点`node_run/{UUID}/upload_file/`上传文件，不是拓扑导入。`blocking_template`由流量拦截界面使用，内容为name/script/strategy（protocol/src_ip/dst_port），不是分块拓扑。此处不实现完整拓扑/分块模板管理或拓扑文件导入，也不编造PNG/SVG恢复流程；相关流量能力仍归S08。
+
+F036/F042目录、JSON/CSV与代码对照同步上述入口范围，修正F042误写的离线课程包描述；原始路由和源码摘录不变。功能实现与验证结果在验收后追加。
+
 ## 03：分组、图元与画布交互（2026-10-20）
 
 恢复Meta/Ctrl多选、拖框选择、创建/解除分组、组整体移动和成员相交拖入/拖出。选择集合只取React Flow的node.selected；单对象ID仅用于检查器焦点。分组与成员操作先序列化原X6绝对坐标，再由唯一适配边界转回React Flow父级相对坐标；移除原对业务组成员的extent约束，使成员可以拖出。parent/children同步重建，不更改业务ID或关联边。点击组下沉、普通图元置前，层级随draw保存。

@@ -2,6 +2,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
 import { useState } from 'react'
 import { Button } from '@workspace/ui/components/button'
+import {
+  FieldGroup,
+  FieldSet,
+  FieldLegend,
+  FieldError,
+} from '@workspace/ui/components/field'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
 import {
   Dialog,
@@ -75,65 +81,72 @@ export function InitialPositionDialog({
           className="grid gap-5"
           onSubmit={(e) => {
             e.preventDefault()
-            e.stopPropagation()
-            void form.handleSubmit()
+            form.handleSubmit()
           }}
         >
-          {positions.isPending ? (
-            <p role="status">正在读取岗位…</p>
-          ) : positions.isError ? (
-            <div role="alert">
-              岗位读取失败。
-              <Button type="button" onClick={() => void positions.refetch()}>
-                重试岗位
-              </Button>
-            </div>
-          ) : positions.data.length ? (
-            <form.Field name="position">
-              {(field) => (
-                <div
-                  className="flex flex-wrap gap-3"
-                  role="group"
-                  aria-label="您的岗位"
-                >
-                  {positions.data.map((p) => (
-                    <Button
-                      type="button"
-                      key={p.id}
-                      variant={
-                        field.state.value.includes(p.id) ? 'default' : 'outline'
-                      }
-                      aria-pressed={field.state.value.includes(p.id)}
-                      onClick={() => field.handleChange([p.id])}
-                    >
-                      {p.name}
-                    </Button>
-                  ))}
-                  <small role="alert" className="text-destructive">
-                    {field.state.meta.errors.map((e) => e?.message).join('；')}
-                  </small>
-                </div>
-              )}
-            </form.Field>
-          ) : (
-            <p>未开放岗位选择</p>
-          )}
-          {error ? (
-            <p role="alert" className="text-destructive">
-              {error}
-            </p>
-          ) : null}
-          <form.Subscribe selector={(s) => s.isSubmitting}>
-            {(busy) => (
-              <LoadingButton
-                type="submit"
-                loading={busy}
-                disabled={!positions.data}
-              >
-                保存信息
-              </LoadingButton>
+          <FieldGroup className="gap-4">
+            {positions.isPending ? (
+              <p role="status">正在读取岗位…</p>
+            ) : positions.isError ? (
+              <div role="alert">
+                岗位读取失败。
+                <Button type="button" onClick={() => void positions.refetch()}>
+                  重试岗位
+                </Button>
+              </div>
+            ) : positions.data.length ? (
+              <form.Field
+                name="position"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <FieldSet data-invalid={isInvalid} className="gap-3">
+                      <FieldLegend className="sr-only">您的岗位</FieldLegend>
+                      <div className="flex flex-wrap gap-3">
+                        {positions.data.map((p) => (
+                          <Button
+                            type="button"
+                            key={p.id}
+                            variant={
+                              field.state.value.includes(p.id)
+                                ? 'default'
+                                : 'outline'
+                            }
+                            aria-pressed={field.state.value.includes(p.id)}
+                            onClick={() => field.handleChange([p.id])}
+                          >
+                            {p.name}
+                          </Button>
+                        ))}
+                      </div>
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </FieldSet>
+                  )
+                }}
+              />
+            ) : (
+              <p>未开放岗位选择</p>
             )}
-          </form.Subscribe>
+            {error ? (
+              <p role="alert" className="text-destructive">
+                {error}
+              </p>
+            ) : null}
+            <form.Subscribe selector={(s) => s.isSubmitting}>
+              {(busy) => (
+                <LoadingButton
+                  type="submit"
+                  loading={busy}
+                  disabled={!positions.data}
+                >
+                  保存信息
+                </LoadingButton>
+              )}
+            </form.Subscribe>
+          </FieldGroup>
         </form>
       </DialogContent>
     </Dialog>

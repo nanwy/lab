@@ -3,6 +3,9 @@ export const portalFixtures: Record<
   string,
   Record<string, unknown> | Record<string, unknown>[]
 > = {
+  '/front/user/notice/count/': { status: 1, data: 0 },
+  '/front/user/notice/?page=1&size=10': { count: 0, results: [] },
+  '/front/user/todo/count/': { status: 1, data: { count: 0 } },
   '/front/position/?nopage=1': [{ id: 7, name: '模拟安全岗位' }],
   '/front/user/todo/?nopage=1': [],
   '/front/user/collect/?nopage=1': [],

@@ -16,6 +16,14 @@ import { ApiError, apiClient } from './api'
 import { getSamples, updateSample, type Sample } from './api/samples'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
+import {
+  FieldGroup,
+  Field,
+  FieldLabel,
+  FieldError,
+  FieldSet,
+  FieldLegend,
+} from '@workspace/ui/components/field'
 import { appConfig } from './config'
 import {
   Table,
@@ -34,19 +42,6 @@ const schema = z.object({
       .max(5, '最多 5 个别名'),
   }),
 })
-
-function errorText(errors: unknown[]) {
-  return errors
-    .map((error) =>
-      typeof error === 'string'
-        ? error
-        : error && typeof error === 'object' && 'message' in error
-          ? String(error.message)
-          : '',
-    )
-    .filter(Boolean)
-    .join('；')
-}
 
 function SampleEditor({
   sample,
@@ -74,7 +69,7 @@ function SampleEditor({
           const message = error.fieldErrors.name
           formApi.setFieldMeta('name', (meta) => ({
             ...meta,
-            errorMap: { ...meta.errorMap, onServer: message },
+            errorMap: { ...meta.errorMap, onServer: { message } },
           }))
         }
         setNotice(
@@ -95,97 +90,115 @@ function SampleEditor({
         className="grid max-w-xl gap-4"
         onSubmit={(event) => {
           event.preventDefault()
-          event.stopPropagation()
-          void form.handleSubmit()
+          form.handleSubmit()
         }}
       >
-        <form.Field name="name">
-          {(field) => (
-            <label className="grid gap-2">
-              <span>样本名称</span>
-              <Input
-                aria-label="样本名称"
-                aria-describedby="sample-name-errors"
-                aria-invalid={field.state.meta.errors.length > 0}
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(event) => {
-                  setNotice('')
-                  form.setFieldMeta('name', (meta) => ({
-                    ...meta,
-                    errorMap: { ...meta.errorMap, onServer: undefined },
-                  }))
-                  field.handleChange(event.target.value)
-                }}
-              />
-              <span
-                id="sample-name-errors"
-                role="alert"
-                className="text-sm text-red-800"
-              >
-                {errorText(field.state.meta.errors)}
-              </span>
-            </label>
-          )}
-        </form.Field>
-        <form.Field name="metadata.aliases" mode="array">
-          {(field) => (
-            <fieldset className="grid gap-3">
-              <legend className="mb-2 font-medium">嵌套动态别名</legend>
-              {field.state.value.map((_, index) => (
-                <form.Field key={index} name={`metadata.aliases[${index}]`}>
-                  {(alias) => (
-                    <div className="grid gap-2">
-                      <div className="flex gap-2">
-                        <Input
-                          aria-label={`别名 ${index + 1}`}
-                          aria-invalid={alias.state.meta.errors.length > 0}
-                          value={alias.state.value}
-                          onBlur={alias.handleBlur}
-                          onChange={(event) =>
-                            alias.handleChange(event.target.value)
-                          }
-                        />
-                        <Button
-                          type="button"
-                          onClick={() => field.removeValue(index)}
-                        >
-                          移除别名 {index + 1}
-                        </Button>
-                      </div>
-                      <span role="alert" className="text-sm text-red-800">
-                        {errorText(alias.state.meta.errors)}
-                      </span>
-                    </div>
-                  )}
-                </form.Field>
-              ))}
+        <FieldGroup className="gap-4">
+          <form.Field
+            name="name"
+            children={(field) => {
+              const isInvalid =
+                field.state.meta.isTouched && !field.state.meta.isValid
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor={field.name}>样本名称</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    aria-invalid={isInvalid}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => {
+                      setNotice('')
+                      form.setFieldMeta('name', (meta) => ({
+                        ...meta,
+                        errorMap: { ...meta.errorMap, onServer: undefined },
+                      }))
+                      field.handleChange(event.target.value)
+                    }}
+                  />
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              )
+            }}
+          />
+          <form.Field
+            name="metadata.aliases"
+            mode="array"
+            children={(field) => {
+              const isInvalid =
+                field.state.meta.isTouched && !field.state.meta.isValid
+              return (
+                <FieldSet className="grid gap-3" data-invalid={isInvalid}>
+                  <FieldLegend>嵌套动态别名</FieldLegend>
+                  {field.state.value.map((_, index) => (
+                    <form.Field
+                      key={index}
+                      name={`metadata.aliases[${index}]`}
+                      children={(alias) => {
+                        const isInvalid =
+                          alias.state.meta.isTouched &&
+                          !alias.state.meta.isValid
+                        return (
+                          <Field data-invalid={isInvalid}>
+                            <FieldLabel htmlFor={alias.name}>
+                              别名 {index + 1}
+                            </FieldLabel>
+                            <div className="flex gap-2">
+                              <Input
+                                id={alias.name}
+                                name={alias.name}
+                                aria-invalid={isInvalid}
+                                value={alias.state.value}
+                                onBlur={alias.handleBlur}
+                                onChange={(event) =>
+                                  alias.handleChange(event.target.value)
+                                }
+                              />
+                              <Button
+                                type="button"
+                                onClick={() => field.removeValue(index)}
+                              >
+                                移除别名 {index + 1}
+                              </Button>
+                            </div>
+                            {isInvalid && (
+                              <FieldError errors={alias.state.meta.errors} />
+                            )}
+                          </Field>
+                        )
+                      }}
+                    />
+                  ))}
+                  <Button
+                    type="button"
+                    className="justify-self-start"
+                    disabled={field.state.value.length >= 5}
+                    onClick={() => field.pushValue('')}
+                  >
+                    添加别名
+                  </Button>
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </FieldSet>
+              )
+            }}
+          />
+          <form.Subscribe selector={(state) => state.isSubmitting}>
+            {(submitting) => (
               <Button
-                type="button"
+                variant="default"
                 className="justify-self-start"
-                disabled={field.state.value.length >= 5}
-                onClick={() => field.pushValue('')}
+                type="submit"
+                disabled={submitting}
               >
-                添加别名
+                {submitting ? '正在模拟保存…' : '保存模拟样本'}
               </Button>
-            </fieldset>
-          )}
-        </form.Field>
-        <form.Subscribe selector={(state) => state.isSubmitting}>
-          {(submitting) => (
-            <Button
-              variant="default"
-              className="justify-self-start"
-              type="submit"
-              disabled={submitting}
-            >
-              {submitting ? '正在模拟保存…' : '保存模拟样本'}
-            </Button>
-          )}
-        </form.Subscribe>
-        <p aria-live="polite" className="text-sm">
-          {notice}
-        </p>
+            )}
+          </form.Subscribe>
+          <p aria-live="polite" className="text-sm">
+            {notice}
+          </p>
+        </FieldGroup>
       </form>
     </section>
   )
@@ -331,9 +344,10 @@ function DataDiagnosticsContent() {
         MSW 内存。
       </p>
       <div className="my-5 flex flex-wrap items-end gap-4">
-        <label className="grid gap-2 text-sm">
-          <span>按名称筛选</span>
+        <Field className="w-auto gap-2">
+          <FieldLabel htmlFor="sample-filter">按名称筛选</FieldLabel>
           <Input
+            id="sample-filter"
             aria-label="筛选样本名称"
             value={filter}
             onChange={(event) => {
@@ -341,7 +355,7 @@ function DataDiagnosticsContent() {
               setPagination((previous) => ({ ...previous, pageIndex: 0 }))
             }}
           />
-        </label>
+        </Field>
         <Button type="button" disabled={resetting} onClick={() => void reset()}>
           重置模拟样本
         </Button>

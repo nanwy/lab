@@ -2,8 +2,12 @@ import { HttpResponse, delay, http } from 'msw'
 import { createSampleHandlers } from './sample-handlers'
 import { appConfig } from '../config'
 import { portalFixtures } from './portal-fixtures'
+import { createAccountHandlers } from './account-handlers'
+import { createActivityHandlers } from './activity-handlers'
 
 export const handlers = [
+  ...createAccountHandlers(),
+  ...createActivityHandlers(),
   ...Object.entries(portalFixtures).map(([path]) => {
     const [pathname, search] = path.split('?')
     return http.get(`${appConfig.apiBaseUrl}${pathname}`, ({ request }) => {
@@ -36,29 +40,6 @@ export const handlers = [
         '<svg xmlns="http://www.w3.org/2000/svg" width="104" height="40" viewBox="0 0 104 40"><rect width="104" height="40" fill="#e7f4ff"/><path d="M5 31L99 8M8 8L96 33" stroke="#86b7da"/><text x="52" y="27" text-anchor="middle" font-family="monospace" font-size="22" font-weight="700" fill="#174d73">2468</text></svg>',
         { headers: { 'content-type': 'image/svg+xml' } },
       ),
-  ),
-  http.post(`${appConfig.apiBaseUrl}/front/login/`, async ({ request }) => {
-    const body = (await request.json()) as Record<string, unknown>
-    if (body.code !== '2468') {
-      return HttpResponse.json({ code: '验证码错误' }, { status: 400 })
-    }
-    if (body.username !== 'learner' || body.password !== 'xueyuan123') {
-      return HttpResponse.json(
-        { password: '用户名或密码错误' },
-        { status: 400 },
-      )
-    }
-    localStorage.setItem('token', 'mock-session')
-    return HttpResponse.json({ status: 1 })
-  }),
-  http.get(`${appConfig.apiBaseUrl}/front/user/info/`, ({ request }) =>
-    request.headers.get('authorization') === 'Token mock-session'
-      ? HttpResponse.json({
-          id: 'learner-001',
-          username: 'learner',
-          extend_info: { first_entry: true },
-        })
-      : HttpResponse.json({ error: '未登录' }, { status: 403 }),
   ),
   http.get(`${appConfig.apiBaseUrl}/front/logout/`, () => {
     localStorage.removeItem('token')

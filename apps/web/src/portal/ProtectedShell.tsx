@@ -17,6 +17,9 @@ import { appConfig } from '../config'
 import { navigation } from './navigation'
 import { platformLogoOptions } from './PlatformBranding'
 import { InitialPositionDialog } from './InitialPositionDialog'
+import { PasswordDialog } from '../auth/PasswordDialog'
+import NiceModal from '@ebay/nice-modal-react'
+import { ActivityButtons } from '../activity/ActivityButtons'
 
 export function ProtectedShell() {
   const session = useQuery(currentUserQueryOptions())
@@ -51,11 +54,15 @@ function LearnerShell({ user }: { user: CurrentUser }) {
   })
   const [logoutError, setLogoutError] = useState('')
   const [positionDismissed, setPositionDismissed] = useState(false)
+  const [passwordPath, setPasswordPath] = useState<string | null>(null)
   const client = useQueryClient()
   const navigate = useNavigate()
   const pageSignal = usePageSignal()
   const accessFailure = useAccessFailure()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  useEffect(() => {
+    setPasswordPath(null)
+  }, [pathname])
   async function signOut() {
     const signal = pageSignal()
     setLogoutError('')
@@ -74,97 +81,107 @@ function LearnerShell({ user }: { user: CurrentUser }) {
     }
   }
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b bg-card px-5 py-4 lg:px-10">
-        <Link
-          to="/basic/home"
-          className="flex min-w-0 items-center gap-3 font-semibold"
-        >
-          {logo.data?.front_logo ? (
-            <img
-              src={logo.data.front_logo}
-              alt="平台标识"
-              className="h-9 max-w-40 object-contain"
-            />
-          ) : null}
-          <span className="text-lg">
-            {logo.data?.platform_name || '网络安全攻防训练平台'}
-          </span>
-        </Link>
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <span>
-            当前用户 ID：<strong>{String(user.id)}</strong>
-          </span>
-          <details className="relative">
-            <summary className="cursor-pointer rounded-md border px-3 py-2">
-              用户菜单
-            </summary>
-            <div className="absolute right-0 z-20 mt-2 grid min-w-40 gap-3 rounded-md border bg-popover p-4 text-popover-foreground shadow-lg">
-              <Link to="/basic/$" params={{ _splat: 'personal/info' }}>
-                个人中心
-              </Link>
-              <Link to="/basic/$" params={{ _splat: 'personal/password' }}>
-                修改密码
-              </Link>
-            </div>
-          </details>
-          <LoadingButton variant="outline" onClick={signOut}>
-            退出登录
-          </LoadingButton>
-        </div>
-      </header>
-      <nav
-        aria-label="学员主导航"
-        className="flex flex-wrap gap-x-6 gap-y-3 border-b px-5 py-4 lg:px-10"
-      >
-        <Link to="/basic/home" activeProps={{ 'aria-current': 'page' }}>
-          首页
-        </Link>
-        {navigation.map((group) => (
-          <details key={group.name} className="relative">
-            <summary className="cursor-pointer">{group.name}</summary>
-            <div className="absolute left-0 z-10 mt-3 grid min-w-44 gap-3 rounded-md border bg-popover p-4 shadow-lg">
-              {group.items.map((item) => (
-                <Link
-                  key={item.path}
-                  to="/basic/$"
-                  params={{ _splat: item.path.slice(7) }}
-                  aria-current={pathname === item.path ? 'page' : undefined}
-                >
-                  {item.name}
+    <NiceModal.Provider key={pathname}>
+      <div className="min-h-screen bg-background text-foreground">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b bg-card px-5 py-4 lg:px-10">
+          <Link
+            to="/basic/home"
+            className="flex min-w-0 items-center gap-3 font-semibold"
+          >
+            {logo.data?.front_logo ? (
+              <img
+                src={logo.data.front_logo}
+                alt="平台标识"
+                className="h-9 max-w-40 object-contain"
+              />
+            ) : null}
+            <span className="text-lg">
+              {logo.data?.platform_name || '网络安全攻防训练平台'}
+            </span>
+          </Link>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <ActivityButtons />
+            <span>
+              当前用户 ID：<strong>{String(user.id)}</strong>
+            </span>
+            <details className="relative">
+              <summary className="cursor-pointer rounded-md border px-3 py-2">
+                用户菜单
+              </summary>
+              <div className="absolute right-0 z-20 mt-2 grid min-w-40 gap-3 rounded-md border bg-popover p-4 text-popover-foreground shadow-lg">
+                <Link to="/basic/personal/$type" params={{ type: 'info' }}>
+                  个人中心
                 </Link>
-              ))}
-            </div>
-          </details>
-        ))}
-      </nav>
-      {appConfig.mockEnabled ? (
-        <p className="px-5 pt-3 text-xs text-muted-foreground lg:px-10">
-          本地模拟数据，不代表原平台业务状态。
-        </p>
-      ) : null}
-      {settings.isError ? (
-        <aside className="px-5 py-3" role="alert">
-          资源配置读取失败。
-          <Button variant="link" onClick={() => void settings.refetch()}>
-            重试资源配置
-          </Button>
-        </aside>
-      ) : null}
-      {logoutError ? (
-        <p role="alert" className="px-5 py-3 text-destructive">
-          {logoutError}
-        </p>
-      ) : null}
-      <main className="mx-auto max-w-7xl px-5 py-8 lg:px-10">
-        <Outlet />
-      </main>
-      {!positionDismissed && !user.extend_info?.first_entry ? (
-        <InitialPositionDialog
-          user={user}
-          close={() => setPositionDismissed(true)}
-        />
-      ) : null}
-    </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setPasswordPath(pathname)}
+                >
+                  修改密码
+                </Button>
+              </div>
+            </details>
+            <LoadingButton variant="outline" onClick={signOut}>
+              退出登录
+            </LoadingButton>
+          </div>
+        </header>
+        <nav
+          aria-label="学员主导航"
+          className="flex flex-wrap gap-x-6 gap-y-3 border-b px-5 py-4 lg:px-10"
+        >
+          <Link to="/basic/home" activeProps={{ 'aria-current': 'page' }}>
+            首页
+          </Link>
+          {navigation.map((group) => (
+            <details key={group.name} className="relative">
+              <summary className="cursor-pointer">{group.name}</summary>
+              <div className="absolute left-0 z-10 mt-3 grid min-w-44 gap-3 rounded-md border bg-popover p-4 shadow-lg">
+                {group.items.map((item) => (
+                  <Link
+                    key={item.path}
+                    to="/basic/$"
+                    params={{ _splat: item.path.slice(7) }}
+                    aria-current={pathname === item.path ? 'page' : undefined}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+            </details>
+          ))}
+        </nav>
+        {appConfig.mockEnabled ? (
+          <p className="px-5 pt-3 text-xs text-muted-foreground lg:px-10">
+            本地模拟数据，不代表原平台业务状态。
+          </p>
+        ) : null}
+        {settings.isError ? (
+          <aside className="px-5 py-3" role="alert">
+            资源配置读取失败。
+            <Button variant="link" onClick={() => void settings.refetch()}>
+              重试资源配置
+            </Button>
+          </aside>
+        ) : null}
+        {logoutError ? (
+          <p role="alert" className="px-5 py-3 text-destructive">
+            {logoutError}
+          </p>
+        ) : null}
+        <main className="mx-auto max-w-7xl px-5 py-8 lg:px-10">
+          <Outlet />
+        </main>
+        {passwordPath === pathname ? (
+          <PasswordDialog close={() => setPasswordPath(null)} />
+        ) : null}
+        {!positionDismissed && !user.extend_info?.first_entry ? (
+          <InitialPositionDialog
+            user={user}
+            close={() => setPositionDismissed(true)}
+          />
+        ) : null}
+      </div>
+    </NiceModal.Provider>
   )
 }

@@ -10,6 +10,12 @@ import {
 } from '@workspace/ui/components/dialog'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
+import {
+  FieldGroup,
+  Field,
+  FieldLabel,
+  FieldError,
+} from '@workspace/ui/components/field'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
 import {
   getRecommendationSettings,
@@ -94,48 +100,58 @@ function SettingsForm({
       className="grid gap-5"
       onSubmit={(e) => {
         e.preventDefault()
-        e.stopPropagation()
-        void form.handleSubmit()
+        form.handleSubmit()
       }}
     >
-      {(
-        Object.keys(recommendationLabels) as (keyof RecommendationSettings)[]
-      ).map((name) => (
-        <form.Field key={name} name={name}>
-          {(field) => (
-            <label className="grid gap-2">
-              <span>
-                {recommendationLabels[name]}：{field.state.value}
-              </span>
-              <Input
-                type="range"
-                min={0}
-                max={10}
-                step={1}
-                aria-label={recommendationLabels[name]}
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.valueAsNumber)}
-                onBlur={field.handleBlur}
-              />
-              <small role="alert" className="text-destructive">
-                {field.state.meta.errors.map((e) => e?.message).join('；')}
-              </small>
-            </label>
+      <FieldGroup className="gap-4">
+        {(
+          Object.keys(recommendationLabels) as (keyof RecommendationSettings)[]
+        ).map((name) => (
+          <form.Field
+            key={name}
+            name={name}
+            children={(field) => {
+              const isInvalid =
+                field.state.meta.isTouched && !field.state.meta.isValid
+              return (
+                <Field data-invalid={isInvalid}>
+                  <div className="flex items-center gap-2">
+                    <FieldLabel htmlFor={field.name}>
+                      {recommendationLabels[name]}
+                    </FieldLabel>
+                    <span>{field.state.value}</span>
+                  </div>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    aria-invalid={isInvalid}
+                    type="range"
+                    min={0}
+                    max={10}
+                    step={1}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.valueAsNumber)}
+                    onBlur={field.handleBlur}
+                  />
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              )
+            }}
+          />
+        ))}
+        {error ? (
+          <p role="alert" className="text-destructive">
+            {error}
+          </p>
+        ) : null}
+        <form.Subscribe selector={(s) => s.isSubmitting}>
+          {(busy) => (
+            <LoadingButton type="submit" loading={busy}>
+              保存设置
+            </LoadingButton>
           )}
-        </form.Field>
-      ))}
-      {error ? (
-        <p role="alert" className="text-destructive">
-          {error}
-        </p>
-      ) : null}
-      <form.Subscribe selector={(s) => s.isSubmitting}>
-        {(busy) => (
-          <LoadingButton type="submit" loading={busy}>
-            保存设置
-          </LoadingButton>
-        )}
-      </form.Subscribe>
+        </form.Subscribe>
+      </FieldGroup>
     </form>
   )
 }

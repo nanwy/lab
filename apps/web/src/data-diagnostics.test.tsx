@@ -52,8 +52,12 @@ function click(value: string) {
   act(() => button.click())
 }
 function input(label: string, value: string) {
-  const field = container.querySelector<HTMLInputElement>(
-    `input[aria-label="${label}"]`,
+  const field = Array.from(container.querySelectorAll('input')).find(
+    (input) =>
+      input.getAttribute('aria-label') === label ||
+      Array.from(input.labels ?? []).some(
+        (item) => item.textContent?.trim() === label,
+      ),
   )
   if (!field) throw new Error(`Missing input ${label}`)
   act(() => {

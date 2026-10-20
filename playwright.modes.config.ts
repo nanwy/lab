@@ -9,12 +9,24 @@ export default defineConfig({
   projects: [
     {
       name: 'production',
-      testMatch: ['runtime.spec.ts', 's02.spec.ts'],
+      testMatch: [
+        'runtime.spec.ts',
+        's02.spec.ts',
+        's03.spec.ts',
+        's04.spec.ts',
+        'forms.spec.ts',
+      ],
       use: { baseURL: 'http://127.0.0.1:4174' },
     },
     {
       name: 'mock-disabled',
-      testMatch: ['runtime.spec.ts', 's02.spec.ts'],
+      testMatch: [
+        'runtime.spec.ts',
+        's02.spec.ts',
+        's03.spec.ts',
+        's04.spec.ts',
+        'forms.spec.ts',
+      ],
       use: { baseURL: 'http://127.0.0.1:4175' },
     },
     {

@@ -5,6 +5,12 @@ import { useRef, useState } from 'react'
 import { z } from 'zod'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
+import {
+  FieldGroup,
+  Field,
+  FieldLabel,
+  FieldError,
+} from '@workspace/ui/components/field'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
 import {
   activateOffline,
@@ -17,22 +23,6 @@ import { captchaUrl } from '../api/auth'
 import { appConfig } from '../config'
 import { usePageSignal } from './use-page-signal'
 import { useAccessFailure } from './access'
-
-function Errors({ errors }: { errors: readonly unknown[] }) {
-  return (
-    <small className="text-destructive" role="alert">
-      {errors
-        .map((e) =>
-          typeof e === 'string'
-            ? e
-            : e && typeof e === 'object' && 'message' in e
-              ? String(e.message)
-              : '',
-        )
-        .join('；')}
-    </small>
-  )
-}
 
 export function ActivatePage() {
   const status = useQuery({
@@ -161,130 +151,161 @@ export function ActivatePage() {
           className="grid gap-5"
           onSubmit={(e) => {
             e.preventDefault()
-            e.stopPropagation()
-            void form.handleSubmit()
+            form.handleSubmit()
           }}
         >
-          {online ? (
-            <form.Field name="url">
-              {(field) => (
-                <label className="grid gap-2">
-                  <span>激活网址</span>
-                  <Input
-                    aria-label="激活网址"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    aria-invalid={field.state.meta.errors.length > 0}
-                  />
-                  <Errors errors={field.state.meta.errors} />
-                </label>
-              )}
-            </form.Field>
-          ) : null}
-          <form.Field name="activate_code">
-            {(field) => (
-              <label className="grid gap-2">
-                <span>激活码</span>
-                <Input
-                  aria-label="激活码"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  aria-invalid={field.state.meta.errors.length > 0}
-                />
-                <Errors errors={field.state.meta.errors} />
-              </label>
-            )}
-          </form.Field>
-          {online ? (
-            <form.Field name="code">
-              {(field) => (
-                <div className="grid gap-2">
-                  <label className="grid gap-2">
-                    <span>验证码</span>
+          <FieldGroup className="gap-4">
+            {online ? (
+              <form.Field
+                name="url"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>激活网址</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                        aria-invalid={isInvalid}
+                      />
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  )
+                }}
+              />
+            ) : null}
+            <form.Field
+              name="activate_code"
+              children={(field) => {
+                const isInvalid =
+                  field.state.meta.isTouched && !field.state.meta.isValid
+                return (
+                  <Field data-invalid={isInvalid}>
+                    <FieldLabel htmlFor={field.name}>激活码</FieldLabel>
                     <Input
-                      aria-label="验证码"
+                      id={field.name}
+                      name={field.name}
                       value={field.state.value}
                       onChange={(e) => field.handleChange(e.target.value)}
                       onBlur={field.handleBlur}
-                      aria-invalid={field.state.meta.errors.length > 0}
+                      aria-invalid={isInvalid}
                     />
-                  </label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-10 w-28 p-0"
-                    aria-label="刷新验证码"
-                    onClick={() => {
-                      setCaptchaFailed(false)
-                      setCaptcha(Date.now())
-                    }}
-                  >
-                    {captchaFailed ? (
-                      '加载失败，重试'
-                    ) : (
-                      <img
-                        src={captchaUrl(captcha)}
-                        alt="验证码"
-                        className="size-full"
-                        onError={() => setCaptchaFailed(true)}
-                      />
+                    {isInvalid && (
+                      <FieldError errors={field.state.meta.errors} />
                     )}
-                  </Button>
-                  <Errors errors={field.state.meta.errors} />
-                </div>
-              )}
-            </form.Field>
-          ) : (
-            <form.Field name="file">
-              {(field) => (
-                <div className="grid gap-2">
-                  <label className="grid gap-2">
-                    <span>License 文件</span>
-                    <Input
-                      ref={fileInput}
-                      key={String(online)}
-                      type="file"
-                      onChange={(e) =>
-                        field.handleChange(e.target.files?.[0] ?? null)
-                      }
-                      aria-invalid={field.state.meta.errors.length > 0}
-                    />
-                  </label>
-                  {field.state.value ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        field.handleChange(null)
-                        form.resetField('file')
-                        if (fileInput.current) fileInput.current.value = ''
-                      }}
-                    >
-                      移除文件
-                    </Button>
-                  ) : null}
-                  <Errors errors={field.state.meta.errors} />
-                </div>
-              )}
-            </form.Field>
-          )}
-          {notice ? (
-            <p role="alert" className="text-destructive">
-              {notice}
-            </p>
-          ) : null}
-          <form.Subscribe selector={(s) => s.isSubmitting}>
-            {(busy) => (
-              <LoadingButton
-                type="submit"
-                loading={busy}
-                disabled={!status.data}
-              >
-                激活
-              </LoadingButton>
+                  </Field>
+                )
+              }}
+            />
+            {online ? (
+              <form.Field
+                name="code"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>验证码</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                        aria-invalid={isInvalid}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 w-28 p-0"
+                        aria-label="刷新验证码"
+                        onClick={() => {
+                          setCaptchaFailed(false)
+                          setCaptcha(Date.now())
+                        }}
+                      >
+                        {captchaFailed ? (
+                          '加载失败，重试'
+                        ) : (
+                          <img
+                            src={captchaUrl(captcha)}
+                            alt="验证码"
+                            className="size-full"
+                            onError={() => setCaptchaFailed(true)}
+                          />
+                        )}
+                      </Button>
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  )
+                }}
+              />
+            ) : (
+              <form.Field
+                name="file"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>License 文件</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        ref={fileInput}
+                        key={String(online)}
+                        type="file"
+                        onBlur={field.handleBlur}
+                        onChange={(e) =>
+                          field.handleChange(e.target.files?.[0] ?? null)
+                        }
+                        aria-invalid={isInvalid}
+                      />
+                      {field.state.value ? (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            field.handleChange(null)
+                            form.resetField('file')
+                            if (fileInput.current) fileInput.current.value = ''
+                          }}
+                        >
+                          移除文件
+                        </Button>
+                      ) : null}
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  )
+                }}
+              />
             )}
-          </form.Subscribe>
+            {notice ? (
+              <p role="alert" className="text-destructive">
+                {notice}
+              </p>
+            ) : null}
+            <form.Subscribe selector={(s) => s.isSubmitting}>
+              {(busy) => (
+                <LoadingButton
+                  type="submit"
+                  loading={busy}
+                  disabled={!status.data}
+                >
+                  激活
+                </LoadingButton>
+              )}
+            </form.Subscribe>
+          </FieldGroup>
         </form>
         <Link className="text-sm text-primary underline" to="/login">
           返回登录

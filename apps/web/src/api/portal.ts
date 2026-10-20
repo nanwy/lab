@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { apiClient, ApiError } from './index'
+import { getTodos, collectionSchema } from './activity'
 
 const id = z.union([z.string().min(1), z.number()])
 const resource = z.object({ id, name: z.string() })
@@ -144,31 +145,12 @@ export function getCourseAvailability(
 
 // 首页只读投影；完整待办/收藏管理在 S04 复用这些数据域。
 export function getHomeTodos(signal?: AbortSignal) {
-  return read(
-    '/front/user/todo/?nopage=1',
-    z.array(
-      z.object({
-        id,
-        content: z.string(),
-        set_time: z.string(),
-        if_finish: z.boolean(),
-      }),
-    ),
-    signal,
-  )
+  return getTodos(signal)
 }
 export async function getHomeCollections(signal?: AbortSignal) {
   const items = await read(
     '/front/user/collect/?nopage=1',
-    z.array(
-      z.object({
-        id,
-        attribute: z.number(),
-        is_status: z.boolean(),
-        object_id: id,
-        extend_info: z.object({ name: z.string() }),
-      }),
-    ),
+    z.array(collectionSchema),
     signal,
   )
   return items.slice(0, 5)

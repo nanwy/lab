@@ -5,6 +5,12 @@ import { useEffect, useState } from 'react'
 
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
+import {
+  FieldGroup,
+  Field,
+  FieldLabel,
+  FieldError,
+} from '@workspace/ui/components/field'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
 
 import {
@@ -21,16 +27,8 @@ import { currentUserQueryOptions, establishSession } from './session'
 import { usePageSignal } from './use-page-signal'
 import { useAccessFailure } from './access'
 
-function errorText(
-  errors: readonly (string | { message: string } | undefined)[],
-) {
-  return errors
-    .map((error) => (typeof error === 'string' ? error : error?.message))
-    .filter(Boolean)
-    .join('；')
-}
-
-export function LoginPage({ reason }: { reason?: 'expired' | 'signed-out' }) {
+export type LoginReason = 'expired' | 'signed-out' | 'password-changed'
+export function LoginPage({ reason }: { reason?: LoginReason }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const pageSignal = usePageSignal()
@@ -76,7 +74,7 @@ export function LoginPage({ reason }: { reason?: 'expired' | 'signed-out' }) {
             if (message) {
               formApi.setFieldMeta(field, (meta) => ({
                 ...meta,
-                errorMap: { ...meta.errorMap, onServer: message },
+                errorMap: { ...meta.errorMap, onServer: { message } },
               }))
             }
           }
@@ -172,6 +170,14 @@ export function LoginPage({ reason }: { reason?: 'expired' | 'signed-out' }) {
               已安全退出。
             </p>
           ) : null}
+          {reason === 'password-changed' ? (
+            <p
+              role="status"
+              className="mb-4 text-center text-sm text-muted-foreground"
+            >
+              密码修改成功，请使用新密码重新登录。
+            </p>
+          ) : null}
           {session.isFetching ? (
             <p
               className="mb-4 text-center text-sm text-muted-foreground"
@@ -192,135 +198,145 @@ export function LoginPage({ reason }: { reason?: 'expired' | 'signed-out' }) {
             className="grid gap-4"
             onSubmit={(event) => {
               event.preventDefault()
-              event.stopPropagation()
-              void form.handleSubmit()
+              form.handleSubmit()
             }}
           >
-            <form.Field name="username">
-              {(field) => (
-                <label className="grid gap-2">
-                  <span className="text-sm font-semibold">用户名</span>
-                  <Input
-                    aria-label="用户名"
-                    aria-describedby="login-username-error"
-                    aria-invalid={field.state.meta.errors.length > 0}
-                    autoComplete="username"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onFocus={() => {
-                      form.setFieldMeta('username', (meta) => ({
-                        ...meta,
-                        errorMap: { ...meta.errorMap, onServer: undefined },
-                      }))
-                    }}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                  <small
-                    id="login-username-error"
-                    className="min-h-4 text-xs text-destructive"
-                    role="alert"
-                  >
-                    {errorText(field.state.meta.errors)}
-                  </small>
-                </label>
-              )}
-            </form.Field>
-            <form.Field name="password">
-              {(field) => (
-                <label className="grid gap-2">
-                  <span className="text-sm font-semibold">密码</span>
-                  <Input
-                    aria-label="密码"
-                    aria-describedby="login-password-error"
-                    aria-invalid={field.state.meta.errors.length > 0}
-                    autoComplete="current-password"
-                    type="password"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onFocus={() => {
-                      form.setFieldMeta('password', (meta) => ({
-                        ...meta,
-                        errorMap: { ...meta.errorMap, onServer: undefined },
-                      }))
-                    }}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                  <small
-                    id="login-password-error"
-                    className="min-h-4 text-xs text-destructive"
-                    role="alert"
-                  >
-                    {errorText(field.state.meta.errors)}
-                  </small>
-                </label>
-              )}
-            </form.Field>
-            <form.Field name="code">
-              {(field) => (
-                <label className="grid gap-2">
-                  <span className="text-sm font-semibold">验证码</span>
-                  <div className="grid grid-cols-[minmax(0,1fr)_6.5rem]">
-                    <Input
-                      className="relative rounded-r-none focus-visible:z-10"
-                      aria-label="验证码"
-                      aria-describedby="login-code-error"
-                      aria-invalid={field.state.meta.errors.length > 0}
-                      autoComplete="one-time-code"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onFocus={() => {
-                        form.setFieldMeta('code', (meta) => ({
-                          ...meta,
-                          errorMap: { ...meta.errorMap, onServer: undefined },
-                        }))
-                      }}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="overflow-hidden rounded-l-none border-l-0 p-0"
-                      aria-label="刷新验证码"
-                      onClick={refreshCaptcha}
-                    >
-                      {captchaFailed ? (
-                        <span className="p-1 text-xs leading-tight whitespace-normal">
-                          加载失败，点击重试
-                        </span>
-                      ) : (
-                        <img
-                          className="size-full object-cover"
-                          src={captchaUrl(captchaVersion)}
-                          alt="验证码"
-                          onError={() => setCaptchaFailed(true)}
-                        />
+            <FieldGroup className="gap-4">
+              <form.Field
+                name="username"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>用户名</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        aria-invalid={isInvalid}
+                        autoComplete="username"
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onFocus={() => {
+                          form.setFieldMeta('username', (meta) => ({
+                            ...meta,
+                            errorMap: { ...meta.errorMap, onServer: undefined },
+                          }))
+                        }}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                      />
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
                       )}
-                    </Button>
-                  </div>
-                  <small
-                    id="login-code-error"
-                    className="min-h-4 text-xs text-destructive"
-                    role="alert"
-                  >
-                    {errorText(field.state.meta.errors)}
-                  </small>
-                </label>
-              )}
-            </form.Field>
-            {submitError ? (
-              <p className="text-sm text-destructive" role="alert">
-                {submitError}
-              </p>
-            ) : null}
-            <form.Subscribe selector={(state) => state.isSubmitting}>
-              {(submitting) => (
-                <LoadingButton type="submit" loading={submitting}>
-                  登录
-                </LoadingButton>
-              )}
-            </form.Subscribe>
+                    </Field>
+                  )
+                }}
+              />
+              <form.Field
+                name="password"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>密码</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        aria-invalid={isInvalid}
+                        autoComplete="current-password"
+                        type="password"
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onFocus={() => {
+                          form.setFieldMeta('password', (meta) => ({
+                            ...meta,
+                            errorMap: { ...meta.errorMap, onServer: undefined },
+                          }))
+                        }}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                      />
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  )
+                }}
+              />
+              <form.Field
+                name="code"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>验证码</FieldLabel>
+                      <div className="grid grid-cols-[minmax(0,1fr)_6.5rem]">
+                        <Input
+                          className="relative rounded-r-none focus-visible:z-10"
+                          id={field.name}
+                          name={field.name}
+                          aria-invalid={isInvalid}
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onFocus={() => {
+                            form.setFieldMeta('code', (meta) => ({
+                              ...meta,
+                              errorMap: {
+                                ...meta.errorMap,
+                                onServer: undefined,
+                              },
+                            }))
+                          }}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="overflow-hidden rounded-l-none border-l-0 p-0"
+                          aria-label="刷新验证码"
+                          onClick={refreshCaptcha}
+                        >
+                          {captchaFailed ? (
+                            <span className="p-1 text-xs leading-tight whitespace-normal">
+                              加载失败，点击重试
+                            </span>
+                          ) : (
+                            <img
+                              className="size-full object-cover"
+                              src={captchaUrl(captchaVersion)}
+                              alt="验证码"
+                              onError={() => setCaptchaFailed(true)}
+                            />
+                          )}
+                        </Button>
+                      </div>
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  )
+                }}
+              />
+              {submitError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {submitError}
+                </p>
+              ) : null}
+              <form.Subscribe selector={(state) => state.isSubmitting}>
+                {(submitting) => (
+                  <LoadingButton type="submit" loading={submitting}>
+                    登录
+                  </LoadingButton>
+                )}
+              </form.Subscribe>
+            </FieldGroup>
           </form>
         </div>
       </section>

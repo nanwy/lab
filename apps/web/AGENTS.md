@@ -11,6 +11,17 @@
 - shadcn/ui 配置及主题以 `packages/ui` 为权威来源；新增组件使用官方 CLI 和该包 `components.json`。调整基础组件时检查旧全局样式是否污染其 `data-slot`。
 - Router 和 Query Devtools 仅开发环境启用。配置、API 地址与模拟模式应有明确入口，避免在多个页面重复推断模式。
 
+## 表单格式（新增与修改时必读）
+
+本节是表单写法的唯一规则来源。新增或修改表单前，先读 [LoginPage.tsx](src/auth/LoginPage.tsx) 的 `username` 字段及提交按钮，按该结构实现；已有示例足够时直接复用，无需重新查官网。来源为用户指定的 [shadcn TanStack Form 示例](https://ui.shadcn.com/docs/forms/tanstack-form)。
+
+- `useForm` 来自 `@tanstack/react-form`，通过 `validators: { onSubmit: schema }` 接入 Zod；UI 使用共享包的 `FieldGroup`、`Field`、`FieldLabel`、`FieldError`。分组和说明按需使用 `FieldSet` / `FieldLegend`、`FieldDescription`。
+- 每个 `form.Field` 使用 `children={(field) => { … }}`，内部声明 `const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid`。该值同时用于 `Field.data-invalid`、输入控件的 `aria-invalid`，以及 `{isInvalid && <FieldError errors={field.state.meta.errors} />}`；不改成错误数组长度判断或手写错误展示。
+- 单输入的 `id`、`name`、标签的 `htmlFor` 都使用 `field.name`；绑定 `value`、`onBlur={field.handleBlur}` 和 `onChange`。多选组每项保留独立 ID。服务端字段错误使用 `{ message }`，交给同一个 `FieldError` 展示。
+- 原生 `form` 提交时 `preventDefault()` 后调用 `form.handleSubmit()`；提交按钮沿用 `LoadingButton`，通过 `form.Subscribe` 传入 `isSubmitting`。不同结构的业务字段分别写清楚，不在循环中堆叠三元表达式。
+- 属性保持示例所需及明确业务所需；不额外添加 `aria-describedby`、错误元素 ID 或已有 `FieldLabel` 时重复的 `aria-label`。`autoComplete` 仅在语义适用时使用：账号 `username`、已有密码 `current-password`、新密码及确认密码 `new-password`；图片验证码不使用 `one-time-code`。
+- 业务表单不引用共享包的 RHF `components/form.tsx`，也不手工将它改造成 TanStack 版本。验收包含未提交时不显示错误、首次提交显示错误、修正后重提，以及原有业务提交行为。
+
 ## 状态与数据流
 
 - Query 管理服务端数据、缓存、分页、刷新和取消；Form 管理字段与校验；React Flow 管理图节点与边；Zustand 仅管理必要的跨组件客户端交互状态。每项状态只有一个权威来源。
@@ -27,9 +38,9 @@
 
 ## 测试与验收
 
-- 浏览器行为是页面主验证边界，使用根目录 `tests/browser` 的 Playwright；MSW 响应应确定、可重置并与真实服务明显区分。
+- 测试范围遵守根 `AGENTS.md` 的定向验证规则：只测本次改动及直接影响；仅修改 UI 时运行相关 Playwright 用例，不默认启动整套浏览器测试。MSW 响应应确定、可重置并与真实服务明显区分。
 - Vitest 用于必要的客户端契约、适配逻辑及浏览器难以精确覆盖的行为；测试公共输入输出，避免断言私有结构或复刻实现。
 - 局部类型检查用 `pnpm --filter @xueyuan/web typecheck`；受影响测试用该包的 `test` 命令传入文件。格式和 lint 使用根级工具并显式列出改动文件。
 - UI 验证包含加载、空数据、错误和成功状态；表单包含字段错误及修正提交；图编辑包含挂载、交互和卸载。预期错误日志精确断言，其他运行时异常仍使测试失败。
-- 浏览器测试默认验证开发服务；它不能证明生产模式或关闭 MSW 后可用，涉及这些模式时单独验证。
+- 浏览器测试默认验证开发服务；仅在本轮改动涉及生产模式、MSW 或 API 配置时，定向验证受影响模式，不每次重复全部模式。
 - 修改环境配置、模拟模式、路由加载、流式消费或错误详情时，逐项验证对应契约；实际缺口和验证结果维护在 `docs/implementation-status.md`，不能用检查命令通过代替规格覆盖。

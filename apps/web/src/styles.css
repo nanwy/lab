@@ -182,7 +182,7 @@
   .tab-list a,
   .button-link,
   .error-actions a,
-  button:not([data-slot='button']) {
+  button:not([data-slot]) {
     display: inline-flex;
     align-items: center;
     min-height: 2.65rem;

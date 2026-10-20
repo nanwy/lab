@@ -1,20 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
-import { Calendar } from '@workspace/ui/components/calendar'
 import { Button } from '@workspace/ui/components/button'
-import { Input } from '@workspace/ui/components/input'
-import { getHomeCollections, getHomeTodos } from '../api/portal'
+import { getHomeCollections } from '../api/portal'
+import { dateKey, TodoCalendar } from '../activity/TodoCalendar'
+import { todosOptions } from '../activity/queries'
+import NiceModal from '@ebay/nice-modal-react'
+import { TodosModal } from '../activity/TodosModal'
 
-function dateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
 export function HomePersonalSummary() {
-  const todos = useQuery({
-    queryKey: ['account', 'todos', 'all'],
-    queryFn: ({ signal }) => getHomeTodos(signal),
-    retry: false,
-  })
+  const todos = useQuery(todosOptions)
   const collections = useQuery({
     queryKey: ['account', 'collections', 'home'],
     queryFn: ({ signal }) => getHomeCollections(signal),
@@ -29,96 +24,25 @@ export function HomePersonalSummary() {
     <aside className="space-y-6">
       <section className="space-y-4 border-t pt-5">
         <h2 className="text-xl font-semibold">待办事项</h2>
-        <div className="flex gap-2">
-          <Button
-            aria-pressed={mode === 'month'}
-            variant={mode === 'month' ? 'default' : 'outline'}
-            onClick={() => setMode('month')}
-          >
-            月视图
-          </Button>
-          <Button
-            aria-pressed={mode === 'year'}
-            variant={mode === 'year' ? 'default' : 'outline'}
-            onClick={() => setMode('year')}
-          >
-            年视图
-          </Button>
-        </div>
-        {mode === 'month' ? (
-          <Calendar
-            labels={{ labelDayButton: dateKey }}
-            mode="single"
-            selected={date}
-            month={date}
-            onMonthChange={setDate}
-            onSelect={(value) => {
-              if (value) setDate(value)
-            }}
-            modifiers={{
-              hasTodo: (d) =>
-                Boolean(
-                  todos.data?.some((t) => t.set_time.startsWith(dateKey(d))),
-                ),
-            }}
-            modifiersClassNames={{ hasTodo: 'underline font-bold' }}
-          />
-        ) : (
-          <div className="space-y-4">
-            <label className="grid gap-2">
-              年份
-              <Input
-                type="number"
-                min={1}
-                max={9999}
-                value={date.getFullYear()}
-                onChange={(e) => {
-                  const year = e.target.valueAsNumber
-                  if (year >= 1 && year <= 9999) setDate(new Date(year, 0, 1))
-                }}
-              />
-            </label>
-            <div
-              role="group"
-              aria-label="年度待办"
-              className="grid grid-cols-2 gap-3"
-            >
-              {Array.from({ length: 12 }, (_, month) => {
-                const key = `${date.getFullYear()}-${String(month + 1).padStart(2, '0')}`
-                const entries = todos.data?.filter((t) =>
-                  t.set_time.startsWith(key),
-                )
-                return (
-                  <Button
-                    key={key}
-                    variant="outline"
-                    className="h-auto min-h-20 flex-col items-start whitespace-normal p-3 text-left"
-                    onClick={() => {
-                      setDate(new Date(date.getFullYear(), month, 1))
-                      setMode('month')
-                    }}
-                  >
-                    <span className="font-semibold">{month + 1} 月</span>
-                    {entries?.length ? (
-                      entries.map((t) => (
-                        <span
-                          key={t.id}
-                          className="max-w-full break-words text-xs"
-                        >
-                          {t.content} · {t.if_finish ? '已完成' : '未完成'}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        暂无待办
-                      </span>
-                    )}
-                  </Button>
-                )
-              })}
-            </div>
-          </div>
-        )}
+        <Button
+          variant="outline"
+          onClick={() => {
+            void NiceModal.show(TodosModal)
+          }}
+        >
+          管理待办
+        </Button>
+        <TodoCalendar
+          todos={todos.data ?? []}
+          date={date}
+          setDate={setDate}
+          mode={mode}
+          setMode={setMode}
+          selectMonth={(value) => {
+            setDate(value)
+            setMode('month')
+          }}
+        />
         {todos.isPending ? (
           <p role="status">正在读取待办…</p>
         ) : todos.isError ? (
@@ -152,8 +76,8 @@ export function HomePersonalSummary() {
           <h2 className="text-xl font-semibold">我的收藏</h2>
           <Link
             className="text-primary underline"
-            to="/basic/$"
-            params={{ _splat: 'personal/enshrine' }}
+            to="/basic/personal/$type"
+            params={{ type: 'enshrine' }}
           >
             查看更多收藏
           </Link>

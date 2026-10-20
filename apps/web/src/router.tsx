@@ -20,7 +20,8 @@ import { TopologyPage } from './topology/TopologyPage'
 import { appConfig } from './config'
 import { queryClient } from './query-client'
 import { diagnosticQueryOptions } from './query-options'
-import { LoginPage } from './auth/LoginPage'
+import { LoginPage, type LoginReason } from './auth/LoginPage'
+import { PersonalPage } from './auth/PersonalPage'
 import { ActivatePage } from './auth/ActivatePage'
 import { AccessEvents, ForbiddenPage } from './auth/access'
 import { ProtectedShell } from './portal/ProtectedShell'
@@ -291,13 +292,15 @@ const overviewRoute = createRoute({
 })
 
 type LoginSearch = {
-  reason?: 'expired' | 'signed-out'
+  reason?: LoginReason
 }
 
 function parseLoginSearch(search: Record<string, unknown>): LoginSearch {
   return {
     reason:
-      search.reason === 'expired' || search.reason === 'signed-out'
+      search.reason === 'expired' ||
+      search.reason === 'signed-out' ||
+      search.reason === 'password-changed'
         ? search.reason
         : undefined,
   }
@@ -356,11 +359,7 @@ function FutureBusinessPage() {
   const item = navigation
     .flatMap((group) => [...group.items])
     .find((item) => path === item.path || path.startsWith(`${item.path}/`))
-  const personal =
-    _splat === 'personal/info' ||
-    _splat === 'personal/password' ||
-    _splat === 'personal/enshrine'
-  if (!item && !personal) return <NotFoundPage />
+  if (!item) return <NotFoundPage />
   return (
     <section className="space-y-4">
       <h1 className="text-2xl font-semibold">{item?.name ?? '个人中心'}</h1>
@@ -378,6 +377,22 @@ const sessionHomeRoute = createRoute({
   getParentRoute: () => basicRoute,
   path: '/home',
   component: HomePage,
+})
+
+const personalRoute = createRoute({
+  getParentRoute: () => basicRoute,
+  path: '/personal/$type',
+  component: () => {
+    const { type } = personalRoute.useParams()
+    if (
+      type !== 'info' &&
+      type !== 'enshrine' &&
+      type !== 'message' &&
+      type !== 'resource'
+    )
+      return <NotFoundPage />
+    return <PersonalPage type={type} />
+  },
 })
 
 const resourcesRoute = createRoute({
@@ -436,7 +451,12 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   activationRoute,
   forbiddenRoute,
-  basicRoute.addChildren([basicIndexRoute, sessionHomeRoute, futureRoute]),
+  basicRoute.addChildren([
+    basicIndexRoute,
+    sessionHomeRoute,
+    personalRoute,
+    futureRoute,
+  ]),
   resourcesRoute,
   resourceRoute,
   draftRoute,

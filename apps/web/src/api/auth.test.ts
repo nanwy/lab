@@ -11,6 +11,29 @@ import {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('账号接口契约', () => {
+  it('当前用户保留个人资料和未识别的 extend_info 字段，供岗位编辑往返', async () => {
+    const user = {
+      id: 'profile-user',
+      username: 'learner',
+      realname: '测试学员',
+      unit: '测试单位',
+      phone: '',
+      email: null,
+      logo: '',
+      job_number: '001',
+      extend_info: {
+        first_entry: true,
+        position: [7],
+        ai_app: '',
+        retained: { value: 1 },
+      },
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json(user)),
+    )
+    await expect(getCurrentUser()).resolves.toEqual(user)
+  })
   it('背景只读取已确认的 front_background 字段，空字符串表示未配置', async () => {
     for (const front_background of ['', '/test-background.svg']) {
       vi.stubGlobal(

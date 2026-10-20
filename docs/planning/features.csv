@@ -2,7 +2,7 @@
 F001,公共,登录与会话,/login,账号、密码、验证码；登录、退出、当前用户、失效重登,/api/front/login/; /api/front/logout/; /api/front/user/info/,账号状态；HTTP认证与应用Token分层,验证码规则、Cookie/CSRF、会话有效期,错误凭据失败；有效账号进入；过期后回登录,P1,完成（S01 前端复刻验收）；原后端未联调；差异见 docs/architecture/account-session.md
 F002,公共,激活与入口守卫,/activate,读取激活状态；显示激活流程；限制未登录/未激活访问,/api/admin/system/active/,未激活与无权访问是不同状态,真实授权权限、License 内容与当前线上响应未联调,深链刷新、未登录、未激活分别有明确结果,P1,完成（S02 前端复刻验收）
 F003,公共,布局与首页,/basic/home,导航、首页概览、平台配置、用户菜单、主题消费、首次岗位选择、推荐设置及首页只读待办/收藏投影,/api/admin/system/logo/; /api/admin/system/background/; /api/front/user/recommend/,会话守卫；静态导航不按未知角色裁剪；工具/漏洞设置未参与菜单过滤,当前线上响应和角色矩阵未联调；未发现原站主题切换 UI,主入口可达；刷新保留当前路由,P1,完成（S02 前端复刻验收）
-F004,公共,通知、待办与收藏,公共导航及首页,通知列表/详情/已读；待办与收藏列表、筛选和批量操作,/api/front/user/notice/; /api/front/user/todo/; /api/front/user/collect/,个人数据及批量对象范围,操作字段、已读与批量规则,状态变更后列表、数量与详情一致,P5,规划中；静态证据分级，未运行验收
+F004,公共,通知、待办与收藏,公共导航及首页,通知列表/详情/已读筛选；待办新增/完成/删除；收藏分页与资源入口,/api/front/user/notice/; /api/front/user/todo/; /api/front/user/collect/,个人数据及批量对象范围,字段与已读调用链已补证；待办批接口每次提交单项；收藏页无批量取消调用；真实权限与响应未联调，见 docs/planning/s04-implementation.md,状态变更后列表、数量与详情一致,P5,规划中；静态证据分级，未运行验收
 F005,培训,课程中心与课程详情,/basic/training/course,列表筛选；课程详情、目录、章节、资源、评论/推荐入口,/api/front/learn/task/self_study/open_courses/,can_enter、课程可见性/下线状态,筛选枚举、资源权限、评论是否可写,可进入课程加载目录；不可进入时解释原因,P3,规划中；静态证据分级，未运行验收
 F006,培训,视频与学习进度,课程详情内部,播放、断点续播、章节切换、视频学习日志与进度上报；课程/章节开启分支,/api/front/learn/task/self_study/open_courses/*/section/,所属课程和章节；学习规则,日志计算、心跳、拖动限制、重复上报处理；学习日志为写操作,播放/暂停/重开后的进度与后端一致,P3,规划中；静态证据分级，未运行验收
 F007,培训,章节测验与实操检查点,课程详情内部,取题、作答、重置、提交；自测与检查点/flag流程,/api/front/learn/task/self_study/open_courses/*/section/*/test/; operate/,课程准入、次数及任务状态,评分规则、题型、重试限制、环境依赖,正确/错误/未答及重复提交按真实规则处理,P3,规划中；静态证据分级，未运行验收
@@ -42,7 +42,7 @@ F040,实验台,检测手段,/basic/user/bench/experiment/:id/detection/:type,按
 F041,实验台,攻击教学与模拟蓝军,/basic/user/bench/experiment/:id/attackteaching; simulate,教学内容/任务、蓝军节点及工具配置、运行与结果（操作细节待核对）,/api/front/wqzb/simulated_blue_team/; /api/front/wqzb/test_task/,角色/工具能力、实验状态和可用资源,调用链、执行条件、任务终止与结果,配置与结果可追踪；执行在测试范围开放后联调,P2,规划中；静态证据分级，未运行验收
 F042,实验台,流量模拟、镜像与模板,共享拓扑组件内部,课程包列表/详情/创建/删除、统计、应用列表、学习记录回传与课程学习日志导入,/api/topo/*/backgroud_flow/; /api/front/topo/template/; blocking_template/,具体入口、task_type、资源类型与权限分支,包格式、客户端、同步冲突与日志协议；删除使用GET仍属写操作,按真实入口逐项确认并记录不适用原因,P2,规划中；静态证据分级，未运行验收
 F043,个人,离线学习,/basic/user/offline,课程包生成/列表/删除、记录、统计、应用列表,/api/front/offline/,本人离线包与同步范围,离线客户端依赖、打包下载、日志回传协议,生成/下载/学习记录回传流程有真实证据,P5,规划中；静态证据分级，未运行验收
-F044,个人,个人中心与密码,/basic/personal/:type,信息查看/编辑、密码修改及type对应页签,/api/front/user/info/; /api/front/user/password/,当前用户及字段可编辑性,type枚举、密码校验、修改后会话失效规则,非法字段拒绝；成功状态重开保留,P5,规划中；静态证据分级，未运行验收
+F044,个人,个人中心与密码,/basic/personal/:type,信息查看/编辑、密码修改及type对应页签,/api/front/user/info/; /api/front/user/password/,当前用户及字段可编辑性,真实密码强度与错误枚举、服务端主动失效策略未联调；type、资料字段和改密后主动退出调用链见 docs/architecture/personal-account.md,非法字段拒绝；成功状态重开保留,P5,规划中；静态证据分级，未运行验收
 F045,独立入口,AI助手,/ai,助手列表、会话创建/历史/重命名/删除、消息与流式输出、中断,/api/front/ai/; /api/front/resources/aichat/,助手可见性、会话所有权、额度未知,流式协议、附件、消息提交接口与断线行为,流式输出/中断/重开历史一致,P6,规划中；静态证据分级，未运行验收
 F046,独立入口,VNC、KVM与控制台,/vnccontrol/:type/:id; /kvmvnc/:type/:id/:name; /controlpanel/:system/:id; /mpst/fullscreen/:type/:id,会话连接、输入、全屏、尺寸同步、重连与关闭,待核对控制台HTTP/WS会话契约,节点归属、运行状态、会话授权,WebSocket地址、票据、代理与浏览器要求,真实测试节点连通、断线重连、过期票据拒绝,P2,规划中；静态证据分级，未运行验收
 F047,独立入口,文件与Office预览,/fileView/:id; /office/viewer,文件加载、内容/目录、Office服务配置与失败提示,文件接口及logoSetting.onlyoffice_url等配置,原文件访问权与预览授权,预览服务、文件签名、跨域与格式范围,无权限或文件失效时不展示残留内容,P5,规划中；静态证据分级，未运行验收

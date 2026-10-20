@@ -7,6 +7,10 @@ export async function exportCanvas(
   format: 'png' | 'svg',
   signal: AbortSignal,
 ) {
+  if (element.clientWidth <= 0 || element.clientHeight <= 0)
+    throw new CanvasExportError(
+      '画布导出失败：画布当前不可见，请展开画布后重试。',
+    )
   const exportSignal = AbortSignal.any([signal, AbortSignal.timeout(15_000)])
   let stage = '字体加载'
   try {

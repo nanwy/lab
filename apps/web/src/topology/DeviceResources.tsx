@@ -164,7 +164,10 @@ export function DeviceResources({
     )
   }
   return (
-    <aside aria-label="设备资源" className="w-56 shrink-0 space-y-3 border p-3">
+    <aside
+      aria-label="设备资源"
+      className="w-full shrink-0 space-y-3 border p-3 @min-[48rem]:w-56"
+    >
       <h3>设备资源</h3>
       {deletion.isError ? (
         <p role="alert">删除失败：{deletion.error.message}</p>

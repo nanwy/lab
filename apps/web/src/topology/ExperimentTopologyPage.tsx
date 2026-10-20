@@ -1077,7 +1077,7 @@ export function ExperimentTopologyEditor({
         },
       }}
     >
-      <section className="space-y-4" aria-label="实验场景拓扑">
+      <section className="@container space-y-4" aria-label="实验场景拓扑">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">场景拓扑</h2>
@@ -1091,7 +1091,7 @@ export function ExperimentTopologyEditor({
                     : '所有修改已保存'}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {!readOnly && !shared ? (
               <>
                 <Button
@@ -1128,7 +1128,7 @@ export function ExperimentTopologyEditor({
           </div>
         </header>
         {editable ? (
-          <div className="flex gap-2" aria-label="选中对象操作">
+          <div className="flex flex-wrap gap-2" aria-label="选中对象操作">
             <Button
               variant="outline"
               disabled={busy || (!selectedNode && !selectedEdge)}
@@ -1191,7 +1191,7 @@ export function ExperimentTopologyEditor({
           </div>
         ) : null}
         {!nodes.length && !edges.length ? <p>暂无可显示的拓扑图元</p> : null}
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 @min-[48rem]:flex-row">
           {editable ? (
             <DeviceResources
               disabled={busy}
@@ -1202,7 +1202,7 @@ export function ExperimentTopologyEditor({
             />
           ) : null}
           <div
-            className="h-[32rem] min-w-0 flex-1 border bg-white"
+            className="h-[32rem] w-full min-w-0 border bg-white @min-[48rem]:flex-1"
             aria-label="场景拓扑画布"
             ref={canvas}
             tabIndex={0}

@@ -321,6 +321,92 @@ test('PNG与SVG导出实际画布DOM，产物含图标与连线像素，空图�
   ).toBeVisible()
 })
 
+test('窄窗口画布不会被资源面板挤成零宽，SVG保留实际可见区域', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 360, height: 900 })
+  await setup(page)
+  const graph = initial()
+  graph.cells[0]!.data.logo =
+    'data:image/svg+xml;base64,' +
+    Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="#00aa00"/></svg>',
+    ).toString('base64')
+  await page.route('**/api/front/topo/topo-one/draw/?task_type=6', (route) =>
+    route.fulfill({ json: graph }),
+  )
+  await page.route('**/api/front/node/list/?nopage=0', (route) =>
+    route.fulfill({ json: [] }),
+  )
+  await page.goto('/#/basic/user/bench/experiment/one/scene')
+  const canvas = page.getByLabel('场景拓扑画布', { exact: true })
+  for (const viewportWidth of [360, 1280]) {
+    await page.setViewportSize({ width: viewportWidth, height: 900 })
+    if (viewportWidth === 1280)
+      await page
+        .getByLabel('实验场景拓扑', { exact: true })
+        .evaluate((element) => {
+          element.style.maxWidth = '320px'
+        })
+    await expect
+      .poll(async () => (await canvas.boundingBox())?.width ?? 0)
+      .toBeGreaterThan(200)
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: '导出SVG', exact: true }).click(),
+    ])
+    const file = testInfo.outputPath(`narrow-${viewportWidth}.svg`)
+    await download.saveAs(file)
+    const source = await readFile(file, 'utf8')
+    const width = Number(source.match(/^<svg[^>]*width="([^"]+)"/)?.[1])
+    expect(width).toBeGreaterThan(200)
+    expect(source).toContain('原设备')
+    const green = await page.evaluate(async (source) => {
+      const image = new Image()
+      image.src =
+        'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source)
+      await image.decode()
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const context = canvas.getContext('2d')!
+      context.drawImage(image, 0, 0)
+      const pixels = context.getImageData(
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      ).data
+      let green = 0
+      for (let index = 0; index < pixels.length; index += 4)
+        if (
+          pixels[index]! < 30 &&
+          pixels[index + 1]! > 140 &&
+          pixels[index + 2]! < 30
+        )
+          green++
+      return green
+    }, source)
+    expect(green).toBeGreaterThan(100)
+    await page.screenshot({
+      path: testInfo.outputPath(`narrow-canvas-${viewportWidth}.png`),
+      fullPage: true,
+    })
+  }
+  let downloads = 0
+  page.on('download', () => downloads++)
+  await canvas.evaluate((element) => {
+    element.style.width = '0px'
+  })
+  await page.getByRole('button', { name: '导出SVG', exact: true }).click()
+  await expect(
+    page.getByText('画布导出失败：画布当前不可见，请展开画布后重试。', {
+      exact: true,
+    }),
+  ).toBeVisible()
+  expect(downloads).toBe(0)
+})
+
 test('图片跨域和字体失败阻止不完整产物，恢复资源后可重新导出且设计保留', async ({
   page,
 }) => {

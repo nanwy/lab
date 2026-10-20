@@ -17,6 +17,9 @@
     "test": "pnpm --filter @xueyuan/web --fail-if-no-match test",
     "test:browser": "playwright test",
     "test:browser:modes": "playwright test --config playwright.modes.config.ts",
+    "evidence:generate": "python3 scripts/evidence_query.py generate --force",
+    "evidence:verify": "python3 scripts/evidence_query.py verify",
+    "evidence:query": "python3 scripts/evidence_query.py query",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm test:browser && pnpm test:browser:modes"
   },
   "devDependencies": {

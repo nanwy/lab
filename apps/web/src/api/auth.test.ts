@@ -101,7 +101,7 @@ describe('账号接口契约', () => {
         'fetch',
         vi.fn(async () => Response.json({ status: 2 })),
       )
-      await expect(logout()).rejects.toMatchObject({ kind: 'invalid-response' })
+      await expect(logout()).rejects.toMatchObject({ kind: 'business' })
     } finally {
       localStorage.removeItem('token')
       document.cookie = 'csrftoken=; Max-Age=0; path=/'

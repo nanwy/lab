@@ -40,7 +40,8 @@ test('登录按钮在点击和 Enter 提交时显示 loading，失败恢复且�
     await new Promise<void>((resolve) => {
       release = resolve
     })
-    if (attempt === 1) await route.fulfill({ status: 503, json: {} })
+    if (attempt === 1)
+      await route.fulfill({ status: 400, json: { error: '账号或密码错误!' } })
     else {
       authenticated = true
       await route.fulfill({ json: { status: 1 } })
@@ -58,7 +59,12 @@ test('登录按钮在点击和 Enter 提交时显示 loading，失败恢复且�
   await expect(button).toHaveAttribute('aria-busy', 'true')
   await username.press('Enter')
   release()
-  await expect(page.getByText('服务暂时不可用，请稍后重试')).toBeVisible()
+  await expect(
+    page.locator('[data-sonner-toast]').filter({ hasText: '账号或密码错误!' }),
+  ).toBeVisible()
+  await expect(
+    page.locator('[data-sonner-toast]').filter({ hasText: '账号或密码错误!' }),
+  ).toHaveCount(1)
   await expect(button).toBeEnabled()
   await expect(button).not.toHaveAttribute('aria-busy')
   expect(requests).toBe(1)
@@ -73,7 +79,7 @@ test('登录按钮在点击和 Enter 提交时显示 loading，失败恢复且�
   expect(requests).toBe(2)
   expect(errors).toEqual([
     'Failed to load resource: the server responded with a status of 403 (Forbidden)',
-    'Failed to load resource: the server responded with a status of 503 (Service Unavailable)',
+    'Failed to load resource: the server responded with a status of 400 (Bad Request)',
   ])
 })
 
@@ -148,7 +154,7 @@ test('账号页面在生产与模拟关闭模式处理服务失败、恢复和�
       code: '1234',
     })
     if (rejectLogin) {
-      await route.fulfill({ status: 503, json: { error: 'unavailable' } })
+      await route.fulfill({ status: 503, json: { error: '服务暂不可用' } })
     } else {
       authenticated = true
       await route.fulfill({ json: { status: 1 } })
@@ -168,7 +174,9 @@ test('账号页面在生产与模拟关闭模式处理服务失败、恢复和�
   await page.getByLabel('密码', { exact: true }).fill('test-password')
   await page.getByLabel('验证码', { exact: true }).fill('1234')
   await page.getByRole('button', { name: '登录', exact: true }).click()
-  await expect(page.getByText('服务暂时不可用，请稍后重试')).toBeVisible()
+  await expect(
+    page.locator('[data-sonner-toast]').filter({ hasText: '服务暂不可用' }),
+  ).toBeVisible()
   await page.screenshot({
     path: testInfo.outputPath('login-desktop.png'),
     fullPage: true,
@@ -191,7 +199,10 @@ test('账号页面在生产与模拟关闭模式处理服务失败、恢复和�
   await expect(page.getByRole('heading', { name: '首页' })).toBeVisible()
   await page.getByRole('button', { name: '退出登录', exact: true }).click()
   await expect(
-    page.getByText('退出失败，当前会话仍保留，请重试。'),
+    page
+      .locator('[data-sonner-toast]')
+      .filter({ hasText: '请求失败（503）' })
+      .last(),
   ).toBeVisible()
   rejectLogout = false
   await page.getByRole('button', { name: '退出登录', exact: true }).click()

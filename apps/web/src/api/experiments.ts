@@ -120,13 +120,13 @@ export async function deleteExperiment(
   value: string | number,
   signal?: AbortSignal,
 ) {
-  const result = await apiClient.request(`${base}delete/`, {
+  await apiClient.request(`${base}delete/`, {
     method: 'POST',
     json: { ids: [value] },
     signal,
+    isBusinessFailure: (value) =>
+      !z.object({ status: z.literal(1) }).safeParse(value).success,
   })
-  if (!z.object({ status: z.literal(1) }).safeParse(result).success)
-    throw new ApiError('business', '删除失败，请重试')
 }
 export function getExperimentScenes(
   page = 1,
@@ -155,11 +155,11 @@ export async function importExperiment(
   value: string | number,
   signal?: AbortSignal,
 ) {
-  const result = await apiClient.request(`${base}select/${encoded(value)}/`, {
+  await apiClient.request(`${base}select/${encoded(value)}/`, {
     signal,
+    isBusinessFailure: (value) =>
+      !z.object({ status: z.literal(1) }).safeParse(value).success,
   })
-  if (!z.object({ status: z.literal(1) }).safeParse(result).success)
-    throw new ApiError('business', '导入失败，请重试')
 }
 export function getExperimentTags(signal?: AbortSignal) {
   return parse(

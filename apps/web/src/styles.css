@@ -290,8 +290,7 @@
   }
 
   .topology-node-button span,
-  .topology-group span,
-  .editor-notice {
+  .topology-group span {
     color: #627068;
     font-size: 0.78rem;
   }

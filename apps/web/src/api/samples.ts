@@ -50,14 +50,6 @@ export async function updateSample(id: string, value: SampleInput) {
     {
       method: 'PATCH',
       json: value,
-      errorDisplay: {
-        fieldErrors: {
-          name: {
-            '该名称由模拟服务保留，请换一个名称':
-              '该名称由模拟服务保留，请换一个名称',
-          },
-        },
-      },
     },
   )
   const parsed = sampleSchema.safeParse(result)

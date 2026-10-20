@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
+import { ApiError } from '../api'
 import { Button } from '@workspace/ui/components/button'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
 import {
@@ -10,7 +12,6 @@ import {
 } from '../api/portal'
 import { currentUserQueryOptions } from '../auth/session'
 import { usePageSignal } from '../auth/use-page-signal'
-import { useAccessFailure } from '../auth/access'
 import { HomePersonalSummary } from './HomePersonalSummary'
 import { RecommendationSettingsDialog } from './RecommendationSettingsDialog'
 import { navigation } from './navigation'
@@ -29,17 +30,14 @@ export function HomePage() {
     retry: false,
   })
   const [guide, setGuide] = useState(false)
-  const [notice, setNotice] = useState('')
   const pageSignal = usePageSignal()
   const courseCheck = useRef<AbortController | null>(null)
-  const accessFailure = useAccessFailure()
   const navigate = useNavigate()
   async function openCourse(id: string | number) {
     // 用户切换课程时取消旧意图，不能让旧课程的迟到结果覆盖新选择。
     courseCheck.current?.abort()
     courseCheck.current = new AbortController()
     const signal = AbortSignal.any([pageSignal(), courseCheck.current.signal])
-    setNotice('')
     try {
       const course = await getCourseAvailability(id, signal)
       if (signal.aborted) return
@@ -48,10 +46,15 @@ export function HomePage() {
           to: '/basic/$',
           params: { _splat: `training/course/${id}` },
         })
-      else setNotice('该课程已被关闭')
+      else toast.error('该课程已被关闭')
     } catch (error) {
-      if (!signal.aborted && !accessFailure(error))
-        setNotice('无法检查课程状态，请重试。')
+      if (signal.aborted) return
+      if (!(error instanceof ApiError) || !error.handled)
+        toast.error(
+          error instanceof ApiError
+            ? error.message
+            : '课程状态检查失败，请重试',
+        )
     }
   }
   const recent = statistics.data?.recent_course
@@ -111,11 +114,6 @@ export function HomePage() {
           学习指南
         </Button>
       </div>
-      {notice ? (
-        <p role="status" className="text-destructive">
-          {notice}
-        </p>
-      ) : null}
       {guide ? (
         <LearningGuide openCourse={openCourse} />
       ) : (

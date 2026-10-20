@@ -1,5 +1,8 @@
-import { createApiClient } from './client'
+import { toast } from '@workspace/ui/components/sonner'
+import { ApiError, createApiClient } from './client'
 import { appConfig } from '../config'
+import { queryClient } from '../query-client'
+import { clearSession } from '../auth/session'
 
 function readCookie(name: string) {
   if (typeof document === 'undefined') return undefined
@@ -14,6 +17,28 @@ function readCookie(name: string) {
 
 const client = createApiClient({
   baseUrl: appConfig.apiBaseUrl,
+  onError(error, request) {
+    if (!(error instanceof ApiError)) return
+    error.handled = true
+    if (error.kind === 'cancelled') return
+    if (error.status === 403) {
+      if (error.serviceError === 'unauthenticated') {
+        if (request.allowExpiredSession) return
+        clearSession(queryClient)
+        globalThis.location?.replace('#/login?reason=expired')
+        return
+      }
+      if (error.serviceError === 'inactive') {
+        globalThis.location?.replace('#/activate')
+        return
+      }
+      if (error.serviceError === 'forbidden') {
+        globalThis.location?.replace('#/forbidden')
+        return
+      }
+    }
+    toast.error(error.message)
+  },
   requestPolicy: {
     apply({ headers, method }) {
       const token = globalThis.localStorage?.getItem('token')

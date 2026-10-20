@@ -5,6 +5,7 @@
 ## 工作方式
 
 - 先核对目标页面、调用链、现有配置和工作区 diff，再修改代码。解释、实现与验收必须对应同一个目标。
+- 实现或继续实施切片前，读取 [低重复开销实施流程](docs/development-workflow.md)，复用已确认的测试边界、证据与验证结果；排查 token 消耗时也以该文档为起点。
 - 在已授权的任务范围内自主完成实现和验证。仅在真正的歧义会导致相反结果、需要新增外部写入权限或不可逆操作时停下来澄清；可逆实现细节自行判断。
 - 沟通、注释和工程文档默认使用简体中文。结果报告说明交付、依据、验证和剩余缺口；不把必要后续工作变成“要不要继续”的询问。
 - 保留用户已有改动。局部修复保持单一因果，无关重构、格式化、依赖更新另行处理。
@@ -16,8 +17,16 @@
 - 工程选型、初始化边界：修改工程基础时读取 `docs/planning/frontend-initialization.spec.md`。
 - 业务行为与阶段：实现业务前读取 `docs/planning/spec.md`，按涉及功能查阅 `function-catalog.md`、`route-coverage.md` 和 `permissions.md`（均位于 `docs/planning/`）。
 - 实施或拆分页面还原任务时，先读取 `docs/planning/page-rebuild-implementation.md`；该文件是实施顺序、依赖、切片状态和 F 编号覆盖关系的唯一来源，P1–P6 仅作产品范围视图。
-- 当前交付与验证记录见 `docs/implementation-status.md`。代码、实际运行证据与文档冲突时，调查并如实记录差异，不能用“已完成”文字替代实现。
+- 历史交付与验证记录见 `docs/implementation-status.md`；当前进度仅维护在实施计划，其他文档引用该计划，不重复记录完成状态。代码、实际运行证据与文档冲突时，调查并如实记录差异，不能用“已完成”文字替代实现。
 - 仓库外逆向资料是证据输入，不默认复制原始 bundle、大型产物或凭据入库。源码推断、模拟验证和真实服务验证分别记录。
+
+### 原始证据查询
+
+- 查询原 bundle、功能、路由、API、符号、Evidence 或源码偏移前，先读取 `docs/evidence-query.md`，使用 `python3 scripts/evidence_query.py query ...` 访问仓库外的分片查询副本。
+- 禁止直接对 `rea-analysis/xueyuan/artifact/index-DECk1PRe.js` 或 `rea-analysis/xueyuan/rea-evidence.json` 运行可能返回整条长行的 `rg`、`grep`、`cat`，也不得完整读取后输出到工具上下文。
+- 查询副本缺失或原件 SHA 与 manifest 不一致时，运行 `python3 scripts/evidence_query.py generate --force`，随后运行 `python3 scripts/evidence_query.py verify`；查询失败不得退化为全文读取。
+- 默认使用功能、路由、API、符号或 Evidence ID 查询；只有已有证据给出源码位置时才按偏移查询，并明确区分 Unicode、UTF-16 与 byte 单位。扩大输出必须显式设置 `--max-chars`，且不得绕过 65,536 字符硬上限。
+- `rea-analysis/xueyuan/query-bundle/` 仅是可重建的查询视图，原始文件仍是唯一事实源。不得执行或手工编辑分片，也不得用业务摘录替代原件。
 
 ## 单一契约、单一数据源
 

@@ -151,12 +151,13 @@ test('消息页切换筛选重置分页；读取和全部已读失败可恢复',
   ).toBeVisible()
   await page.getByRole('button', { name: '全部已读', exact: true }).click()
   await expect(
-    page.getByText('全部已读失败，请重试。', { exact: true }),
+    page.locator('[data-sonner-toast]').filter({ hasText: '业务请求失败' }),
   ).toBeVisible()
   await page.getByRole('button', { name: '全部已读', exact: true }).click()
   await expect(
-    page.getByText('全部已读失败，请重试。', { exact: true }),
-  ).toHaveCount(0)
+    page.locator('[data-sonner-toast]').filter({ hasText: '业务请求失败' }),
+  ).toHaveCount(1)
+  await expect.poll(() => allAttempts).toBe(2)
   await page.setViewportSize({ width: 390, height: 844 })
   for (const dark of [false, true]) {
     await page.evaluate(
@@ -313,7 +314,7 @@ test('公共通知函数式打开详情、刷新未读数量、全部已读和�
   ).toBeVisible()
 })
 
-test('待办函数式打开，校验与失败保留，创建完成删除同步首页和数量', async ({
+test('待办函数式打开，失败保留，创建完成删除同步首页和数量', async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date('2026-10-20T12:00:00+08:00'))
@@ -339,7 +340,7 @@ test('待办函数式打开，校验与失败保留，创建完成删除同步�
     })
     const item = { id: 'todo-1', ...body, if_finish: false }
     items = [item]
-    return route.fulfill({ json: item })
+    return route.fulfill({ json: { id: item.id } })
   })
   await page.route('**/api/front/user/todo/batch/', (route) => {
     const body = route.request().postDataJSON()
@@ -356,15 +357,13 @@ test('待办函数式打开，校验与失败保留，创建完成删除同步�
   await page.getByRole('button', { name: '学习指南', exact: true }).click()
   await page.getByRole('button', { name: '待办 0', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '待办事项', exact: true })
-  await dialog.getByRole('button', { name: '保存待办' }).click()
-  await expect(
-    dialog.getByText('请输入事项内容', { exact: true }),
-  ).toBeVisible()
   await dialog.getByLabel('待办内容', { exact: true }).fill('模拟待办')
   await dialog.getByLabel('待办时间', { exact: true }).fill('2026-10-20T15:00')
   await dialog.getByRole('button', { name: '保存待办' }).click()
   await expect(
-    dialog.getByText('待办创建失败，输入内容已保留，请重试。'),
+    page
+      .locator('[data-sonner-toast]')
+      .filter({ hasText: '新建待办响应不符合契约' }),
   ).toBeVisible()
   await expect(dialog.getByLabel('待办内容', { exact: true })).toHaveValue(
     '模拟待办',

@@ -13,6 +13,7 @@ import {
   type NodeProps,
 } from '@xyflow/react'
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
 
 import { useTopologyEditorInteraction } from './editor-store'
 import { deterministicX6Graph } from './sample'
@@ -163,8 +164,6 @@ export function TopologyPage() {
   const selectedNodeId = useTopologyEditorInteraction(
     (state) => state.selectedNodeId,
   )
-  const notice = useTopologyEditorInteraction((state) => state.notice)
-  const setNotice = useTopologyEditorInteraction((state) => state.setNotice)
   const resetInteraction = useTopologyEditorInteraction((state) => state.reset)
 
   const selectedNode = nodes.find((node) => node.id === selectedNodeId)
@@ -186,7 +185,7 @@ export function TopologyPage() {
           : node,
       ),
     )
-    setNotice('节点名称已应用，尚未写回 X6 格式。')
+    toast.info('节点名称已应用，尚未写回 X6 格式。')
   }
 
   function saveAndReopen() {
@@ -203,7 +202,7 @@ export function TopologyPage() {
       passthroughCells: reopened.passthroughCells,
       rawGraph: reopened.rawGraph,
     })
-    setNotice('已从 X6 格式重新打开；未知字段与未支持图元仍被保留。')
+    toast.info('已从 X6 格式重新打开；未知字段与未支持图元仍被保留。')
   }
 
   return (
@@ -264,7 +263,6 @@ export function TopologyPage() {
           <button type="button" onClick={saveAndReopen}>
             保存并重开
           </button>
-          {notice ? <p className="editor-notice">{notice}</p> : null}
         </aside>
       </div>
     </section>

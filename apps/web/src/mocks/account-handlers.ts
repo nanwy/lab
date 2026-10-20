@@ -28,12 +28,9 @@ export function createAccountHandlers() {
     http.post(url('/front/login/'), async ({ request }) => {
       const body = (await request.json()) as Record<string, unknown>
       if (body.code !== '2468')
-        return HttpResponse.json({ code: '验证码错误' }, { status: 400 })
+        return HttpResponse.json({ error: '验证码错误' }, { status: 400 })
       if (body.username !== 'learner' || body.password !== password)
-        return HttpResponse.json(
-          { password: '用户名或密码错误' },
-          { status: 400 },
-        )
+        return HttpResponse.json({ error: '用户名或密码错误' }, { status: 400 })
       localStorage.setItem('token', 'mock-session')
       return HttpResponse.json({ status: 1 })
     }),
@@ -62,12 +59,8 @@ export function createAccountHandlers() {
       if (!authorized(request)) return denied()
       const body = (await request.json()) as Record<string, unknown>
       if (body.cipher !== password)
-        return HttpResponse.json({ cipher: '原密码错误' }, { status: 400 })
-      if (
-        typeof body.password !== 'string' ||
-        !body.password ||
-        body.password !== body.confirm_password
-      )
+        return HttpResponse.json({ error: '模拟改密失败' }, { status: 400 })
+      if (typeof body.password !== 'string' || !body.password)
         return HttpResponse.json({ status: 2 })
       password = body.password
       return HttpResponse.json({ status: 1 })

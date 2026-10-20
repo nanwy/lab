@@ -1,6 +1,8 @@
 import NiceModal, { useModal } from '@ebay/nice-modal-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
+import { ApiError } from '../api'
 import { Button } from '@workspace/ui/components/button'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
 import {
@@ -22,7 +24,6 @@ import {
   type Notice,
 } from '../api/activity'
 import { usePageSignal } from '../auth/use-page-signal'
-import { useAccessFailure } from '../auth/access'
 import { ActivityTable, ListPagination } from './ActivityTable'
 import { refreshNotices } from './queries'
 
@@ -89,10 +90,8 @@ export const NoticeDetailModal = NiceModal.create(
 
 export function NoticesPanel({ size = 10 }: { size?: number }) {
   const [filter, setFilter] = useState({ page: 1, isRead: 0 })
-  const [error, setError] = useState('')
   const client = useQueryClient()
   const signalForPage = usePageSignal()
-  const accessFailure = useAccessFailure()
   const list = useQuery({
     queryKey: [...activityKeys.notices, filter, size],
     queryFn: ({ signal }) =>
@@ -132,7 +131,6 @@ export function NoticesPanel({ size = 10 }: { size?: number }) {
   ]
   async function readAll() {
     const signal = signalForPage()
-    setError('')
     try {
       await readAllNotices(signal)
       if (!signal.aborted) {
@@ -140,8 +138,11 @@ export function NoticesPanel({ size = 10 }: { size?: number }) {
         await refreshNotices(client)
       }
     } catch (error) {
-      if (!signal.aborted && !accessFailure(error))
-        setError('全部已读失败，请重试。')
+      if (signal.aborted) return
+      if (!(error instanceof ApiError) || !error.handled)
+        toast.error(
+          error instanceof ApiError ? error.message : '全部已读失败，请重试',
+        )
     }
   }
   return (
@@ -163,11 +164,6 @@ export function NoticesPanel({ size = 10 }: { size?: number }) {
           全部已读
         </LoadingButton>
       </div>
-      {error ? (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
       {list.isPending ? (
         <p role="status">正在读取消息…</p>
       ) : list.isError ? (

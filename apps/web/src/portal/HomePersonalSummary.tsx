@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
 import { Button } from '@workspace/ui/components/button'
 import { getHomeCollections } from '../api/portal'
 import { dateKey, TodoCalendar } from '../activity/TodoCalendar'
@@ -17,7 +18,6 @@ export function HomePersonalSummary() {
   })
   const [date, setDate] = useState(new Date())
   const [mode, setMode] = useState('month')
-  const [notice, setNotice] = useState('')
   const selected = dateKey(date)
   const visible = todos.data?.filter((t) => t.set_time.startsWith(selected))
   return (
@@ -107,7 +107,8 @@ export function HomePersonalSummary() {
                   <Button
                     variant="ghost"
                     onClick={() => {
-                      if (!item.is_status) setNotice('该资源已被下线无法查看！')
+                      if (!item.is_status)
+                        toast.error('该资源已被下线无法查看！')
                     }}
                   >
                     {item.extend_info.name}
@@ -119,7 +120,6 @@ export function HomePersonalSummary() {
         ) : (
           <p className="text-muted-foreground">暂无收藏</p>
         )}
-        {notice ? <p role="status">{notice}</p> : null}
       </section>
     </aside>
   )

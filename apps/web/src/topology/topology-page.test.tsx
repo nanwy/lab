@@ -1,9 +1,14 @@
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from '@workspace/ui/components/sonner'
 
 import { createAppRouter } from '../router'
+
+vi.mock('@workspace/ui/components/sonner', () => ({
+  toast: { info: vi.fn(), error: vi.fn() },
+}))
 
 ;(
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -23,6 +28,7 @@ afterEach(async () => {
   if (root) await act(async () => root?.unmount())
   root = undefined
   container.remove()
+  vi.clearAllMocks()
 })
 
 async function renderTopology() {
@@ -94,6 +100,8 @@ describe('topology compatibility route', () => {
     await act(async () => click(save))
 
     expect(container.textContent).toContain('核心路由器（已校准）')
-    expect(container.textContent).toContain('已从 X6 格式重新打开')
+    expect(toast.info).toHaveBeenLastCalledWith(
+      '已从 X6 格式重新打开；未知字段与未支持图元仍被保留。',
+    )
   })
 })

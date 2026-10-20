@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
+import { ApiError } from '../api'
 import { useForm } from '@tanstack/react-form'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@workspace/ui/components/button'
@@ -27,7 +28,6 @@ import {
   type Experiment,
   type ExperimentDetail,
 } from '../api/experiments'
-import { useAccessFailure } from '../auth/access'
 import { usePageSignal } from '../auth/use-page-signal'
 
 export function ExperimentForm({
@@ -41,10 +41,8 @@ export function ExperimentForm({
   saved: () => Promise<void>
   cancel: () => void
 }) {
-  const [error, setError] = useState('')
   const client = useQueryClient()
   const signalForPage = usePageSignal()
-  const accessFailure = useAccessFailure()
   const tags = useQuery({
     queryKey: ['experiment-tags'],
     queryFn: ({ signal }) => getExperimentTags(signal),
@@ -60,30 +58,23 @@ export function ExperimentForm({
     },
     validators: { onSubmit: experimentInfoSchema },
     onSubmit: async ({ value }) => {
-      setError('')
       const signal = signalForPage()
       const values = experimentInfoSchema.parse(value)
-      try {
-        await saveExperiment(
-          detail
-            ? {
-                ...values,
-                release_type: detail.release_type,
-                max_duration:
-                  detail.release_type === 2 ? 2 : detail.max_duration,
-                category: detail.tags_category,
-              }
-            : { name: values.name, desc: values.desc },
-          experiment?.id,
-          signal,
-        )
-        if (signal.aborted) return
-        await client.invalidateQueries({ queryKey: experimentKeys.all })
-        if (!signal.aborted) await saved()
-      } catch (failure) {
-        if (signal.aborted || accessFailure(failure)) return
-        setError('保存失败，输入内容已保留，请重试。')
-      }
+      await saveExperiment(
+        detail
+          ? {
+              ...values,
+              release_type: detail.release_type,
+              max_duration: detail.release_type === 2 ? 2 : detail.max_duration,
+              category: detail.tags_category,
+            }
+          : { name: values.name, desc: values.desc },
+        experiment?.id,
+        signal,
+      )
+      if (signal.aborted) return
+      await client.invalidateQueries({ queryKey: experimentKeys.all })
+      if (!signal.aborted) await saved()
     },
   })
   return (
@@ -91,7 +82,12 @@ export function ExperimentForm({
       className="space-y-5"
       onSubmit={(event) => {
         event.preventDefault()
-        void form.handleSubmit()
+        void form.handleSubmit().catch((error: unknown) => {
+          if (!(error instanceof ApiError) || !error.handled)
+            toast.error(
+              error instanceof ApiError ? error.message : '提交失败，请重试',
+            )
+        })
       }}
     >
       <FieldGroup>
@@ -200,11 +196,6 @@ export function ExperimentForm({
           />
         ) : null}
       </FieldGroup>
-      {error ? (
-        <p role="alert" className="text-destructive">
-          {error}
-        </p>
-      ) : null}
       <form.Subscribe
         selector={(state) => state.isSubmitting}
         children={(isSubmitting) => (

@@ -22,7 +22,7 @@ it('在线 JSON 与本地 multipart 激活保持原站字段，区分激活失�
         activate_code: 'sample',
         code: '2468',
       })
-      return Response.json({ status: 2, message: 'private service detail' })
+      return Response.json({ status: 2, message: '激活码无效' })
     }
     expect(String(url)).toMatch(/\/offline\/$/)
     expect(options?.body).toBeInstanceOf(FormData)
@@ -43,7 +43,7 @@ it('在线 JSON 与本地 multipart 激活保持原站字段，区分激活失�
       activate_code: 'sample',
       code: '2468',
     }),
-  ).resolves.toEqual({ status: 2 })
+  ).rejects.toMatchObject({ kind: 'business', message: '激活码无效' })
   await expect(
     activateOffline('sample', new File(['test'], 'license.lic')),
   ).resolves.toEqual({ status: 1 })

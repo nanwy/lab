@@ -2,6 +2,8 @@ import { useForm } from '@tanstack/react-form'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useBlocker } from '@tanstack/react-router'
 import { useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
+import { ApiError } from '../api'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
@@ -14,7 +16,6 @@ import {
   FieldSet,
   FieldLegend,
 } from '@workspace/ui/components/field'
-import { Alert, AlertDescription } from '@workspace/ui/components/alert'
 import { Checkbox } from '@workspace/ui/components/checkbox'
 import {
   Avatar,
@@ -40,7 +41,6 @@ import {
 } from '../api/auth'
 import { currentUserQueryOptions, establishSession } from './session'
 import { usePageSignal } from './use-page-signal'
-import { useAccessFailure } from './access'
 import { NoticesPanel } from '../activity/Notices'
 import { CollectionsPanel } from '../activity/CollectionsPanel'
 
@@ -161,35 +161,23 @@ function ProfileEditor({ user }: { user: CurrentUser }) {
   })
   const client = useQueryClient()
   const pageSignal = usePageSignal()
-  const accessFailure = useAccessFailure()
   const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
   const form = useForm({
     defaultValues: profileValues(user),
     validators: { onSubmit: profileFormSchema },
     onSubmit: async ({ value, formApi }) => {
       const signal = pageSignal()
-      setError('')
-      setNotice('')
-      try {
-        const saved = await saveProfile(value, user.extend_info, signal)
-        if (signal.aborted) return
-        establishSession(client, saved)
-        formApi.reset(profileValues(saved))
-        setNotice('基本信息已保存。')
-      } catch (error) {
-        if (!signal.aborted && !accessFailure(error))
-          setError('基本信息保存失败，编辑内容已保留，请重试。')
-      }
+      const saved = await saveProfile(value, user.extend_info, signal)
+      if (signal.aborted) return
+      establishSession(client, saved)
+      formApi.reset(profileValues(saved))
+      toast.success('基本信息已保存。')
     },
   })
   async function changeAvatar(file: File) {
-    setError('')
-    setNotice('')
     const valid = avatarFileSchema.safeParse(file)
     if (!valid.success) {
-      setError(valid.error.issues[0]?.message ?? '头像文件无效')
+      toast.error(valid.error.issues[0]?.message ?? '头像文件无效')
       return
     }
     const signal = pageSignal()
@@ -198,10 +186,13 @@ function ProfileEditor({ user }: { user: CurrentUser }) {
       const saved = await uploadAvatar(file, signal)
       if (signal.aborted) return
       establishSession(client, saved)
-      setNotice('头像已更新。')
+      toast.success('头像已更新。')
     } catch (error) {
-      if (!signal.aborted && !accessFailure(error))
-        setError('头像上传失败，请重试。')
+      if (signal.aborted) return
+      if (!(error instanceof ApiError) || !error.handled)
+        toast.error(
+          error instanceof ApiError ? error.message : '头像上传失败，请重试',
+        )
     } finally {
       if (!signal.aborted) setUploading(false)
     }
@@ -213,7 +204,12 @@ function ProfileEditor({ user }: { user: CurrentUser }) {
         className="grid gap-5"
         onSubmit={(event) => {
           event.preventDefault()
-          form.handleSubmit()
+          void form.handleSubmit().catch((error: unknown) => {
+            if (!(error instanceof ApiError) || !error.handled)
+              toast.error(
+                error instanceof ApiError ? error.message : '提交失败，请重试',
+              )
+          })
         }}
       >
         <FieldGroup className="gap-4">
@@ -429,12 +425,6 @@ function ProfileEditor({ user }: { user: CurrentUser }) {
               </FieldSet>
             )}
           </form.Subscribe>
-          {error ? (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
-          {notice ? <p role="status">{notice}</p> : null}
           <form.Subscribe selector={(s) => s.isSubmitting}>
             {(busy) => (
               <LoadingButton type="submit" loading={busy} disabled={uploading}>

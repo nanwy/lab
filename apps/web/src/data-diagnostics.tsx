@@ -10,6 +10,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { useMemo, useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
 import { z } from 'zod'
 
 import { ApiError, apiClient } from './api'
@@ -50,32 +51,17 @@ function SampleEditor({
   sample: Sample
   onSaved: () => Promise<void>
 }) {
-  const [notice, setNotice] = useState('')
   const form = useForm({
     defaultValues: {
       name: sample.name,
       metadata: { aliases: [...sample.metadata.aliases] },
     },
     validators: { onSubmit: schema },
-    onSubmit: async ({ value, formApi }) => {
-      setNotice('')
-      try {
-        // Standard Schema validators validate without transforming the stored form value.
-        await updateSample(sample.id, schema.parse(value))
-        await onSaved()
-        setNotice('模拟保存成功，列表已刷新')
-      } catch (error) {
-        if (error instanceof ApiError && error.fieldErrors?.name) {
-          const message = error.fieldErrors.name
-          formApi.setFieldMeta('name', (meta) => ({
-            ...meta,
-            errorMap: { ...meta.errorMap, onServer: { message } },
-          }))
-        }
-        setNotice(
-          error instanceof ApiError ? error.message : '保存失败，请重试',
-        )
-      }
+    onSubmit: async ({ value }) => {
+      // Standard Schema validators validate without transforming the stored form value.
+      await updateSample(sample.id, schema.parse(value))
+      await onSaved()
+      toast.success('模拟保存成功，列表已刷新')
     },
   })
 
@@ -85,12 +71,17 @@ function SampleEditor({
       aria-label="样本编辑器"
     >
       <h2 className="text-xl font-semibold">编辑 {sample.id}</h2>
-      <p>名称输入“保留名称”可验证服务端字段错误。动态别名只属于模拟样本。</p>
+      <p>此页用于本地交互验证，样本与动态别名不代表真实业务接口。</p>
       <form
         className="grid max-w-xl gap-4"
         onSubmit={(event) => {
           event.preventDefault()
-          form.handleSubmit()
+          void form.handleSubmit().catch((error: unknown) => {
+            if (!(error instanceof ApiError) || !error.handled)
+              toast.error(
+                error instanceof ApiError ? error.message : '提交失败，请重试',
+              )
+          })
         }}
       >
         <FieldGroup className="gap-4">
@@ -109,11 +100,6 @@ function SampleEditor({
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(event) => {
-                      setNotice('')
-                      form.setFieldMeta('name', (meta) => ({
-                        ...meta,
-                        errorMap: { ...meta.errorMap, onServer: undefined },
-                      }))
                       field.handleChange(event.target.value)
                     }}
                   />
@@ -195,9 +181,6 @@ function SampleEditor({
               </Button>
             )}
           </form.Subscribe>
-          <p aria-live="polite" className="text-sm">
-            {notice}
-          </p>
         </FieldGroup>
       </form>
     </section>
@@ -232,7 +215,6 @@ function DataDiagnosticsContent() {
   const [selection, setSelection] = useState<RowSelectionState>({})
   const [editing, setEditing] = useState<Sample>()
   const [resetting, setResetting] = useState(false)
-  const [resetError, setResetError] = useState('')
   const query = useQuery({
     queryKey: ['sample-diagnostics', pagination, sorting, filter],
     queryFn: ({ signal }) =>
@@ -320,7 +302,6 @@ function DataDiagnosticsContent() {
   })
   async function reset() {
     setResetting(true)
-    setResetError('')
     try {
       await apiClient.request('/diagnostics/samples/reset', { method: 'POST' })
       setEditing(undefined)
@@ -329,8 +310,11 @@ function DataDiagnosticsContent() {
       setSorting([{ id: 'name', desc: false }])
       setFilter('')
       await queryClient.invalidateQueries({ queryKey: ['sample-diagnostics'] })
-    } catch {
-      setResetError('模拟重置失败，请重试')
+    } catch (error) {
+      if (!(error instanceof ApiError) || !error.handled)
+        toast.error(
+          error instanceof ApiError ? error.message : '重置失败，请重试',
+        )
     } finally {
       setResetting(false)
     }
@@ -360,7 +344,6 @@ function DataDiagnosticsContent() {
           重置模拟样本
         </Button>
       </div>
-      {resetError ? <p role="alert">{resetError}</p> : null}
       <p aria-live="polite">
         已选 {Object.values(selection).filter(Boolean).length}{' '}
         项（跨页保留）；共 {query.data?.total ?? 0} 项

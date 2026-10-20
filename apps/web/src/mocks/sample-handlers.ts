@@ -36,19 +36,8 @@ export function createSampleHandlers() {
       async ({ params, request }) => {
         const index = samples.findIndex((item) => item.id === params.id)
         if (index < 0)
-          return HttpResponse.json(
-            { message: '模拟样本不存在' },
-            { status: 404 },
-          )
+          return HttpResponse.json({ error: '模拟样本不存在' }, { status: 404 })
         const value = (await request.json()) as SampleInput
-        if (value.name === '保留名称')
-          return HttpResponse.json(
-            {
-              message: '模拟服务拒绝保存',
-              fieldErrors: { name: '该名称由模拟服务保留，请换一个名称' },
-            },
-            { status: 422 },
-          )
         if (
           !value.name?.trim() ||
           !Array.isArray(value.metadata?.aliases) ||
@@ -56,7 +45,7 @@ export function createSampleHandlers() {
             (alias) => typeof alias !== 'string' || !alias.trim(),
           )
         )
-          return HttpResponse.json({ message: '模拟字段无效' }, { status: 422 })
+          return HttpResponse.json({ error: '模拟字段无效' }, { status: 422 })
         samples[index] = { id: samples[index]!.id, ...value }
         return HttpResponse.json(samples[index])
       },

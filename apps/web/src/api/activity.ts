@@ -38,9 +38,13 @@ async function read<T>(
   return result.data
 }
 async function command(path: string, json: unknown, signal?: AbortSignal) {
-  const value = await apiClient.request(path, { method: 'POST', json, signal })
-  if (!z.object({ status: z.literal(1) }).safeParse(value).success)
-    throw new ApiError('business', '操作未成功，请重试')
+  await apiClient.request(path, {
+    method: 'POST',
+    json,
+    signal,
+    isBusinessFailure: (value) =>
+      !z.object({ status: z.literal(1) }).safeParse(value).success,
+  })
 }
 
 export function getNotices(
@@ -96,21 +100,20 @@ export async function getTodoCount(signal?: AbortSignal) {
   ).data.count
 }
 export const newTodoSchema = z.object({
-  content: z.string().trim().min(1, '请输入事项内容'),
-  set_time: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, '请选择待办时间'),
+  content: z.string(),
+  set_time: z.string(),
 })
 export async function addTodo(
   values: z.infer<typeof newTodoSchema>,
   signal?: AbortSignal,
 ) {
+  const input = newTodoSchema.parse(values)
   const value = await apiClient.request('/front/user/todo/', {
     method: 'POST',
-    json: newTodoSchema.parse(values),
+    json: { content: input.content || null, set_time: input.set_time || null },
     signal,
   })
-  const parsed = todoSchema.safeParse(value)
+  const parsed = z.object({ id }).safeParse(value)
   if (!parsed.success)
     throw new ApiError('invalid-response', '新建待办响应不符合契约')
   return parsed.data

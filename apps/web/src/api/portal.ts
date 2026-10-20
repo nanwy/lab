@@ -129,6 +129,8 @@ export async function saveRecommendationSettings(
       method: 'POST',
       json: { data: recommendationSettingsSchema.parse(values) },
       signal,
+      isBusinessFailure: (value) =>
+        !z.object({ status: z.literal(1) }).safeParse(value).success,
     }),
   )
 }

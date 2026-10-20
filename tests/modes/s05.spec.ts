@@ -99,7 +99,11 @@ test('深链概述编辑失败保留输入，保存重开一致，说明不执�
     async (route) => {
       if (route.request().method() === 'PATCH') {
         const data = route.request().postDataJSON()
-        if (++attempts === 1) return route.fulfill({ status: 500, json: {} })
+        if (++attempts === 1)
+          return route.fulfill({
+            status: 500,
+            json: { error: '实验暂时无法保存' },
+          })
         expect(data).toEqual({
           name: '修改后的实验',
           desc: '原始概述',
@@ -124,8 +128,11 @@ test('深链概述编辑失败保留输入，保存重开一致，说明不执�
     .fill('修改后的实验')
   await page.getByRole('button', { name: '保存', exact: true }).click()
   await expect(
-    page.getByText('保存失败，输入内容已保留，请重试。'),
+    page.locator('[data-sonner-toast]').filter({ hasText: '实验暂时无法保存' }),
   ).toBeVisible()
+  await expect(
+    page.locator('[data-sonner-toast]').filter({ hasText: '实验暂时无法保存' }),
+  ).toHaveCount(1)
   await expect(
     page.getByRole('textbox', { name: '实验名称', exact: true }),
   ).toHaveValue('修改后的实验')
@@ -184,7 +191,7 @@ test('场景库跨页保留单选，仅确认时导入，失败可重试', async
   expect(imports).toBe(0)
   await dialog.getByRole('button', { name: '保存', exact: true }).click()
   await expect(
-    dialog.getByText('导入失败，所选场景已保留，请重试。'),
+    page.locator('[data-sonner-toast]').filter({ hasText: '业务请求失败' }),
   ).toBeVisible()
   await dialog.getByRole('button', { name: '保存', exact: true }).click()
   await expect(dialog).not.toBeVisible()
@@ -234,7 +241,7 @@ test('删除失败保留记录，末页最后一条删除后回上一页', async
   const dialog = page.getByRole('alertdialog')
   await dialog.getByRole('button', { name: '确认删除' }).click()
   await expect(
-    dialog.getByText('删除失败，实验记录已保留，请重试。'),
+    page.locator('[data-sonner-toast]').filter({ hasText: '业务请求失败' }),
   ).toBeVisible()
   await dialog.getByRole('button', { name: '确认删除' }).click()
   await expect(dialog).not.toBeVisible()

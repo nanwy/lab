@@ -102,9 +102,15 @@ export function createActivityHandlers() {
     http.post(url('todo/'), async ({ request }) => {
       if (!allowed(request)) return denied()
       const body = (await request.json()) as {
-        content: string
-        set_time: string
+        content: string | null
+        set_time: string | null
       }
+      // 未确认空值的后端处理，不伪造可重新读取的待办对象。
+      if (body.content === null || body.set_time === null)
+        return HttpResponse.json(
+          { error: '模拟服务未定义空待办的保存结果' },
+          { status: 501 },
+        )
       const item = {
         id: crypto.randomUUID(),
         content: body.content,
@@ -112,7 +118,7 @@ export function createActivityHandlers() {
         if_finish: false,
       }
       save('todos', [...todos(), item])
-      return HttpResponse.json(item)
+      return HttpResponse.json({ id: item.id })
     }),
     http.post(url('todo/batch/'), async ({ request }) => {
       if (!allowed(request)) return denied()

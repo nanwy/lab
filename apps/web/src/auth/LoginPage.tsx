@@ -2,6 +2,7 @@ import { useForm } from '@tanstack/react-form'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
 
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
@@ -19,20 +20,16 @@ import {
   getLoginBackground,
   login,
   loginCredentialsSchema,
-  isSessionExpired,
 } from '../api/auth'
 import { ApiError } from '../api'
-import { appConfig } from '../config'
 import { currentUserQueryOptions, establishSession } from './session'
 import { usePageSignal } from './use-page-signal'
-import { useAccessFailure } from './access'
 
 export type LoginReason = 'expired' | 'signed-out' | 'password-changed'
 export function LoginPage({ reason }: { reason?: LoginReason }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const pageSignal = usePageSignal()
-  const handleAccessFailure = useAccessFailure()
   const background = useQuery({
     queryKey: ['platform', 'login-background'],
     queryFn: ({ signal }) => getLoginBackground(signal),
@@ -45,7 +42,6 @@ export function LoginPage({ reason }: { reason?: LoginReason }) {
   })
   const [captchaVersion, setCaptchaVersion] = useState(() => Date.now())
   const [captchaFailed, setCaptchaFailed] = useState(false)
-  const [submitError, setSubmitError] = useState('')
 
   useEffect(() => {
     if (reason === undefined && session.data)
@@ -55,44 +51,23 @@ export function LoginPage({ reason }: { reason?: LoginReason }) {
   const form = useForm({
     defaultValues: { username: '', password: '', code: '' },
     validators: { onSubmit: loginCredentialsSchema },
-    onSubmit: async ({ value, formApi }) => {
+    onSubmit: async ({ value }) => {
       const signal = pageSignal()
-      setSubmitError('')
+      let loggedIn = false
       try {
         await login(value, signal)
+        loggedIn = true
         const user = await getCurrentUser(signal)
         if (signal.aborted) return
         establishSession(queryClient, user)
         await navigate({ to: '/basic/home', replace: true })
       } catch (error) {
-        if (signal.aborted || handleAccessFailure(error)) return
-        setCaptchaFailed(false)
-        setCaptchaVersion(Date.now())
-        if (error instanceof ApiError) {
-          for (const field of ['username', 'password', 'code'] as const) {
-            const message = error.fieldErrors?.[field]
-            if (message) {
-              formApi.setFieldMeta(field, (meta) => ({
-                ...meta,
-                errorMap: { ...meta.errorMap, onServer: { message } },
-              }))
-            }
-          }
-          setSubmitError(
-            error.kind === 'network'
-              ? '网络连接失败，请检查后重试'
-              : error.kind === 'invalid-response'
-                ? error.message
-                : error.kind === 'timeout'
-                  ? '请求超时，请重试'
-                  : error.status !== undefined && error.status >= 500
-                    ? '服务暂时不可用，请稍后重试'
-                    : error.fieldErrors
-                      ? ''
-                      : '用户名、密码或验证码错误',
+        if (signal.aborted) return
+        if (!loggedIn) refreshCaptcha()
+        if (!(error instanceof ApiError) || !error.handled) {
+          toast.error(
+            error instanceof ApiError ? error.message : '提交失败，请重试',
           )
-        } else {
-          setSubmitError('登录失败，请重试')
         }
       }
     },
@@ -134,26 +109,6 @@ export function LoginPage({ reason }: { reason?: LoginReason }) {
           >
             平台登录
           </h2>
-          {background.isError ? (
-            <p
-              className="mb-4 text-center text-sm text-destructive"
-              role="alert"
-            >
-              平台配置读取失败。
-              <Button
-                type="button"
-                variant="link"
-                onClick={() => void background.refetch()}
-              >
-                重试配置
-              </Button>
-            </p>
-          ) : null}
-          {appConfig.mockEnabled ? (
-            <p className="mb-4 text-center text-sm text-muted-foreground">
-              本地模拟：learner / xueyuan123；验证码 2468
-            </p>
-          ) : null}
           {reason === 'expired' ? (
             <p
               className="mb-4 text-center text-sm text-muted-foreground"
@@ -178,27 +133,11 @@ export function LoginPage({ reason }: { reason?: LoginReason }) {
               密码修改成功，请使用新密码重新登录。
             </p>
           ) : null}
-          {session.isFetching ? (
-            <p
-              className="mb-4 text-center text-sm text-muted-foreground"
-              role="status"
-            >
-              正在检查会话…
-            </p>
-          ) : null}
-          {session.isError && !isSessionExpired(session.error) ? (
-            <p
-              className="mb-4 text-center text-sm text-destructive"
-              role="alert"
-            >
-              无法检查已有会话，仍可尝试登录。
-            </p>
-          ) : null}
           <form
             className="grid gap-4"
             onSubmit={(event) => {
               event.preventDefault()
-              form.handleSubmit()
+              void form.handleSubmit()
             }}
           >
             <FieldGroup className="gap-4">
@@ -217,12 +156,6 @@ export function LoginPage({ reason }: { reason?: LoginReason }) {
                         autoComplete="username"
                         value={field.state.value}
                         onBlur={field.handleBlur}
-                        onFocus={() => {
-                          form.setFieldMeta('username', (meta) => ({
-                            ...meta,
-                            errorMap: { ...meta.errorMap, onServer: undefined },
-                          }))
-                        }}
                         onChange={(event) =>
                           field.handleChange(event.target.value)
                         }
@@ -250,12 +183,6 @@ export function LoginPage({ reason }: { reason?: LoginReason }) {
                         type="password"
                         value={field.state.value}
                         onBlur={field.handleBlur}
-                        onFocus={() => {
-                          form.setFieldMeta('password', (meta) => ({
-                            ...meta,
-                            errorMap: { ...meta.errorMap, onServer: undefined },
-                          }))
-                        }}
                         onChange={(event) =>
                           field.handleChange(event.target.value)
                         }
@@ -283,15 +210,6 @@ export function LoginPage({ reason }: { reason?: LoginReason }) {
                           aria-invalid={isInvalid}
                           value={field.state.value}
                           onBlur={field.handleBlur}
-                          onFocus={() => {
-                            form.setFieldMeta('code', (meta) => ({
-                              ...meta,
-                              errorMap: {
-                                ...meta.errorMap,
-                                onServer: undefined,
-                              },
-                            }))
-                          }}
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
@@ -324,11 +242,6 @@ export function LoginPage({ reason }: { reason?: LoginReason }) {
                   )
                 }}
               />
-              {submitError ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {submitError}
-                </p>
-              ) : null}
               <form.Subscribe selector={(state) => state.isSubmitting}>
                 {(submitting) => (
                   <LoadingButton type="submit" loading={submitting}>

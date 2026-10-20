@@ -57,13 +57,21 @@ test('validates login, restores the current user and handles session expiry', as
   await page.getByLabel('密码', { exact: true }).fill('wrong-password')
   await page.getByRole('textbox', { name: '验证码', exact: true }).fill('0000')
   await page.getByRole('button', { name: '登录', exact: true }).click()
-  await expect(page.getByText('验证码错误', { exact: true })).toBeVisible()
+  const captchaError = page
+    .locator('[data-sonner-toast]')
+    .filter({ hasText: '验证码错误' })
+  await expect(captchaError).toBeVisible()
+  await expect(captchaError).toHaveCount(1)
+  await expect(page.locator('[data-slot="field-error"]')).toHaveCount(0)
 
   await page.getByRole('textbox', { name: '验证码', exact: true }).fill('2468')
   await page.getByRole('button', { name: '登录', exact: true }).click()
-  await expect(
-    page.getByText('用户名或密码错误', { exact: true }),
-  ).toBeVisible()
+  const passwordError = page
+    .locator('[data-sonner-toast]')
+    .filter({ hasText: '用户名或密码错误' })
+  await expect(passwordError).toBeVisible()
+  await expect(passwordError).toHaveCount(1)
+  await expect(page.locator('[data-slot="field-error"]')).toHaveCount(0)
 
   await page.getByLabel('密码', { exact: true }).fill('xueyuan123')
   await page.getByRole('button', { name: '登录', exact: true }).click()
@@ -191,7 +199,7 @@ test('pages, sorts and filters the full sample collection while retaining row se
   await expect(page.getByText('第 1 / 1 页', { exact: true })).toBeVisible()
 })
 
-test('validates nested fields, corrects a server rejection and refreshes the saved sample', async ({
+test('validates nested fields and refreshes the saved sample', async ({
   page,
   runtimeErrors,
 }) => {
@@ -207,19 +215,13 @@ test('validates nested fields, corrects a server rejection and refreshes the sav
   await expect(
     page.getByText('名称至少 2 个字符', { exact: true }),
   ).toBeVisible()
-  await name.fill('保留名称')
+  await name.fill('样本 00 浏览器已更新')
   await page.getByRole('button', { name: '添加别名', exact: true }).click()
   await save.click()
   await expect(page.getByText('别名不能为空', { exact: true })).toBeVisible()
   await page
     .getByRole('textbox', { name: '别名 2', exact: true })
     .fill('浏览器嵌套别名')
-  await save.click()
-  await expect(
-    page.getByText('该名称由模拟服务保留，请换一个名称', { exact: true }),
-  ).toBeVisible()
-  await expect(name).toHaveAttribute('aria-invalid', 'true')
-  await name.fill('样本 00 浏览器已更新')
   await save.click()
   await expect(
     page.getByText('模拟保存成功，列表已刷新', { exact: true }),
@@ -238,9 +240,7 @@ test('validates nested fields, corrects a server rejection and refreshes the sav
   await expect(
     page.getByRole('region', { name: '样本编辑器', exact: true }),
   ).toHaveCount(0)
-  expect(runtimeErrors.splice(0)).toEqual([
-    'Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)',
-  ])
+  expect(runtimeErrors.splice(0)).toEqual([])
 })
 
 test('mounts custom graph nodes, edits and reopens the sample, then unmounts safely', async ({

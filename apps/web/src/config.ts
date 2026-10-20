@@ -39,7 +39,7 @@ export function readAppConfig(env: AppEnvironment) {
   }
   return Object.freeze({
     apiBaseUrl: baseUrl.replace(/\/$/, ''),
-    mockEnabled: env.DEV && env.VITE_ENABLE_MSW !== 'false',
+    mockEnabled: env.DEV && env.VITE_ENABLE_MSW === 'true',
   })
 }
 

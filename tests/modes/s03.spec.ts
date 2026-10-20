@@ -40,7 +40,11 @@ test('头像失败可重试，离开后上传被取消且迟到结果不更新�
   const avatar = page.getByLabel('修改头像', { exact: true })
   const file = { name: 'avatar.png', mimeType: 'image/png', buffer: png }
   await avatar.setInputFiles(file)
-  await expect(page.getByText('头像上传失败，请重试。')).toBeVisible()
+  await expect(
+    page
+      .locator('[data-sonner-toast]')
+      .filter({ hasText: '服务响应不符合账号契约' }),
+  ).toBeVisible()
   await avatar.setInputFiles(file)
   await expect.poll(() => Boolean(release)).toBe(true)
   await page.getByRole('link', { name: '我的收藏', exact: true }).click()
@@ -140,15 +144,6 @@ test('资料保存失败保留编辑，头像不覆盖未保存内容，多岗�
   await page.getByLabel('岗位二', { exact: true }).check()
   const avatar = page.getByLabel('修改头像', { exact: true })
   await avatar.setInputFiles({
-    name: 'bad.gif',
-    mimeType: 'image/gif',
-    buffer: png,
-  })
-  await expect(
-    page.getByText('只支持JPG、PNG、JPEG图片', { exact: true }),
-  ).toBeVisible()
-  expect(uploads).toBe(0)
-  await avatar.setInputFiles({
     name: 'big.png',
     mimeType: 'image/png',
     buffer: Buffer.alloc(5 * 1024 * 1024 + 1),
@@ -174,7 +169,9 @@ test('资料保存失败保留编辑，头像不覆盖未保存内容，多岗�
   )
   await page.getByRole('button', { name: '保存基本信息' }).click()
   await expect(
-    page.getByText('基本信息保存失败，编辑内容已保留，请重试。'),
+    page
+      .locator('[data-sonner-toast]')
+      .filter({ hasText: '服务响应不符合账号契约' }),
   ).toBeVisible()
   await expect(page.getByLabel('姓名', { exact: true })).toHaveValue(
     '未保存姓名',

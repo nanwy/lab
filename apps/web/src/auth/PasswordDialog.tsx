@@ -2,6 +2,7 @@ import { useForm } from '@tanstack/react-form'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
@@ -11,7 +12,6 @@ import {
   FieldLabel,
   FieldError,
 } from '@workspace/ui/components/field'
-import { Alert, AlertDescription } from '@workspace/ui/components/alert'
 import {
   Dialog,
   DialogContent,
@@ -28,26 +28,21 @@ import {
 } from '../api/auth'
 import { clearSession } from './session'
 import { usePageSignal } from './use-page-signal'
-import { useAccessFailure } from './access'
 
 export function PasswordDialog({ close }: { close: () => void }) {
   const [changed, setChanged] = useState(false)
-  const [error, setError] = useState('')
   const client = useQueryClient()
   const navigate = useNavigate()
   const pageSignal = usePageSignal()
-  const accessFailure = useAccessFailure()
   async function finishSignOut(signal: AbortSignal) {
-    setError('')
     try {
-      await logout(signal)
+      await logout(signal, true)
     } catch (error) {
       if (signal.aborted) return
       // 改密可能已使服务端会话失效，此时无需重复退出。
       if (!isSessionExpired(error)) {
-        if (!accessFailure(error))
-          setError('密码已修改，但退出失败。请重试退出，无需再次修改密码。')
-        return
+        toast.error('密码已修改，但退出失败。请重试退出，无需再次修改密码。')
+        throw error
       }
     }
     if (signal.aborted) return
@@ -63,29 +58,13 @@ export function PasswordDialog({ close }: { close: () => void }) {
     validators: { onSubmit: passwordChangeSchema },
     onSubmit: async ({ value, formApi }) => {
       const signal = pageSignal()
-      setError('')
+      await changePassword(value, signal)
+      if (signal.aborted) return
+      setChanged(true)
       try {
-        await changePassword(value, signal)
-        if (signal.aborted) return
-        setChanged(true)
         await finishSignOut(signal)
+      } finally {
         if (!signal.aborted) formApi.reset()
-      } catch (error) {
-        if (signal.aborted || accessFailure(error)) return
-        if (error instanceof ApiError && error.fieldErrors) {
-          for (const name of [
-            'cipher',
-            'password',
-            'confirm_password',
-          ] as const) {
-            const message = error.fieldErrors[name]
-            if (message)
-              formApi.setFieldMeta(name, (meta) => ({
-                ...meta,
-                errorMap: { ...meta.errorMap, onServer: { message } },
-              }))
-          }
-        } else setError('密码修改失败，请检查输入或稍后重试。')
       }
     },
   })
@@ -107,7 +86,15 @@ export function PasswordDialog({ close }: { close: () => void }) {
           className="grid gap-4"
           onSubmit={(event) => {
             event.preventDefault()
-            if (!changed) form.handleSubmit()
+            if (!changed)
+              void form.handleSubmit().catch((error: unknown) => {
+                if (!(error instanceof ApiError) || !error.handled)
+                  toast.error(
+                    error instanceof ApiError
+                      ? error.message
+                      : '提交失败，请重试',
+                  )
+              })
           }}
         >
           <FieldGroup className="gap-4">
@@ -131,10 +118,6 @@ export function PasswordDialog({ close }: { close: () => void }) {
                       onBlur={field.handleBlur}
                       onChange={(e) => {
                         field.handleChange(e.target.value)
-                        form.setFieldMeta('cipher', (meta) => ({
-                          ...meta,
-                          errorMap: { ...meta.errorMap, onServer: undefined },
-                        }))
                       }}
                     />
                     {isInvalid && (
@@ -164,10 +147,6 @@ export function PasswordDialog({ close }: { close: () => void }) {
                       onBlur={field.handleBlur}
                       onChange={(e) => {
                         field.handleChange(e.target.value)
-                        form.setFieldMeta('password', (meta) => ({
-                          ...meta,
-                          errorMap: { ...meta.errorMap, onServer: undefined },
-                        }))
                       }}
                     />
                     {isInvalid && (
@@ -197,10 +176,6 @@ export function PasswordDialog({ close }: { close: () => void }) {
                       onBlur={field.handleBlur}
                       onChange={(e) => {
                         field.handleChange(e.target.value)
-                        form.setFieldMeta('confirm_password', (meta) => ({
-                          ...meta,
-                          errorMap: { ...meta.errorMap, onServer: undefined },
-                        }))
                       }}
                     />
                     {isInvalid && (
@@ -212,11 +187,6 @@ export function PasswordDialog({ close }: { close: () => void }) {
             />
             {changed ? (
               <p role="status">密码已修改，请退出后使用新密码登录。</p>
-            ) : null}
-            {error ? (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
             ) : null}
             <div className="flex justify-end gap-3">
               <Button
@@ -235,6 +205,10 @@ export function PasswordDialog({ close }: { close: () => void }) {
                     onClick={
                       changed ? () => finishSignOut(pageSignal()) : undefined
                     }
+                    onError={(error) => {
+                      if (!(error instanceof ApiError) || !error.handled)
+                        globalThis.reportError(error)
+                    }}
                   >
                     {changed ? '重试退出' : '确定修改'}
                   </LoadingButton>

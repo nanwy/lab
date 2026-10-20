@@ -3,6 +3,20 @@ import { getExperimentTopology, saveExperimentTopology } from './topology'
 
 afterEach(() => vi.unstubAllGlobals())
 
+it('新增资源追踪随图保存，资源ID零也保留', async () => {
+  let body: unknown
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (_url: URL, options: RequestInit) => {
+      if (options.method === 'POST') body = JSON.parse(String(options.body))
+      return Response.json(options.method === 'POST' ? true : { cells: [] })
+    }),
+  )
+  const graph = await getExperimentTopology('one')
+  await saveExperimentTopology('one', graph, undefined, [0, 18])
+  expect(body).toEqual({ topo: { cells: [] }, last_node: [0, 18] })
+})
+
 it('实验图通过 topo_id 读取，保存后重新读取恢复 X6 全部语义', async () => {
   let stored: unknown = { lock: false, cells: [] }
   vi.stubGlobal(

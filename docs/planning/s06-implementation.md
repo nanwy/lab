@@ -1,5 +1,29 @@
 # S06 实施记录
 
+## 02：设备资源、配置与合法网卡链路（2026-10-20）
+
+资源来自三个直接数组接口：`node/last_operat/?search=…&nopage=1`（前十项）、`node/template/?search=…&nopage=1`、`node/list/?nopage=0`。按 classify/device_type 分类折叠，支持200ms搜索、拖放与点选放置、加载/空数据/失败重试。没有添加实验 id/task_type 筛选、固定资源数量或配额。基本元素/岗位由03负责，节点模板保存/删除由04负责。
+
+创建 POST `/front/topo/{topo_id}/node/` 直接发送完整资源（保留未知字段），设置 status0，生成新 UUID 同时写入 device_id/config_info.node_id；成功响应后才在画布添加设备，data_id 为响应业务行 id。React Flow screenToFlowPosition 处理平移/缩放；新设备有四向磁吸点，和业务 NIC 数组索引分别管理。last_node 追踪源资源ID，随 draw 保存，失败保留，成功只清除该提交批次。
+
+节点配置 PATCH 的 URL 使用画布 UUID，body 合并原 nodeInfo、编辑值并强制 config_info.node_id。配置通过 `/front/node/template/define/` 按 engin 驱动，覆盖 object/array、number/integer/string/boolean/enum、read_only/maxLength/info/big/default/required星号；不添加原实现没有的普遍必填验证。数量唯一来源 `schema.properties._config.port_numbers`；engin10禁止数组增删。数组 schema 的 port_type 为 port 时，新行 MAC 沿用原十进制末节+1算法，未将其推广为可靠MAC规范。镜像详情 GET `/front/node/image/list/{images_id}/` 返回单对象 name，显示只读名称；security_groups缺少原选项加载，保留原值；data-url原上传空实现，明确不可用。节点图标按 FormData file/mode=node_template 上传，status1.data.url 写回 logo。网关空字符串按原转换 null。
+
+业务链路禁止环路，允许多重连线，但同一节点 NIC 不能重复占用；0是合法网卡值。创建 POST edge 时，API dst对应画布 source，src对应target；topo_nodea/topo_nodez使用 data_id。线路只支持 normal/orth，编辑时两端网卡只读，不调用原入口未使用的 PATCH edge。保留已有 vertices/router/connector/attrs与未知字段；显示NIC标签。原入口没有独立折点编辑器证据，因此只保留折点，不添加编辑控件。
+
+选中工具栏、双击、右键、Delete/Backspace统一遵守 readOnly/shared/lock；业务节点右键按 UUID GET `/front/topo/{uuid}/`，status1.data才开放菜单，失败可重新右键重试。删除 POST edge_node 使用 node_list/edge_list业务行ID；成功才移除画布对象及关联边（包含未渲染边），同步父 children。组的编辑/删除菜单未在02开放。节点/连线请求期间拦截离页，失败保留表单/画布；表单编辑同样纳入未保存保护。
+
+刻意差异：数组采用追加与删除末项，避免网卡索引前移使既有业务链路错绑，连接中的末项也不能删；原每行删除未完整复刻，非 ports 数组也采用末项操作。图保存仍由显式“保存拓扑”完成，业务节点/链路请求成功不被冒充为 draw 已保存。真实 schema 响应及线上失败响应样本未获验证，静态已知分支用确定样本验收；未请求原站或执行真实写入。
+
+### 02静态证据与验证
+
+复用已完成的有界研究，不重读原bundle。Unicode偏移：B3a6882945、资源API6077260/6077670、分组6068562/6841573；拖放7579263、节点API6082200、P3a6875713/M3a6865000、保存7575548；数量路径6866363/6870391；镜像单对象6865100/6084146；链路D3a68798xx/Qe7578xxx、删除7570xxx/6081900。权限与原入口裁剪沿01记录，未把残留共享API当可达功能。
+
+TDD红灯：draw漏last_node；资源面板不存在；画布不能创建业务设备；schema默认值只显示不进入PATCH；右键菜单超出视口不可点击；业务节点菜单未先读取状态。修复后对应公共API/浏览器行为均通过。
+
+- Vitest：topology/topology-resources API、x6-adapter、topology-page共4文件13项通过；覆盖资源数组契约、镜像详情、三类ID、NIC0/src-dst反向、删除ID与失败判定、图往返。
+- Playwright focused：S06共10项通过，新增资源加载恢复、设备配置失败重试/连线/编辑/删除/HTTP重开、schema及engin10、占用端口与多重边/删除恢复、HTML拖入失败与锁定；右键GET失败及已连接末项保护另作定向回归。服务仅4175、MSW关闭、真实代理清空，pageerror检查为空。
+- Node24.14.0离线frozen安装，无依赖变化；web类型及改动文件ESLint/Prettier、diff空白检查通过。未跑根check、全量测试或生产构建。
+
 ## 01：实验拓扑读取、移动、保存与重开（2026-10-20）
 
 正式入口 `/basic/user/bench/experiment/:id/scene` 使用实验详情唯一的 `topo_id`，通过统一客户端 GET/POST `/front/topo/{topo_id}/draw/?task_type=6`；保存请求为 `{topo: graph}`。实验 ID、画布节点 UUID 与节点业务行 `data.data_id` 分开，移动仅更新画布坐标，不改业务节点配置。原 `/topology` 工程样本入口保留。

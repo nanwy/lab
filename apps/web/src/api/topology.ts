@@ -33,6 +33,7 @@ export async function saveExperimentTopology(
   id: string | number,
   graph: EditorGraph,
   signal?: AbortSignal,
+  lastNode?: Array<string | number>,
 ): Promise<void> {
   if (graph.rawGraph.lock)
     throw new ApiError('business', '拓扑已锁定，无法保存。')
@@ -40,7 +41,10 @@ export async function saveExperimentTopology(
     `/front/topo/${encodeURIComponent(id)}/draw/?task_type=6`,
     {
       method: 'POST',
-      json: { topo: toX6Graph(graph) },
+      json: {
+        topo: toX6Graph(graph),
+        ...(lastNode?.length ? { last_node: lastNode } : {}),
+      },
       signal,
       isBusinessFailure: (value) => !value,
     },

@@ -40,6 +40,7 @@ import { NodeConfiguration } from './NodeConfiguration'
 import { CanvasNode, CanvasNodeContext } from './CanvasNode'
 import { CanvasLabel } from './CanvasLabel'
 import { intersectsRotatedNode } from './canvas-geometry'
+import { exportCanvas } from './canvas-export'
 import {
   LinkConfiguration,
   nicIndices,
@@ -50,6 +51,7 @@ import {
   asObject,
   createTopologyNode,
   updateTopologyNode,
+  saveNodeTemplate,
   createTopologyEdge,
   deleteTopologyObjects,
   getTopologyNodeMenuInfo,
@@ -257,6 +259,9 @@ export function ExperimentTopologyEditor({
   const selectionOrigin = useRef<{ x: number; y: number } | null>(null)
   const flow = useRef<ReactFlowInstance<FlowNode, FlowEdge> | null>(null)
   const operation = useRef(new AbortController())
+  const canvas = useRef<HTMLDivElement>(null)
+  const [exporting, setExporting] = useState(false)
+  const savedNodeConfiguration = useRef<string | null>(null)
   const draft: EditorGraph = {
     ...initial,
     rawGraph: { ...initial.rawGraph, lock: locked },
@@ -693,6 +698,22 @@ export function ExperimentTopologyEditor({
         toast.error(error.message)
     } else toast.error(error instanceof Error ? error.message : '拓扑操作失败')
   }
+  async function exportImage(format: 'png' | 'svg') {
+    if (readOnly || shared || exporting || !canvas.current) return
+    if (!nodes.length && !edges.length && !passthroughCells.length) {
+      toast.warning('请绘制拓扑图！')
+      return
+    }
+    setExporting(true)
+    try {
+      await exportCanvas(canvas.current, format, operation.current.signal)
+    } catch {
+      if (!operation.current.signal.aborted)
+        toast.error('画布导出失败，请检查图片和字体资源后重试。')
+    } finally {
+      if (!operation.current.signal.aborted) setExporting(false)
+    }
+  }
   function pan(event: React.PointerEvent<HTMLDivElement>) {
     if (
       !editable ||
@@ -1068,6 +1089,24 @@ export function ExperimentTopologyEditor({
           </div>
           <div className="flex gap-2">
             {!readOnly && !shared ? (
+              <>
+                <Button
+                  variant="outline"
+                  disabled={exporting}
+                  onClick={() => void exportImage('svg')}
+                >
+                  导出SVG
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={exporting}
+                  onClick={() => void exportImage('png')}
+                >
+                  导出PNG
+                </Button>
+              </>
+            ) : null}
+            {!readOnly && !shared ? (
               <Button
                 variant="outline"
                 disabled={busy || saving}
@@ -1150,11 +1189,18 @@ export function ExperimentTopologyEditor({
         {!nodes.length && !edges.length ? <p>暂无可显示的拓扑图元</p> : null}
         <div className="flex gap-3">
           {editable ? (
-            <DeviceResources disabled={busy} onChoose={setResource} />
+            <DeviceResources
+              disabled={busy}
+              onChoose={setResource}
+              onRemoved={(id) =>
+                setResource((current) => (current?.id === id ? null : current))
+              }
+            />
           ) : null}
           <div
             className="h-[32rem] min-w-0 flex-1 border bg-white"
             aria-label="场景拓扑画布"
+            ref={canvas}
             tabIndex={0}
             onPointerDownCapture={pan}
             onKeyDown={(event) => {
@@ -1510,7 +1556,7 @@ export function ExperimentTopologyEditor({
                 logo={selectedNode.data.raw.data?.logo}
                 signal={() => operation.current.signal}
                 onError={report}
-                onSave={async (value, isBlue) => {
+                onSave={async (value, isBlue, asTemplate) => {
                   if (!editable) return
                   const uuid = selectedNode.id
                   const ports = asObject(value.config_info).ports
@@ -1527,14 +1573,26 @@ export function ExperimentTopologyEditor({
                     throw new Error('该网卡仍有链路连接，请先删除关联链路')
                   setBusy(true)
                   try {
-                    await updateTopologyNode(
-                      id,
-                      uuid,
-                      value,
-                      operation.current.signal,
-                    )
+                    const snapshot = JSON.stringify([uuid, value, isBlue])
+                    if (savedNodeConfiguration.current !== snapshot) {
+                      await updateTopologyNode(
+                        id,
+                        uuid,
+                        value,
+                        operation.current.signal,
+                      )
+                      if (operation.current.signal.aborted) return
+                      savedNodeConfiguration.current = snapshot
+                      patchNode(uuid, value, isBlue)
+                    }
                     if (operation.current.signal.aborted) return
-                    patchNode(uuid, value, isBlue)
+                    if (asTemplate) {
+                      await saveNodeTemplate(value, operation.current.signal)
+                      if (operation.current.signal.aborted) return
+                      void queryClient.invalidateQueries({
+                        queryKey: ['topology-resources'],
+                      })
+                    }
                     setEditing(null)
                   } finally {
                     if (!operation.current.signal.aborted) setBusy(false)

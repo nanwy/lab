@@ -23,6 +23,7 @@
     "@tanstack/react-table": "8.21.3",
     "@workspace/ui": "workspace:*",
     "@xyflow/react": "12.10.1",
+    "html-to-image": "1.11.13",
     "msw": "2.15.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",

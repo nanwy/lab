@@ -54,7 +54,11 @@ export function NodeConfiguration({
 }: {
   info: ObjectValue
   logo: unknown
-  onSave: (value: ObjectValue, isBlue: boolean) => Promise<void>
+  onSave: (
+    value: ObjectValue,
+    isBlue: boolean,
+    asTemplate: boolean,
+  ) => Promise<void>
   onError: (error: unknown) => void
   signal: () => AbortSignal
   onDirtyChange: (dirty: boolean) => void
@@ -115,7 +119,11 @@ function ConfigurationFields({
   info: ObjectValue
   logo: unknown
   schema: ConfigSchema
-  onSave: (value: ObjectValue, isBlue: boolean) => Promise<void>
+  onSave: (
+    value: ObjectValue,
+    isBlue: boolean,
+    asTemplate: boolean,
+  ) => Promise<void>
   onError: (error: unknown) => void
   signal: () => AbortSignal
   onDirtyChange: (dirty: boolean) => void
@@ -124,6 +132,7 @@ function ConfigurationFields({
   configuration: ObjectValue
 }) {
   const [original] = useState(configuration)
+  const saveAsTemplate = useRef(false)
   const [currentLogo, setLogo] = useState(logo)
   const [uploading, setUploading] = useState(false)
   const [rows, setRows] = useState<Record<string, number[]>>(() =>
@@ -174,6 +183,7 @@ function ConfigurationFields({
         await onSave(
           { ...info, logo: currentLogo, config_info: config },
           value.isBlue,
+          saveAsTemplate.current,
         )
       } catch (error) {
         onError(error)
@@ -320,6 +330,9 @@ function ConfigurationFields({
       className="space-y-4"
       onSubmit={(event) => {
         event.preventDefault()
+        const submitter = (event.nativeEvent as SubmitEvent).submitter
+        saveAsTemplate.current =
+          submitter?.getAttribute('data-save-template') === 'true'
         void form.handleSubmit()
       }}
     >
@@ -508,13 +521,23 @@ function ConfigurationFields({
       <form.Subscribe
         selector={(state) => state.isSubmitting}
         children={(isSubmitting) => (
-          <LoadingButton
-            type="submit"
-            disabled={uploading}
-            loading={isSubmitting}
-          >
-            保存节点
-          </LoadingButton>
+          <div className="flex gap-2">
+            <LoadingButton
+              type="submit"
+              disabled={uploading}
+              loading={isSubmitting}
+            >
+              保存节点
+            </LoadingButton>
+            <LoadingButton
+              type="submit"
+              data-save-template="true"
+              disabled={uploading}
+              loading={isSubmitting}
+            >
+              保存并设为模板
+            </LoadingButton>
+          </div>
         )}
       />
     </form>

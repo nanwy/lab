@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
 import {
   getTopologyResources,
+  deletePersonalNode,
   type DeviceResource,
 } from '../api/topology-resources'
 
@@ -53,10 +54,38 @@ const positions: DeviceResource[] = [
 export function DeviceResources({
   onChoose,
   disabled,
+  onRemoved,
 }: {
   onChoose: (resource: DeviceResource) => void
   disabled: boolean
+  onRemoved: (id: string | number) => void
 }) {
+  const queryClient = useQueryClient()
+  const controller = useRef(new AbortController())
+  useEffect(() => {
+    const next = new AbortController()
+    controller.current = next
+    return () => next.abort()
+  }, [])
+  const deletion = useMutation({
+    mutationFn: (id: string | number) =>
+      deletePersonalNode(id, controller.current.signal),
+    retry: false,
+    onSuccess: (_, id) => {
+      onRemoved(id)
+      queryClient.setQueriesData<
+        Awaited<ReturnType<typeof getTopologyResources>>
+      >({ queryKey: ['topology-resources'] }, (current) =>
+        current
+          ? {
+              ...current,
+              personal: current.personal.filter((item) => item.id !== id),
+            }
+          : current,
+      )
+      void queryClient.invalidateQueries({ queryKey: ['topology-resources'] })
+    },
+  })
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
   useEffect(() => {
@@ -100,25 +129,36 @@ export function DeviceResources({
       else group.children!.push({ name: subtype, items: [item] })
     }
   }
-  function renderItems(items: DeviceResource[]) {
+  function renderItems(items: DeviceResource[], personal = false) {
     return (
       <div className="grid gap-2 pt-2">
         {items.map((resource, index) => (
-          <Button
-            key={`${resource.id}:${index}`}
-            variant="outline"
-            disabled={disabled}
-            draggable={!disabled}
-            onClick={() => onChoose(resource)}
-            onDragStart={(event) =>
-              event.dataTransfer.setData(
-                'application/x-topology-resource',
-                JSON.stringify(resource),
-              )
-            }
-          >
-            {resource.name}
-          </Button>
+          <div className="flex gap-1" key={`${resource.id}:${index}`}>
+            <Button
+              variant="outline"
+              disabled={disabled || deletion.isPending}
+              draggable={!disabled && !deletion.isPending}
+              onClick={() => onChoose(resource)}
+              onDragStart={(event) =>
+                event.dataTransfer.setData(
+                  'application/x-topology-resource',
+                  JSON.stringify(resource),
+                )
+              }
+            >
+              {resource.name}
+            </Button>
+            {personal ? (
+              <Button
+                variant="destructive"
+                disabled={disabled || deletion.isPending}
+                aria-label={`删除我的节点 ${resource.name}`}
+                onClick={() => deletion.mutate(resource.id)}
+              >
+                删除
+              </Button>
+            ) : null}
+          </div>
         ))}
       </div>
     )
@@ -126,6 +166,9 @@ export function DeviceResources({
   return (
     <aside aria-label="设备资源" className="w-56 shrink-0 space-y-3 border p-3">
       <h3>设备资源</h3>
+      {deletion.isError ? (
+        <p role="alert">删除失败：{deletion.error.message}</p>
+      ) : null}
       <Input
         aria-label="搜索设备"
         type="search"
@@ -145,7 +188,7 @@ export function DeviceResources({
       {groups.map((group) => (
         <details open key={group.name}>
           <summary>{group.name}</summary>
-          {renderItems(group.items)}
+          {renderItems(group.items, group.name === '我的节点')}
           {group.children?.map((child) => (
             <details open key={child.name} className="ml-2">
               <summary>{child.name}</summary>

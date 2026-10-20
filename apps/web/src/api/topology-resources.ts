@@ -150,6 +150,32 @@ export async function updateTopologyNode(
     }),
   )
 }
+export async function saveNodeTemplate(
+  body: ObjectValue,
+  signal?: AbortSignal,
+) {
+  const name = asObject(asObject(body.config_info).base_info).name
+  if (typeof name !== 'string')
+    throw new ApiError('business', '节点配置缺少模板名称')
+  return requireId(
+    await apiClient.request('/front/node/template/', {
+      method: 'POST',
+      json: { ...body, name },
+      signal,
+    }),
+  )
+}
+export async function deletePersonalNode(
+  id: string | number,
+  signal?: AbortSignal,
+) {
+  await apiClient.request('/front/node/list/', {
+    method: 'DELETE',
+    json: { id_list: [id] },
+    signal,
+    isBusinessFailure: (value) => asObject(value).status !== 1,
+  })
+}
 export async function createTopologyEdge(
   id: string | number,
   uuid: string,

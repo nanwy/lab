@@ -7,8 +7,63 @@ import {
   createTopologyEdge,
   deleteTopologyObjects,
   normalizeNodeConfiguration,
+  saveNodeTemplate,
+  deletePersonalNode,
 } from './topology-resources'
 afterEach(() => vi.unstubAllGlobals())
+
+it('节点模板沿完整nodeInfo保存，删除沿资源ID，业务失败和缺ID不伪报成功', async () => {
+  const calls: Array<{ path: string; method: string; body: unknown }> = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: URL, options: RequestInit) => {
+      calls.push({
+        path: url.pathname,
+        method: options.method!,
+        body: JSON.parse(String(options.body)),
+      })
+      return Response.json(
+        options.method === 'DELETE' ? { status: 1 } : { id: 707 },
+      )
+    }),
+  )
+  const info = {
+    id: 91,
+    name: '旧名字',
+    logo: '/logo.svg',
+    device_id: 'uuid',
+    engin: 1,
+    extension: { preserved: true },
+    config_info: {
+      node_id: 'uuid',
+      base_info: { name: '模板名字' },
+      ports: [{ name: 'eth0' }],
+    },
+  }
+  expect(await saveNodeTemplate(info)).toEqual({ id: 707 })
+  expect(calls[0]).toEqual({
+    path: '/api/front/node/template/',
+    method: 'POST',
+    body: { ...info, name: '模板名字' },
+  })
+  expect(info.name).toBe('旧名字')
+  await deletePersonalNode(707)
+  expect(calls[1]).toEqual({
+    path: '/api/front/node/list/',
+    method: 'DELETE',
+    body: { id_list: [707] },
+  })
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => Response.json({ status: 0 })),
+  )
+  await expect(saveNodeTemplate(info)).rejects.toMatchObject({
+    kind: 'invalid-response',
+  })
+  await expect(deletePersonalNode(707)).rejects.toMatchObject({
+    kind: 'business',
+  })
+})
 
 it('节点配置只对合法缺失应用默认，损坏对象/数组/数组项拒绝且输入不变', () => {
   const schema = {

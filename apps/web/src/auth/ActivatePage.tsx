@@ -2,6 +2,8 @@ import { useForm } from '@tanstack/react-form'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
+import { ApiError } from '../api'
 import { z } from 'zod'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
@@ -20,9 +22,7 @@ import {
   onlineActivationSchema,
 } from '../api/activation'
 import { captchaUrl } from '../api/auth'
-import { appConfig } from '../config'
 import { usePageSignal } from './use-page-signal'
-import { useAccessFailure } from './access'
 
 export function ActivatePage() {
   const status = useQuery({
@@ -31,12 +31,10 @@ export function ActivatePage() {
     retry: false,
   })
   const [online, setOnline] = useState(true)
-  const [notice, setNotice] = useState('')
   const [captcha, setCaptcha] = useState(Date.now)
   const [captchaFailed, setCaptchaFailed] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
   const pageSignal = usePageSignal()
-  const accessFailure = useAccessFailure()
   const client = useQueryClient()
   const navigate = useNavigate()
   const form = useForm({
@@ -69,23 +67,15 @@ export function ActivatePage() {
     },
     onSubmit: async ({ value }) => {
       const signal = pageSignal()
-      setNotice('')
       try {
-        const result = online
-          ? await activateOnline(value, signal)
-          : await activateOffline(value.activate_code, value.file!, signal)
+        if (online) await activateOnline(value, signal)
+        else await activateOffline(value.activate_code, value.file!, signal)
         if (signal.aborted) return
-        if (result.status === 1) {
-          client.clear()
-          await navigate({ to: '/', replace: true })
-        } else {
-          setNotice('激活未成功，请检查授权信息后重试。')
-          setCaptcha(Date.now())
-        }
+        client.clear()
+        await navigate({ to: '/', replace: true })
       } catch (error) {
-        if (signal.aborted || accessFailure(error)) return
-        setNotice('激活请求失败，请检查网络或授权信息后重试。')
-        setCaptcha(Date.now())
+        if (!signal.aborted) setCaptcha(Date.now())
+        throw error
       }
     },
   })
@@ -97,11 +87,6 @@ export function ActivatePage() {
           <p className="text-sm text-muted-foreground">平台授权</p>
           <h1 className="text-3xl font-semibold">系统激活</h1>
         </header>
-        {appConfig.mockEnabled ? (
-          <p role="note">本地模拟激活，不修改原平台授权。</p>
-        ) : (
-          <p role="note">真实授权变更：仅由获准的操作人员提交。</p>
-        )}
         {status.isPending ? <p role="status">正在读取激活状态…</p> : null}
         {status.isError ? (
           <div role="alert">
@@ -125,7 +110,6 @@ export function ActivatePage() {
             aria-pressed={online}
             onClick={() => {
               setOnline(true)
-              setNotice('')
               form.setFieldValue('file', null)
             }}
           >
@@ -136,7 +120,6 @@ export function ActivatePage() {
             aria-pressed={!online}
             onClick={() => {
               setOnline(false)
-              setNotice('')
             }}
           >
             本地激活
@@ -151,7 +134,14 @@ export function ActivatePage() {
           className="grid gap-5"
           onSubmit={(e) => {
             e.preventDefault()
-            form.handleSubmit()
+            void form.handleSubmit().catch((error: unknown) => {
+              if (!(error instanceof ApiError) || !error.handled)
+                toast.error(
+                  error instanceof ApiError
+                    ? error.message
+                    : '提交失败，请重试',
+                )
+            })
           }}
         >
           <FieldGroup className="gap-4">
@@ -289,11 +279,6 @@ export function ActivatePage() {
                 }}
               />
             )}
-            {notice ? (
-              <p role="alert" className="text-destructive">
-                {notice}
-              </p>
-            ) : null}
             <form.Subscribe selector={(s) => s.isSubmitting}>
               {(busy) => (
                 <LoadingButton

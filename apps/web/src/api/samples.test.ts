@@ -35,16 +35,12 @@ describe('样本接口契约', () => {
       updateSample('one', { name: '样本', metadata: { aliases: [] } }),
     ).rejects.toMatchObject({ kind: 'invalid-response' })
   })
-  it('只公开约定字段中批准的模拟错误消息', async () => {
+  it('透传 HTTP error 文案', async () => {
     server.use(
       http.patch('http://localhost/api/diagnostics/samples/one', () =>
         HttpResponse.json(
           {
-            message: 'private-token',
-            fieldErrors: {
-              name: '该名称由模拟服务保留，请换一个名称',
-              secret: 'private-data',
-            },
+            error: '名称不可用',
           },
           { status: 422 },
         ),
@@ -54,8 +50,7 @@ describe('样本接口契约', () => {
       updateSample('one', { name: '样本', metadata: { aliases: [] } }),
     ).rejects.toMatchObject({
       kind: 'http',
-      message: '请求失败（422）',
-      fieldErrors: { name: '该名称由模拟服务保留，请换一个名称' },
+      message: '名称不可用',
     })
   })
 })

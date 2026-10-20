@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { readAppConfig } from './config'
 
 describe('应用环境契约', () => {
-  it('开发默认模拟，生产即使显式开启也不启用模拟', () => {
-    expect(readAppConfig({ DEV: true }).mockEnabled).toBe(true)
+  it('开发默认使用真实接口，测试需显式开启拦截，生产始终关闭拦截', () => {
+    expect(readAppConfig({ DEV: true }).mockEnabled).toBe(false)
+    expect(
+      readAppConfig({ DEV: true, VITE_ENABLE_MSW: 'true' }).mockEnabled,
+    ).toBe(true)
     expect(
       readAppConfig({ DEV: true, VITE_ENABLE_MSW: 'false' }).mockEnabled,
     ).toBe(false)

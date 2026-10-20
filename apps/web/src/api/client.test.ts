@@ -2,9 +2,17 @@
 
 import { HttpResponse, delay, http } from 'msw'
 import { setupServer } from 'msw/node'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 
-import { ApiError, createApiClient } from './client'
+import { createApiClient } from './client'
 
 const server = setupServer()
 
@@ -13,6 +21,42 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 describe('request contract', () => {
+  it.each([400, 403])(
+    'HTTP %s 只读取 error 文案，不猜测 message',
+    async (status) => {
+      const client = createApiClient({
+        baseUrl: 'http://localhost/api',
+        fetch: async () =>
+          Response.json(
+            {
+              error: '账号或密码错误!',
+              message: '不应展示的其他协议文案',
+            },
+            { status },
+          ),
+      })
+      await expect(client.request('/login')).rejects.toMatchObject({
+        kind: 'http',
+        status,
+        message: '账号或密码错误!',
+      })
+    },
+  )
+
+  it.each([undefined, null, '', '   ', 123])(
+    'HTTP error 无有效文案时使用兜底：%j',
+    async (error) => {
+      const client = createApiClient({
+        baseUrl: 'http://localhost/api',
+        fetch: async () =>
+          Response.json({ error, message: '其他协议文案' }, { status: 400 }),
+      })
+      await expect(client.request('/login')).rejects.toMatchObject({
+        message: '请求失败（400）',
+      })
+    },
+  )
+
   it.each(['text', 'blob'] as const)(
     'normalizes failures while consuming %s bodies without exposing private details',
     async (response) => {
@@ -42,9 +86,11 @@ describe('request contract', () => {
     'normalizes %s after the response stream is returned',
     async (kind) => {
       const abort = new AbortController()
+      const onError = vi.fn()
       let source!: ReadableStreamDefaultController<Uint8Array>
       const client = createApiClient({
         baseUrl: 'http://localhost/api',
+        onError,
         fetch: async () =>
           new Response(
             new ReadableStream({
@@ -68,6 +114,10 @@ describe('request contract', () => {
       const failure: unknown = await read.catch((error: unknown) => error)
       expect(failure).toMatchObject({ name: 'ApiError', kind })
       expect(failure).not.toHaveProperty('cause')
+      expect(onError).toHaveBeenCalledExactlyOnceWith(
+        failure,
+        expect.objectContaining({ response: 'stream' }),
+      )
     },
   )
   it('forwards consumer stream cancellation to the response body', async () => {
@@ -98,12 +148,12 @@ describe('request contract', () => {
       ok: false,
     })
   })
-  it('does not expose untrusted server messages, fields or transport causes', async () => {
+  it('forwards server messages while filtering fields and transport causes', async () => {
     const client = createApiClient({
       baseUrl: 'http://localhost/api',
       fetch: async () =>
         Response.json(
-          { message: 'secret-token', fieldErrors: { name: 'private-value' } },
+          { error: '名称已被使用', privateField: 'private-value' },
           { status: 422 },
         ),
     })
@@ -111,37 +161,9 @@ describe('request contract', () => {
       .request('/private')
       .catch((error: unknown) => error)
     expect(failure).toMatchObject({
-      message: '请求失败（422）',
-      fieldErrors: undefined,
+      message: '名称已被使用',
     })
     expect(failure).not.toHaveProperty('cause')
-  })
-  it('reads a whitelisted root field-error contract without guessing wrappers', async () => {
-    const client = createApiClient({
-      baseUrl: 'http://localhost/api',
-      fetch: async () =>
-        Response.json(
-          { code: '验证码错误', privateField: 'private-value' },
-          { status: 400 },
-        ),
-    })
-
-    const failure = await client
-      .request('/login', {
-        errorDisplay: {
-          fieldErrorSource: 'root',
-          fieldErrors: { code: { 验证码错误: '验证码错误' } },
-        },
-      })
-      .catch((error: unknown) => error)
-
-    expect(failure).toMatchObject({
-      kind: 'http',
-      status: 400,
-      fieldErrors: { code: '验证码错误' },
-    })
-    expect(failure).toBeInstanceOf(ApiError)
-    expect((failure as ApiError).fieldErrors).not.toHaveProperty('privateField')
   })
   it('keeps the HTTP fallback when an error body contains malformed JSON', async () => {
     const client = createApiClient({
@@ -260,13 +282,12 @@ describe('request contract', () => {
     ).resolves.toBeUndefined()
   })
 
-  it('normalizes HTTP and business failures without exposing raw details', async () => {
+  it('normalizes HTTP and business failures and preserves their messages', async () => {
     server.use(
       http.get('http://localhost/api/http-error', () =>
         HttpResponse.json(
           {
-            message: '请求参数无效',
-            fieldErrors: { name: '名称不能为空', attempts: 3 },
+            error: '请求参数无效',
             token: 'must-not-leak',
           },
           { status: 422 },
@@ -276,7 +297,6 @@ describe('request contract', () => {
         HttpResponse.json({
           success: false,
           message: '资源状态不允许此操作',
-          fieldErrors: { state: '资源已锁定' },
         }),
       ),
     )
@@ -289,8 +309,7 @@ describe('request contract', () => {
       name: 'ApiError',
       kind: 'http',
       status: 422,
-      message: '请求失败（422）',
-      fieldErrors: undefined,
+      message: '请求参数无效',
     })
     expect(JSON.stringify(httpFailure)).not.toContain('must-not-leak')
 
@@ -302,16 +321,11 @@ describe('request contract', () => {
             typeof value === 'object' &&
             Reflect.get(value, 'success') === false,
           ),
-        errorDisplay: {
-          messages: { 资源状态不允许此操作: '资源状态不允许此操作' },
-          fieldErrors: { state: { 资源已锁定: '资源已锁定' } },
-        },
       }),
     ).rejects.toMatchObject({
       kind: 'business',
       status: 200,
       message: '资源状态不允许此操作',
-      fieldErrors: { state: '资源已锁定' },
     })
   })
 

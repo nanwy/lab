@@ -1,6 +1,7 @@
 import { useForm } from '@tanstack/react-form'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
+import { ApiError } from '../api'
 import {
   Dialog,
   DialogContent,
@@ -25,7 +26,6 @@ import {
   type RecommendationSettings,
 } from '../api/portal'
 import { usePageSignal } from '../auth/use-page-signal'
-import { useAccessFailure } from '../auth/access'
 
 export function RecommendationSettingsDialog({ close }: { close: () => void }) {
   const settings = useQuery({
@@ -69,30 +69,22 @@ function SettingsForm({
   values: RecommendationSettings
   close: () => void
 }) {
-  const [error, setError] = useState('')
   const signalForPage = usePageSignal()
-  const accessFailure = useAccessFailure()
   const client = useQueryClient()
   const form = useForm({
     defaultValues: values,
     validators: { onSubmit: recommendationSettingsSchema },
     onSubmit: async ({ value }) => {
       const signal = signalForPage()
-      setError('')
-      try {
-        await saveRecommendationSettings(value, signal)
-        if (signal.aborted) return
-        await Promise.all([
-          client.invalidateQueries({ queryKey: ['home', 'recommendations'] }),
-          client.invalidateQueries({
-            queryKey: ['home', 'recommendation-settings'],
-          }),
-        ])
-        if (!signal.aborted) close()
-      } catch (error) {
-        if (!signal.aborted && !accessFailure(error))
-          setError('推荐设置保存失败，请重试。')
-      }
+      await saveRecommendationSettings(value, signal)
+      if (signal.aborted) return
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['home', 'recommendations'] }),
+        client.invalidateQueries({
+          queryKey: ['home', 'recommendation-settings'],
+        }),
+      ])
+      if (!signal.aborted) close()
     },
   })
   return (
@@ -100,7 +92,12 @@ function SettingsForm({
       className="grid gap-5"
       onSubmit={(e) => {
         e.preventDefault()
-        form.handleSubmit()
+        void form.handleSubmit().catch((error: unknown) => {
+          if (!(error instanceof ApiError) || !error.handled)
+            toast.error(
+              error instanceof ApiError ? error.message : '提交失败，请重试',
+            )
+        })
       }}
     >
       <FieldGroup className="gap-4">
@@ -139,11 +136,6 @@ function SettingsForm({
             }}
           />
         ))}
-        {error ? (
-          <p role="alert" className="text-destructive">
-            {error}
-          </p>
-        ) : null}
         <form.Subscribe selector={(s) => s.isSubmitting}>
           {(busy) => (
             <LoadingButton type="submit" loading={busy}>

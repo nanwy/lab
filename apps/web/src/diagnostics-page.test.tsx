@@ -119,7 +119,7 @@ describe('browser-visible query diagnostics', () => {
         const mode = new URL(request.url).searchParams.get('mode')
         if (mode === 'http-error') {
           return HttpResponse.json(
-            { message: '模拟服务暂时不可用' },
+            { error: '模拟服务暂时不可用' },
             { status: 503 },
           )
         }

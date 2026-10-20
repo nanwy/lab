@@ -27,13 +27,6 @@ export async function getDiagnosticResult(
         typeof value === 'object' &&
         Reflect.get(value, 'success') === false,
       ),
-    errorDisplay: {
-      messages: {
-        模拟服务暂时不可用: '模拟服务暂时不可用',
-        模拟资源状态不允许此操作: '模拟资源状态不允许此操作',
-      },
-      fieldErrors: { state: { 资源已锁定: '资源已锁定' } },
-    },
   })
   const parsed = diagnosticSchema.safeParse(result)
   if (!parsed.success)

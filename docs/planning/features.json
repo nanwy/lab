@@ -9,8 +9,7 @@
     "permission_checks": "账号状态；HTTP认证与应用Token分层",
     "unknowns": "验证码规则、Cookie/CSRF、会话有效期",
     "acceptance": "错误凭据失败；有效账号进入；过期后回登录",
-    "phase": "P1",
-    "status": "完成（S01 前端复刻验收）；原后端未联调；差异见 docs/architecture/account-session.md"
+    "phase": "P1"
   },
   {
     "id": "F002",
@@ -22,8 +21,7 @@
     "permission_checks": "未激活与无权访问是不同状态",
     "unknowns": "真实授权权限、License 内容与当前线上响应未联调",
     "acceptance": "深链刷新、未登录、未激活分别有明确结果",
-    "phase": "P1",
-    "status": "完成（S02 前端复刻验收）；契约及差异见 docs/architecture/application-shell.md"
+    "phase": "P1"
   },
   {
     "id": "F003",
@@ -35,8 +33,7 @@
     "permission_checks": "会话守卫；静态导航不按未知角色裁剪；工具/漏洞设置未参与菜单过滤",
     "unknowns": "当前线上响应和角色矩阵未联调；未发现原站主题切换 UI",
     "acceptance": "主入口可达；刷新保留当前路由",
-    "phase": "P1",
-    "status": "完成（S02 前端复刻验收）；契约及差异见 docs/architecture/application-shell.md"
+    "phase": "P1"
   },
   {
     "id": "F004",
@@ -48,8 +45,7 @@
     "permission_checks": "个人数据及批量对象范围",
     "unknowns": "字段与已读调用链已补证；待办批接口每次提交单项；收藏页无批量取消调用；真实权限与响应未联调，见 docs/planning/s04-implementation.md",
     "acceptance": "状态变更后列表、数量与详情一致",
-    "phase": "P5",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P5"
   },
   {
     "id": "F005",
@@ -61,8 +57,7 @@
     "permission_checks": "can_enter、课程可见性/下线状态",
     "unknowns": "筛选枚举、资源权限、评论是否可写",
     "acceptance": "可进入课程加载目录；不可进入时解释原因",
-    "phase": "P3",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P3"
   },
   {
     "id": "F006",
@@ -74,8 +69,7 @@
     "permission_checks": "所属课程和章节；学习规则",
     "unknowns": "日志计算、心跳、拖动限制、重复上报处理；学习日志为写操作",
     "acceptance": "播放/暂停/重开后的进度与后端一致",
-    "phase": "P3",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P3"
   },
   {
     "id": "F007",
@@ -87,8 +81,7 @@
     "permission_checks": "课程准入、次数及任务状态",
     "unknowns": "评分规则、题型、重试限制、环境依赖",
     "acceptance": "正确/错误/未答及重复提交按真实规则处理",
-    "phase": "P3",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P3"
   },
   {
     "id": "F008",
@@ -100,8 +93,7 @@
     "permission_checks": "分配关系、时间、任务状态",
     "unknowns": "type枚举及各状态按钮规则",
     "acceptance": "同一任务各入口进度一致",
-    "phase": "P3",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P3"
   },
   {
     "id": "F009",
@@ -113,8 +105,7 @@
     "permission_checks": "任务、课程、章节的归属",
     "unknowns": "专题与公开课程差异、计分结果",
     "acceptance": "任务学习记录与结果页一致",
-    "phase": "P3",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P3"
   },
   {
     "id": "F010",
@@ -126,8 +117,7 @@
     "permission_checks": "公开或分配科目及资源可用性",
     "unknowns": "科目类型、准入、完成条件",
     "acceptance": "列表到训练到结果形成可验证流程",
-    "phase": "P3",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P3"
   },
   {
     "id": "F011",
@@ -139,8 +129,7 @@
     "permission_checks": "路线分配、阶段依赖",
     "unknowns": "阶段解锁、课程/装备完成规则",
     "acceptance": "路线与个人学习路线的进度一致",
-    "phase": "P3",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P3"
   },
   {
     "id": "F012",
@@ -152,8 +141,7 @@
     "permission_checks": "任务归属与状态、环境状态",
     "unknowns": "kind枚举、训练提交和判分",
     "acceptance": "详情、训练、结果及再次进入一致",
-    "phase": "P3",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P3"
   },
   {
     "id": "F013",
@@ -165,8 +153,7 @@
     "permission_checks": "可见统计范围",
     "unknowns": "积分口径、排序、分页",
     "acceptance": "显示后端排行和并列规则",
-    "phase": "P3",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P3"
   },
   {
     "id": "F014",
@@ -178,8 +165,7 @@
     "permission_checks": "分配关系、考试时段、次数与完成状态",
     "unknowns": "迟到、开考、交卷、重考条件",
     "acceptance": "未开始/进行中/已交卷/无权访问均覆盖",
-    "phase": "P4",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P4"
   },
   {
     "id": "F015",
@@ -191,8 +177,7 @@
     "permission_checks": "题型、考试状态、答题权限",
     "unknowns": "倒计时、断线恢复、自动交卷、幂等规则",
     "acceptance": "刷新恢复；漏答提示；交卷后禁止继续写答案",
-    "phase": "P4",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P4"
   },
   {
     "id": "F016",
@@ -204,8 +189,7 @@
     "permission_checks": "成绩发布、答案解析是否开放",
     "unknowns": "可见时间、统计范围、评分规则",
     "acceptance": "结果与任务状态一致；未公布时不提前显示",
-    "phase": "P4",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P4"
   },
   {
     "id": "F017",
@@ -217,8 +201,7 @@
     "permission_checks": "练习与正式考试数据分离",
     "unknowns": "题型范围、错题/收藏入口待核对",
     "acceptance": "练习结果不错误写入正式考试",
-    "phase": "P4",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P4"
   },
   {
     "id": "F018",
@@ -230,8 +213,7 @@
     "permission_checks": "可见装备及位置范围",
     "unknowns": "地图底图资源、楼层/位置结构",
     "acceptance": "地图与列表指向相同装备",
-    "phase": "P4",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P4"
   },
   {
     "id": "F019",
@@ -243,8 +225,7 @@
     "permission_checks": "可操作装备、可预约时段",
     "unknowns": "列表真实数据来源及操作能力",
     "acceptance": "同一装备在列表、详情、预约状态一致",
-    "phase": "P4",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P4"
   },
   {
     "id": "F020",
@@ -256,8 +237,7 @@
     "permission_checks": "所属账号、时间冲突、禁用时段操作权限未知",
     "unknowns": "审核、配额、取消期限、管理动作是否学员可见",
     "acceptance": "冲突/过期/重复预约拒绝；成功后日历更新",
-    "phase": "P4",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P4"
   },
   {
     "id": "F021",
@@ -269,8 +249,7 @@
     "permission_checks": "科目类型、是否可进入",
     "unknowns": "kind枚举、训练要求及完成判据",
     "acceptance": "不同kind分别验收，不只验收一种",
-    "phase": "P4",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P4"
   },
   {
     "id": "F022",
@@ -282,8 +261,7 @@
     "permission_checks": "分配关系、任务类型与状态",
     "unknowns": "type枚举、成员席位权限、评价和成果编辑资格、任务阶段与提交条件",
     "acceptance": "各类型任务入口和结果均可用",
-    "phase": "P4",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P4"
   },
   {
     "id": "F023",
@@ -295,8 +273,7 @@
     "permission_checks": "任务成员和保障操作边界",
     "unknowns": "成员席位、协作与消息发送资格、和演练任务关联；不据此发明指挥员角色",
     "acceptance": "列表、详情与执行结果一致",
-    "phase": "P4",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P4"
   },
   {
     "id": "F024",
@@ -308,8 +285,7 @@
     "permission_checks": "任务归属、实操状态",
     "unknowns": "与培训实操入口差异",
     "acceptance": "共享组件复用时保留不同业务参数",
-    "phase": "P4",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P4"
   },
   {
     "id": "F025",
@@ -321,8 +297,7 @@
     "permission_checks": "沿用演练模块入口可见性",
     "unknowns": "无；bundle 功能边界不扩展占位页面",
     "acceptance": "两个路由分别显示原 bundle 中的占位文字",
-    "phase": "P4",
-    "status": "按原 bundle 仅复刻占位入口"
+    "phase": "P4"
   },
   {
     "id": "F026",
@@ -334,8 +309,7 @@
     "permission_checks": "资源可见范围",
     "unknowns": "环境/练习是否在该详情入口开放、详情导航参数、关联内容",
     "acceptance": "树与详情同步，返回保持上下文",
-    "phase": "P5",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P5"
   },
   {
     "id": "F027",
@@ -347,8 +321,7 @@
     "permission_checks": "查看、下载、接入工具分开核对",
     "unknowns": "工具配置与实际下载方式",
     "acceptance": "列表、详情、允许的下载行为完整",
-    "phase": "P5",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P5"
   },
   {
     "id": "F028",
@@ -360,8 +333,7 @@
     "permission_checks": "可见记录与操作权限",
     "unknowns": "字段、筛选、详情呈现；admin路径不代表管理员权限",
     "acceptance": "空结果、分页和详情一致",
-    "phase": "P5",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P5"
   },
   {
     "id": "F029",
@@ -373,8 +345,7 @@
     "permission_checks": "知识发布/可见范围",
     "unknowns": "内容格式和附件",
     "acceptance": "详情正确呈现且资源链接可用",
-    "phase": "P5",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P5"
   },
   {
     "id": "F030",
@@ -386,8 +357,7 @@
     "permission_checks": "个人分配范围",
     "unknowns": "任务类型与其他任务中心关系",
     "acceptance": "聚合入口与原业务入口状态一致",
-    "phase": "P5",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P5"
   },
   {
     "id": "F031",
@@ -399,8 +369,7 @@
     "permission_checks": "当前用户及统计范围",
     "unknowns": "画像指标与图表数据契约",
     "acceptance": "来源与统计口径可追溯",
-    "phase": "P5",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P5"
   },
   {
     "id": "F032",
@@ -412,8 +381,7 @@
     "permission_checks": "私有、共享、本人可编辑/他人只读需验证",
     "unknowns": "上传类型/大小、分享范围、目录/重名规则；平台资料是否第三入口待验证",
     "acceptance": "保存重开、文件夹、分享与导出分别验收",
-    "phase": "P5",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P5"
   },
   {
     "id": "F033",
@@ -425,8 +393,7 @@
     "permission_checks": "个人、平台、课程、公开资源分域",
     "unknowns": "可写目录、配额、文件类型与重名规则",
     "acceptance": "路径导航、预览下载及错误处理正确",
-    "phase": "P5",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P5"
   },
   {
     "id": "F034",
@@ -438,8 +405,7 @@
     "permission_checks": "本人/共享/受限实验；类型与配额未知",
     "unknowns": "所有权、发布方式、删除影响范围",
     "acceptance": "创建→编辑→重开；无权编辑拒绝",
-    "phase": "P1",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P1"
   },
   {
     "id": "F035",
@@ -451,8 +417,7 @@
     "permission_checks": "所有者与只读、锁定状态",
     "unknowns": "概述和说明的实际字段及可写条件",
     "acceptance": "修改重开一致；只读不出现可写操作",
-    "phase": "P2",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P2"
   },
   {
     "id": "F036",
@@ -464,8 +429,7 @@
     "permission_checks": "readOnly、shared、lock、topo_edit、task_type组合",
     "unknowns": "不同入口能力裁剪、资源上限、数据契约",
     "acceptance": "节点/边/位置/配置保存后重开一致",
-    "phase": "P1",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P1"
   },
   {
     "id": "F037",
@@ -477,8 +441,7 @@
     "permission_checks": "运行状态、配额、任务与节点归属",
     "unknowns": "真实状态枚举、运行中可编辑规则、失败恢复",
     "acceptance": "异步状态可恢复；失败不伪报成功",
-    "phase": "P2",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P2"
   },
   {
     "id": "F038",
@@ -490,8 +453,7 @@
     "permission_checks": "运行环境与允许捕获的节点/链路",
     "unknowns": "PCAP下载、轮询及资源释放",
     "acceptance": "捕获状态与记录一致；离页资源按规则清理",
-    "phase": "P2",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P2"
   },
   {
     "id": "F039",
@@ -503,8 +465,7 @@
     "permission_checks": "实验/笔记归属及只读条件待验证",
     "unknowns": "返回字段、外链图片与导出实际产物",
     "acceptance": "保存重开一致；导出内容与图片有效",
-    "phase": "P2",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P2"
   },
   {
     "id": "F040",
@@ -516,8 +477,7 @@
     "permission_checks": "检测类型、环境及操作权",
     "unknowns": "type枚举、任务状态与输出格式",
     "acceptance": "每个开放类型分别验收",
-    "phase": "P2",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P2"
   },
   {
     "id": "F041",
@@ -529,8 +489,7 @@
     "permission_checks": "角色/工具能力、实验状态和可用资源",
     "unknowns": "调用链、执行条件、任务终止与结果",
     "acceptance": "配置与结果可追踪；执行在测试范围开放后联调",
-    "phase": "P2",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P2"
   },
   {
     "id": "F042",
@@ -542,8 +501,7 @@
     "permission_checks": "具体入口、task_type、资源类型与权限分支",
     "unknowns": "包格式、客户端、同步冲突与日志协议；删除使用GET仍属写操作",
     "acceptance": "按真实入口逐项确认并记录不适用原因",
-    "phase": "P2",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P2"
   },
   {
     "id": "F043",
@@ -555,8 +513,7 @@
     "permission_checks": "本人离线包与同步范围",
     "unknowns": "离线客户端依赖、打包下载、日志回传协议",
     "acceptance": "生成/下载/学习记录回传流程有真实证据",
-    "phase": "P5",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P5"
   },
   {
     "id": "F044",
@@ -568,8 +525,7 @@
     "permission_checks": "当前用户及字段可编辑性",
     "unknowns": "真实密码强度与错误枚举、服务端主动失效策略未联调；type、资料字段和改密后主动退出调用链见 docs/architecture/personal-account.md",
     "acceptance": "非法字段拒绝；成功状态重开保留",
-    "phase": "P5",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P5"
   },
   {
     "id": "F045",
@@ -581,8 +537,7 @@
     "permission_checks": "助手可见性、会话所有权、额度未知",
     "unknowns": "流式协议、附件、消息提交接口与断线行为",
     "acceptance": "流式输出/中断/重开历史一致",
-    "phase": "P6",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P6"
   },
   {
     "id": "F046",
@@ -594,8 +549,7 @@
     "permission_checks": "节点归属、运行状态、会话授权",
     "unknowns": "WebSocket地址、票据、代理与浏览器要求",
     "acceptance": "真实测试节点连通、断线重连、过期票据拒绝",
-    "phase": "P2",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P2"
   },
   {
     "id": "F047",
@@ -607,8 +561,7 @@
     "permission_checks": "原文件访问权与预览授权",
     "unknowns": "预览服务、文件签名、跨域与格式范围",
     "acceptance": "无权限或文件失效时不展示残留内容",
-    "phase": "P5",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P5"
   },
   {
     "id": "F048",
@@ -620,8 +573,7 @@
     "permission_checks": "场景、角色视角、任务与资源关系",
     "unknowns": "静态展示/实时数据区别；真实角色名称未知",
     "acceptance": "同一场景不同视角按权限展示",
-    "phase": "P6",
-    "status": "规划中；静态证据分级，未运行验收"
+    "phase": "P6"
   },
   {
     "id": "F049",
@@ -633,7 +585,6 @@
     "permission_checks": "401/403、禁用/锁定/不可用状态",
     "unknowns": "后续切片继续逐项验收；公共异常与取消改进见应用壳文档",
     "acceptance": "刷新深链、断网、拒绝访问、重复点击均验收",
-    "phase": "P1",
-    "status": "S02 公共基础完成；后续切片继续验收"
+    "phase": "P1"
   }
 ]

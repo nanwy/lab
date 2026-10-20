@@ -73,8 +73,7 @@
           "context": "t/logout/\"),g2n=e=>Ae(\"/api/front/user/password/\",{method:\"post\",data:e.data||{}}),JKr=e=>Ae(\"/api/front/user/info/\",{method:\"patch\",data:e});async function eYr(){return Ae(\"/api/admin/system/logo/default/\")}async function tYr(){return Ae(\"/api/admin/system/backgro",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "完成（S01 前端复刻验收）；原后端未联调；差异见 docs/architecture/account-session.md"
+      ]
     },
     {
       "id": "F002",
@@ -119,8 +118,7 @@
           "context": "(\"/api/admin/system/active/online/ \",{method:\"post\",data:e})}async function DYr(e){return Ae(\"/api/admin/system/active/offline/ \",{method:\"post\",data:e})}async function $Yr(e){return Ae(`/api/front/learn/task/my_notes/folders/?${Vt(e)}`)}async function BYr(e){return Ae(\"/api/fr",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "完成（S02 前端复刻验收）；契约及差异见 docs/architecture/application-shell.md"
+      ]
     },
     {
       "id": "F003",
@@ -184,8 +182,7 @@
           "context": "i/front/user/recommend/resource/\"),IYr=()=>Ae(\"/api/front/user/recommend/config/\"),NYr=e=>Ae(\"/api/front/user/recommend/config/\",{method:\"post\",data:e}),MYr=()=>Ae(\"/api/front/user/learning_guide/statistics/\");async function RYr(e){return Ae(`/api/front/env/list/?${Vt(e)}`)}as",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "完成（S02 前端复刻验收）；契约及差异见 docs/architecture/application-shell.md"
+      ]
     },
     {
       "id": "F004",
@@ -286,8 +283,7 @@
           "context": "return Ae(\"/api/front/user/collect/\",{method:\"post\",data:e})}async function V2n(e){return Ae(\"/api/front/user/collect/batch/\",{method:\"post\",data:e})}async function QJr(e){return Ae(`/api/front/learn/task/self_study/open_courses/${e.id}/section/${e.sid}/operate/?nopage=1`)}",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F005",
@@ -526,8 +522,7 @@
           "context": "ourse/${e.id}/attachment/export/`,{method:\"post\",data:{attachment_ids:e.attachment_ids}}):Ae(`/api/front/learn/task/self_study/open_courses/${e.id}/resource/export/`,{method:\"post\",data:{attachment_ids:e.attachment_ids}})}async function Vei(e){return Ae(`/api/front/learn/task/center_task/league_board/user/rank_in",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F006",
@@ -766,8 +761,7 @@
           "context": "ourse/${e.id}/attachment/export/`,{method:\"post\",data:{attachment_ids:e.attachment_ids}}):Ae(`/api/front/learn/task/self_study/open_courses/${e.id}/resource/export/`,{method:\"post\",data:{attachment_ids:e.attachment_ids}})}async function Vei(e){return Ae(`/api/front/learn/task/center_task/league_board/user/rank_in",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F007",
@@ -1006,8 +1000,7 @@
           "context": "ourse/${e.id}/attachment/export/`,{method:\"post\",data:{attachment_ids:e.attachment_ids}}):Ae(`/api/front/learn/task/self_study/open_courses/${e.id}/resource/export/`,{method:\"post\",data:{attachment_ids:e.attachment_ids}})}async function Vei(e){return Ae(`/api/front/learn/task/center_task/league_board/user/rank_in",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F008",
@@ -1267,8 +1260,7 @@
           "context": "earn/task/center_task/league_board/user/rank_info/?${Vt(e)}`)}async function Wei(){return Ae(\"/api/front/learn/task/center_task/league_board/person/rank_info/\")}const Gei=e=>Ae(`/api/front/guidance_control/training_task/tasks/${e}/`),qei=e=>Ae(`/api/front/guidance_control/training_task/tasks/${e.id}/subject",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F009",
@@ -1465,8 +1457,7 @@
           "context": "ction/${e.sid}/open/`,{method:\"POST\"});async function Hei(e){return e.mode===\"learn_task\"?Ae(`/api/front/learn/task/center_task/teaching_task/${e.task_id}/course/${e.id}/attachment/export/`,{method:\"post\",data:{attachment_ids:e.attachment_ids}}):Ae(`/api/front/learn/task/self_study/open_courses/${e.id}/resource/export/`,{method:\"post\",d",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F010",
@@ -1831,8 +1822,7 @@
           "context": "await o(v),s({id:v})}})]})})};let Eb=\"/api/front/rehearsal/\";async function z8n(e){return Ae(\"/api/front/rehearsal/subject_scene/?\"+Vt(e))}async function U8n(e){return Ae(`${e.url||Eb}subject_scene/${e.id}/?${Vt(e.kind)}`)}async function H8n(e){return Ae(\"/api/front/base/tag/?\"+V",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F011",
@@ -2060,8 +2050,7 @@
           "context": "groud_flow/${e.node_id}/config/stop/?${Vt(e.filter)}`,{method:\"post\",data:e.data}),DZr=e=>Ae(`/api/front/guidance_control/learning_route/task/?${Vt(e)}`),F2n=e=>Ae(\"/api/front/wqzb/detection_front/tools/\",{params:e}),$Zr=e=>Ae(`/api/front/wqzb/detection_front/tools/${e}/`),BZr=e=>Ae(`/api/front/wqzb/",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F012",
@@ -2496,8 +2485,7 @@
           "context": "${e.subject_id}/submit_manual/`,{method:\"post\",data:e.data});async function iti(e){return Ae(`/api/front/guidance_control/training_task/tasks/${e.task_id}/subjects/${e.subject_id}/stages/${e.stage_id}/materials/export_zip/`,{method:\"post\",data:{material_ids:e.material_ids}})}const zEe=Sr((e,t)=>({todoList:[],list:{},collectList:[],open:{},settingForm:{},errMsg:{},loadin",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F013",
@@ -2577,8 +2565,7 @@
           "context": "\"/api/front/exam/task/exercises/dynamic_log/?\"+Vt(e.filter))}async function ani(e){return Ae(\"/api/front/exam/task/exercises/user_rank/\")}async function oni(e){return Ae(`/api/front/exam/task/exercises/operate_list/${e.pid}/checkpoint/topic/${e.id}/`)}const DI=Sr((e,t)=>({visible:{},l",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F014",
@@ -2929,8 +2916,7 @@
           "context": "ni(e){return Ae(\"/api/front/exam/task/exercises/user_rank/\")}async function oni(e){return Ae(`/api/front/exam/task/exercises/operate_list/${e.pid}/checkpoint/topic/${e.id}/`)}const DI=Sr((e,t)=>({visible:{},loading:{},errMsg:{},userDetail:{},pwdSubmit:{old_password:\"\",password:\"\",repeat_password:\"\"},pwdMsgError:{},infoSu",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F015",
@@ -3281,8 +3267,7 @@
           "context": "ni(e){return Ae(\"/api/front/exam/task/exercises/user_rank/\")}async function oni(e){return Ae(`/api/front/exam/task/exercises/operate_list/${e.pid}/checkpoint/topic/${e.id}/`)}const DI=Sr((e,t)=>({visible:{},loading:{},errMsg:{},userDetail:{},pwdSubmit:{old_password:\"\",password:\"\",repeat_password:\"\"},pwdMsgError:{},infoSu",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F016",
@@ -3680,8 +3665,7 @@
           "context": "ni(e){return Ae(\"/api/front/exam/task/exercises/user_rank/\")}async function oni(e){return Ae(`/api/front/exam/task/exercises/operate_list/${e.pid}/checkpoint/topic/${e.id}/`)}const DI=Sr((e,t)=>({visible:{},loading:{},errMsg:{},userDetail:{},pwdSubmit:{old_password:\"\",password:\"\",repeat_password:\"\"},pwdMsgError:{},infoSu",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F017",
@@ -4032,8 +4016,7 @@
           "context": "ni(e){return Ae(\"/api/front/exam/task/exercises/user_rank/\")}async function oni(e){return Ae(`/api/front/exam/task/exercises/operate_list/${e.pid}/checkpoint/topic/${e.id}/`)}const DI=Sr((e,t)=>({visible:{},loading:{},errMsg:{},userDetail:{},pwdSubmit:{old_password:\"\",password:\"\",repeat_password:\"\"},pwdMsgError:{},infoSu",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F018",
@@ -4064,8 +4047,7 @@
           "context": "od:\"post\",data:e.data})}const gGn=e=>{let t={};return e.resource_type?t={...e}:t={kind:e},Ae(`/api/front/equipment/equip_map/info/?${Vt(t)}`)},NFa=e=>Ae(`/api/front/equipment/equip_booking/message/${e.id}/?${Vt(e.filter)}`),MFa=e=>Ae(\"/api/front/equipment/equip_booking/message/delete/\",{m",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F019",
@@ -4098,8 +4080,7 @@
           "snippet": "sJn=({url:e})=>{const{id:t,sid:n}=uo(),{state:r}=Tl(),i=Vi(),[a,o]=N.useState(0),[s,l]=N.useState({}),[c,u]=N.useState(!1),{open:d,loading:f,taskDetail:h,equipDetail:p,equipSubject:g,getEquipSubject:m,getTaskDetail:v,get"
         }
       ],
-      "api_candidates": [],
-      "current_business_status": "正式业务未实现"
+      "api_candidates": []
     },
     {
       "id": "F020",
@@ -4193,8 +4174,7 @@
           "context": "\"post\",data:e}),BFa=e=>Ae(`/api/front/equipment/equip_booking/calendar/?${Vt(e)}`),FFa=e=>Ae(`/api/front/equipment/equip_booking/calendar/booked/?${Vt(e)}`),M3=Sr((e,t)=>({visible:{},open:{},loading:{},list:{results:[],count:0},filter:{page:1,size:10,search:\"\"},fileList:[],selectedFileIds:[],currentDire",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F021",
@@ -4571,8 +4551,7 @@
           "context": "]},detail:{}})})),Q0o=e=>Ae(\"/api/front/rehearsal/safeguard_task/message/?\"+Vt(e)),X0o=e=>Ae(\"/api/front/rehearsal/safeguard_task/message/\",{method:\"post\",data:e});var Qst={},vse={};const WNe=Ma(Mvr);var Yq={},NJn={exports:{}},MJn={exports:{}},RJn={exports:{}};(function(e){function t(n,r",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F022",
@@ -4713,8 +4692,7 @@
           "context": "ilelist/export_zip/`,{method:\"post\",data:{attachment_ids:e.attachment_ids}})}const hca=e=>Ae(`/api/front/rehearsal/drill_task/${e.id}/member/seat/?${Vt(e.filter)}`),J8n=e=>Ae(`/api/front/enum/define/?${Vt(e)}`),pca=(e,t)=>Ae(`/api/front/rehearsal/${t}/?${Vt(e)}`),gca=(e,t)=>Ae(`/api/front/rehearsal/${t}/${e}/`)",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F023",
@@ -4834,8 +4812,7 @@
           "context": "]},detail:{}})})),Q0o=e=>Ae(\"/api/front/rehearsal/safeguard_task/message/?\"+Vt(e)),X0o=e=>Ae(\"/api/front/rehearsal/safeguard_task/message/\",{method:\"post\",data:e});var Qst={},vse={};const WNe=Ma(Mvr);var Yq={},NJn={exports:{}},MJn={exports:{}},RJn={exports:{}};(function(e){function t(n,r",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F024",
@@ -5275,8 +5252,7 @@
           "context": "${e.subject_id}/submit_manual/`,{method:\"post\",data:e.data});async function iti(e){return Ae(`/api/front/guidance_control/training_task/tasks/${e.task_id}/subjects/${e.subject_id}/stages/${e.stage_id}/materials/export_zip/`,{method:\"post\",data:{material_ids:e.material_ids}})}const zEe=Sr((e,t)=>({todoList:[],list:{},collectList:[],open:{},settingForm:{},errMsg:{},loadin",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F025",
@@ -5634,8 +5610,7 @@
           "context": "]},detail:{}})})),Q0o=e=>Ae(\"/api/front/rehearsal/safeguard_task/message/?\"+Vt(e)),X0o=e=>Ae(\"/api/front/rehearsal/safeguard_task/message/\",{method:\"post\",data:e});var Qst={},vse={};const WNe=Ma(Mvr);var Yq={},NJn={exports:{}},MJn={exports:{}},RJn={exports:{}};(function(e){function t(n,r",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F026",
@@ -5692,8 +5667,7 @@
           "context": "front/resources/attack/${e.id}/?`+Vt(e)),oYr=e=>Ae(\"/api/front/resources/attack/\"),sYr=e=>Ae(\"/api/front/resources/attack/tactic_display/?\"+Vt(e)),lYr=e=>Ae(\"/api/front/env/start/\",{method:\"post\",data:e}),v2n=async e=>Ae(`/api/front/env/delay/${e.run_id}/`,{method:\"post\",data:e}),y2n=asy",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F027",
@@ -5752,8 +5726,7 @@
           "context": " function vYr(e){return Ae(`/api/front/resources/tool/${e}/`)}async function yYr(){return Ae(\"/api/front/resources/tool/type/\")}async function A2n(){return Ae(\"/api/admin/resources/vuln/settings/\")}async function bYr(){return Ae(\"/api/admin/resources/vuln/classify/?nopage=1\"",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F028",
@@ -5812,8 +5785,7 @@
           "context": " function xYr(e){return Ae(`/api/admin/resources/vuln/${e}/`)}async function _Yr(){return Ae(\"/api/admin/resources/vuln/toatl_info/\")}const wYr=e=>Ae(\"/api/front/resources/knowledge/?\"+Vt(e)),SYr=e=>Ae(`/api/front/resources/knowledge/${e}/`);async function x2n(e){return Ae(`/api/f",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F029",
@@ -5856,8 +5828,7 @@
           "context": "urces/vuln/toatl_info/\")}const wYr=e=>Ae(\"/api/front/resources/knowledge/?\"+Vt(e)),SYr=e=>Ae(`/api/front/resources/knowledge/${e}/`);async function x2n(e){return Ae(`/api/front/user/collect/?${Vt(e)}`)}async function _2n(e){return Ae(`/api/front/user/todo/?${Vt(e)}`)}async functi",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F030",
@@ -6160,8 +6131,7 @@
           "context": "earn/task/center_task/league_board/user/rank_info/?${Vt(e)}`)}async function Wei(){return Ae(\"/api/front/learn/task/center_task/league_board/person/rank_info/\")}const Gei=e=>Ae(`/api/front/guidance_control/training_task/tasks/${e}/`),qei=e=>Ae(`/api/front/guidance_control/training_task/tasks/${e.id}/subject",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F031",
@@ -6225,8 +6195,7 @@
           "context": "groud_flow/${e.node_id}/config/stop/?${Vt(e.filter)}`,{method:\"post\",data:e.data}),DZr=e=>Ae(`/api/front/guidance_control/learning_route/task/?${Vt(e)}`),F2n=e=>Ae(\"/api/front/wqzb/detection_front/tools/\",{params:e}),$Zr=e=>Ae(`/api/front/wqzb/detection_front/tools/${e}/`),BZr=e=>Ae(`/api/front/wqzb/",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F032",
@@ -6358,8 +6327,7 @@
           "context": "nction YYr(e){return Ae(`/api/front/share/note/${e}/score/`)}async function QYr(e){return Ae(`/api/front/share/note/${e.id}/score/`,{method:\"post\",data:e.data})}async function XYr(e){return e.parent_path=encodeURIComponent(e.parent_path),Ae(`/api/front/learn/base/pan/attachment/f",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F033",
@@ -6484,8 +6452,7 @@
           "context": "rt_zip/\",{method:\"post\",data:{resource_ids:e.resource_ids}})}async function gZr(e){return Ae(\"/api/front/learn/task/my_profile/files/export_zip/\",{method:\"post\",data:{file_ids:e.file_ids}})}async function mZr(e){return Ae(\"/api/front/offline/course/package/?\"+Vt(e))}async function vZr(e){retur",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F034",
@@ -6626,8 +6593,7 @@
           "context": "ice/${e.id}/subject/${e.sid}/task/${e.tid}/video/${e.vid}/`)}async function WGt(e){return Ae(\"/api/front/base/tag/?\"+Vt(e))}async function SFa(e){return Ae(`${e.url||Jm}equip_practice/${e.id}/task/${e.tid}/log/`)}async function CFa(e){return Ae(`${e.url||Jm}equip_p",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F035",
@@ -6726,8 +6692,7 @@
           "context": "t YQr=e=>Ae(`/api/front/simulation/experiment/${e.id}/blue_team/?${Vt(e.filter)}`),QQr=e=>Ae(`/api/front/simulation/experiment/${e.id}/blue_team/`,{method:\"post\",data:e.data}),XQr=e=>Ae(`/api/front/wqzb/simulated_blue_team/scenario/?${Vt(e)}`),ZQr=e=>Ae(`/api/front/wqzb/simulated_blue_team/scen",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F036",
@@ -7046,8 +7011,7 @@
           "context": "/api/topo/${e.id}/edge/${e.e_id}/start_capture_pcap/`,{method:\"post\",data:e.data}),FVn=e=>Ae(`/api/topo/${e.id}/edge/${e.e_id}/stop_capture_pcap/`,{method:\"post\"});Sr((e,t)=>({acquisitionItem:[],moduleListAll:[],getModuleList:async n=>{e({loading:{list:!0}});const{data:r}=await qOe();if(e({load",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现；存在工程样例"
+      ]
     },
     {
       "id": "F037",
@@ -7405,8 +7369,7 @@
           "context": "arent_path),Ae(`/api/admin/resources/resource_network_disk/files/?${Vt(e)}`)}const V$a=e=>Ae(`/api/admin/wqzb/node_instance/${e.id}/platform_file_upload/ `,{method:\"post\",data:e.data}),W$a=e=>Ae(\"/api/admin/flow/?\"+Vt(e)),G$a=e=>Ae(\"/api/admin/flow/file/?\"+Vt(e)),q$a=e=>Ae(\"/api/topo/capture_pcap_delete",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F038",
@@ -7528,8 +7491,7 @@
           "context": "/api/topo/${e.id}/edge/${e.e_id}/start_capture_pcap/`,{method:\"post\",data:e.data}),FVn=e=>Ae(`/api/topo/${e.id}/edge/${e.e_id}/stop_capture_pcap/`,{method:\"post\"});Sr((e,t)=>({acquisitionItem:[],moduleListAll:[],getModuleList:async n=>{e({loading:{list:!0}});const{data:r}=await qOe();if(e({load",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F039",
@@ -7641,8 +7603,7 @@
           "context": "`/api/admin/simulation/experiment/${e.id}/user/note/`,{method:\"post\",data:e.data}),KQr=e=>Ae(`/api/admin/simulation/experiment/${e.id}/user/note/${e.noteId}/export/`,{method:\"post\"});async function Net(e){return Ae(\"/api/front/base/tag/?\"+Vt(e))}const YQr=e=>Ae(`/api/front/simulation/experiment/${e.id}/blue_team/",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F040",
@@ -7720,8 +7681,7 @@
           "context": "),UZr=e=>Ae(`/api/front/wqzb/detection_front/tools/${e.id}/materials/`,{params:e}),HZr=e=>Ae(`/api/front/wqzb/detection_front/tools/${e.id}/materials/export_zip/`,{method:\"post\",data:{material_ids:e.material_ids}}),E2={getList:F2n,getDetail:$Zr,getToolList:BZr,getToolType:FZr,fileList:UZr,exportFile:HZr};let U",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F041",
@@ -8342,8 +8302,7 @@
           "context": "blue_team/intelligent/list/${t}/ability_action/import/dimensions/${n}/?${Vt(r)}`)},TJr=e=>Ae(`/api/front/wqzb/simulated_blue_team/intelligent/list/${e}/tactics/`),OJr=e=>Ae(`/api/front/resources/aichat/assistant/${e.id}/conversations/`),tLt=e=>Ae(`/api/front/resources/aichat/assistant/${e.id}/conversations/${",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F042",
@@ -8564,8 +8523,7 @@
           "context": "),oga=e=>Ae(`/api/front/${e.model}/${e.id}/mirror_stop/${e.fid}/`,{method:\"post\"}),sga=e=>Ae(`/api/front/${e.model}/${e.id}/mirror_del/${e.fid}/`,{method:\"delete\"}),lga=e=>Ae(`/api/${e.model}/${e.id}/node/?${Ts(e.filter)}`),cga=()=>Ae(\"/api/front/node/template/define/\"),uga=e=>Ae(\"/api/front/n",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F043",
@@ -8652,8 +8610,7 @@
           "context": "Ae(\"/api/front/offline/record/list/\",{method:\"post\",data:e})}async function CZr(e){return Ae(\"/api/front/offline/app/list/?\"+Vt(e))}const EZr=e=>Ae(\"/api/front/scene/record/start/\",{method:\"post\",data:e}),TZr=e=>Ae(\"/api/front/scene/record/status/\",{method:\"post\",data:e}),",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F044",
@@ -8698,8 +8655,7 @@
           "context": "t/logout/\"),g2n=e=>Ae(\"/api/front/user/password/\",{method:\"post\",data:e.data||{}}),JKr=e=>Ae(\"/api/front/user/info/\",{method:\"patch\",data:e});async function eYr(){return Ae(\"/api/admin/system/logo/default/\")}async function tYr(){return Ae(\"/api/admin/system/backgro",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F045",
@@ -8798,8 +8754,7 @@
           "context": "assistant/${e.id}/conversations/${e.sectionid}/messages/${e.lastid}/chunks_list/`),LJr=e=>Ae(`/api/front/resources/aichat/assistant/${e.rid}/conversations/${e.cid}/messages/interrupt/`,{method:\"post\"});let PJr=(e,t)=>({userInfo:{},themeConfig:{theme:\"light\",light:{textColor:\"#333\",backColor:\"#fff\",colorBg:\"#f0f2f5\",colorPrimary:\"#1",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F046",
@@ -8845,8 +8800,7 @@
           "context": "=>Ae(`/api/front/topo/template/?${Ts(e)}`),$pa=async e=>Ae(`/api/scene/${e}/draw/`),jF=e=>Ae(`/api/front/topo/node_run/${e}/novnc/`),Bpa=e=>Ae(`/api/front/topo/node_run/${e.id}/upload_file/`,{method:\"post\",data:e.data}),Fpa=e=>Ae(`/api/front/${e.model}/${e.id}/edge_node/`,{method",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F047",
@@ -8874,8 +8828,7 @@
           "snippet": "KWs=()=>{const{logoSetting:e}=dl(),[t]=Kyn(),[n,r]=N.useState(\"\"),[i,a]=N.useState(\"\");return N.useEffect(()=>{r(t.get(\"filePath\")),a(t.get(\"mode\"))},[t]),Zn(()=>(window.open(`${e==null?void 0:e.onlyoffice_url}/web-apps/"
         }
       ],
-      "api_candidates": [],
-      "current_business_status": "正式业务未实现"
+      "api_candidates": []
     },
     {
       "id": "F048",
@@ -8979,8 +8932,7 @@
           "context": ":\"POST\",data:e.data})},Ppa=e=>Ae(\"/api/front/scene/delay/\",{method:\"post\",data:e}),Dpa=e=>Ae(`/api/front/topo/${e.id}/capture_situation/?${Ts(e.filter)}`),s9n=e=>Ae(`/api/front/topo/template/?${Ts(e)}`),$pa=async e=>Ae(`/api/scene/${e}/draw/`),jF=e=>Ae(`/api/front/topo/node_run/${e}/novnc/`),Bpa=e=>Ae",
           "candidate_only": true
         }
-      ],
-      "current_business_status": "正式业务未实现"
+      ]
     },
     {
       "id": "F049",
@@ -9013,8 +8965,7 @@
           "snippet": "h2n=()=>{Oet.forEach(e=>e.abort()),Oet.clear()},p2n=()=>Ae(\"/api/front/user/info/\"),XKr=e=>Ae(\"/api/front/login/\",{method:\"post\",data:e}),ZKr=()=>Ae(\"/api/front/logout/\"),g2n=e=>Ae(\"/api/front/user/password/\",{method:\"po"
         }
       ],
-      "api_candidates": [],
-      "current_business_status": "S02 公共基础完成；后续切片继续验收"
+      "api_candidates": []
     }
   ],
   "routes": [
@@ -11165,5 +11116,6 @@
       "line": 19,
       "scope": "6 项初始化流程覆盖外壳、诊断、错误恢复、表格、表单、图样例；未覆盖正式业务"
     }
-  ]
+  ],
+  "implementation_plan": "page-rebuild-implementation.md"
 }

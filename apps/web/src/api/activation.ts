@@ -18,7 +18,7 @@ function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   return result.data
 }
 
-const resultSchema = z.object({ status: z.union([z.literal(1), z.literal(2)]) })
+const resultSchema = z.object({ status: z.literal(1) })
 
 export async function getActivationStatus(signal?: AbortSignal) {
   return parse(
@@ -42,6 +42,7 @@ export async function activateOnline(
       method: 'POST',
       json: onlineActivationSchema.parse(values),
       signal,
+      isBusinessFailure: (value) => !resultSchema.safeParse(value).success,
     }),
   )
 }
@@ -62,6 +63,7 @@ export async function activateOffline(
       method: 'POST',
       body,
       signal,
+      isBusinessFailure: (value) => !resultSchema.safeParse(value).success,
     }),
   )
 }

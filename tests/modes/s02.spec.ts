@@ -77,7 +77,7 @@ test('未激活深链进入激活页，在线与本地表单校验、失败恢�
   await page.getByLabel('验证码', { exact: true }).fill('2468')
   await page.getByRole('button', { name: '激活', exact: true }).click()
   await expect(
-    page.getByText('激活未成功，请检查授权信息后重试。'),
+    page.locator('[data-sonner-toast]').filter({ hasText: '业务请求失败' }),
   ).toBeVisible()
   expect(attempts).toBe(1)
   await page.getByRole('button', { name: '本地激活', exact: true }).click()

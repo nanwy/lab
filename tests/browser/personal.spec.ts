@@ -33,7 +33,12 @@ test('MSW 资料、头像刷新往返及改密后用新密码重新登录', asyn
   await dialog.getByLabel('新密码', { exact: true }).fill('new-fixture')
   await dialog.getByLabel('确认密码', { exact: true }).fill('new-fixture')
   await dialog.getByRole('button', { name: '确定修改' }).click()
-  await expect(dialog.getByText('原密码错误', { exact: true })).toBeVisible()
+  const failure = page
+    .locator('[data-sonner-toast]')
+    .filter({ hasText: '模拟改密失败' })
+  await expect(failure).toBeVisible()
+  await expect(failure).toHaveCount(1)
+  await expect(dialog.locator('[data-slot="field-error"]')).toHaveCount(0)
   await dialog.getByLabel('原密码', { exact: true }).fill('xueyuan123')
   await dialog.getByRole('button', { name: '确定修改' }).click()
   await expect(

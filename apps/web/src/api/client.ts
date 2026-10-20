@@ -12,9 +12,6 @@ export type ResponseKind = 'json' | 'empty' | 'text' | 'blob' | 'stream'
 
 export type ErrorDisplayPolicy = {
   serviceErrors?: Readonly<Record<string, string>>
-  messages?: Readonly<Record<string, string>>
-  fieldErrors?: Readonly<Record<string, Readonly<Record<string, string>>>>
-  fieldErrorSource?: 'fieldErrors' | 'root'
 }
 
 export type RequestOptions = Omit<RequestInit, 'body' | 'signal'> & {
@@ -25,16 +22,17 @@ export type RequestOptions = Omit<RequestInit, 'body' | 'signal'> & {
   timeoutMs?: number
   errorDisplay?: ErrorDisplayPolicy
   isBusinessFailure?: (value: unknown) => boolean
+  allowExpiredSession?: boolean
 }
 
 export type ApiErrorKind =
   'http' | 'business' | 'cancelled' | 'timeout' | 'network' | 'invalid-response'
 
 export class ApiError extends Error {
+  handled = false
   readonly serviceError?: string
   readonly kind: ApiErrorKind
   readonly status?: number
-  readonly fieldErrors?: Readonly<Record<string, string>>
 
   constructor(
     kind: ApiErrorKind,
@@ -42,7 +40,6 @@ export class ApiError extends Error {
     options: {
       serviceError?: string
       status?: number
-      fieldErrors?: Readonly<Record<string, string>>
     } = {},
   ) {
     super(message)
@@ -50,7 +47,6 @@ export class ApiError extends Error {
     this.serviceError = options.serviceError
     this.kind = kind
     this.status = options.status
-    this.fieldErrors = options.fieldErrors
   }
 }
 
@@ -58,6 +54,7 @@ type ApiClientOptions = {
   baseUrl: string
   requestPolicy?: RequestPolicy
   fetch?: typeof globalThis.fetch
+  onError?: (error: unknown, request: RequestOptions) => void
 }
 
 function buildUrl(baseUrl: string, path: string) {
@@ -81,31 +78,6 @@ function combineSignals(
   return active.length === 0 ? undefined : AbortSignal.any(active)
 }
 
-function safeFieldErrors(value: unknown, policy?: ErrorDisplayPolicy) {
-  if (!value || typeof value !== 'object' || Array.isArray(value))
-    return undefined
-  const safe = Object.fromEntries(
-    Object.entries(value).flatMap(([key, message]) => {
-      if (!policy?.fieldErrors || !Object.hasOwn(policy.fieldErrors, key))
-        return []
-      const approved = policy?.fieldErrors?.[key]
-      return typeof message === 'string' &&
-        approved &&
-        Object.hasOwn(approved, message)
-        ? [[key, approved[message]!]]
-        : []
-    }),
-  )
-  return Object.keys(safe).length > 0 ? safe : undefined
-}
-
-function fieldErrorValue(value: unknown, policy?: ErrorDisplayPolicy) {
-  if (policy?.fieldErrorSource === 'root') return value
-  return value && typeof value === 'object'
-    ? Reflect.get(value, 'fieldErrors')
-    : undefined
-}
-
 function serviceErrorValue(value: unknown, policy?: ErrorDisplayPolicy) {
   if (!value || typeof value !== 'object') return undefined
   const code = Reflect.get(value, 'error')
@@ -117,16 +89,13 @@ function serviceErrorValue(value: unknown, policy?: ErrorDisplayPolicy) {
 
 function messageFrom(
   value: unknown,
+  field: 'error' | 'message',
   fallback: string,
-  policy?: ErrorDisplayPolicy,
 ) {
   if (!value || typeof value !== 'object') return fallback
-  const message = Reflect.get(value, 'message')
-  return typeof message === 'string' &&
-    policy?.messages &&
-    Object.hasOwn(policy.messages, message)
-    ? policy.messages[message]!
-    : fallback
+  const message = Reflect.get(value, field)
+  if (typeof message !== 'string' || !message.trim()) return fallback
+  return message
 }
 
 async function readErrorBody(
@@ -148,6 +117,7 @@ async function parseResponse(
   response: Response,
   kind: ResponseKind,
   signal?: AbortSignal,
+  onError?: (error: unknown) => void,
 ) {
   if (kind === 'empty') return undefined
   if (kind === 'text') return response.text()
@@ -170,7 +140,9 @@ async function parseResponse(
         onAbort = () => {
           if (finished) return
           cleanup()
-          controller.error(abortError(signal))
+          const error = abortError(signal)
+          onError?.(error)
+          controller.error(error)
           void reader.cancel().catch(() => {})
         }
         signal?.addEventListener('abort', onAbort, { once: true })
@@ -188,12 +160,13 @@ async function parseResponse(
         } catch {
           if (finished) return
           cleanup()
-          controller.error(
+          const error =
             abortError(signal) ??
-              new ApiError('network', '读取响应流失败', {
-                status: response.status,
-              }),
-          )
+            new ApiError('network', '读取响应流失败', {
+              status: response.status,
+            })
+          onError?.(error)
+          controller.error(error)
         }
       },
       async cancel() {
@@ -230,87 +203,90 @@ function abortError(signal: AbortSignal | undefined) {
 }
 
 export function createApiClient(options: ApiClientOptions) {
+  async function request<T>(
+    path: string,
+    request: RequestOptions = {},
+  ): Promise<T> {
+    const url = buildUrl(options.baseUrl, path)
+    const method = request.method?.toUpperCase() ?? 'GET'
+    const headers = new Headers(request.headers)
+    let body = request.body
+
+    if (request.json !== undefined) {
+      headers.set('content-type', 'application/json')
+      body = JSON.stringify(request.json)
+    }
+
+    await options.requestPolicy?.apply({ headers, method, url })
+    const signal = combineSignals(request.signal, request.timeoutMs)
+
+    let response: Response
+    try {
+      response = await (options.fetch ?? globalThis.fetch)(url, {
+        ...request,
+        method,
+        headers,
+        body,
+        signal,
+      })
+    } catch {
+      const normalizedAbort = abortError(signal)
+      if (normalizedAbort) throw normalizedAbort
+      throw new ApiError('network', '网络请求失败')
+    }
+
+    if (!response.ok) {
+      const errorBody = await readErrorBody(response, signal)
+      throw new ApiError(
+        'http',
+        messageFrom(errorBody, 'error', `请求失败（${response.status}）`),
+        {
+          serviceError: serviceErrorValue(errorBody, request.errorDisplay),
+          status: response.status,
+        },
+      )
+    }
+
+    let result: unknown
+    try {
+      result = await parseResponse(
+        response,
+        request.response ?? 'json',
+        signal,
+        (error) => options.onError?.(error, request),
+      )
+    } catch (cause) {
+      throw (
+        abortError(signal) ??
+        (cause instanceof ApiError
+          ? cause
+          : new ApiError('network', '读取响应失败', {
+              status: response.status,
+            }))
+      )
+    }
+    if (request.isBusinessFailure?.(result)) {
+      throw new ApiError(
+        'business',
+        messageFrom(result, 'message', '业务请求失败'),
+        {
+          status: response.status,
+        },
+      )
+    }
+    return result as T
+  }
   return {
-    async request<T>(path: string, request: RequestOptions = {}): Promise<T> {
-      const url = buildUrl(options.baseUrl, path)
-      const method = request.method?.toUpperCase() ?? 'GET'
-      const headers = new Headers(request.headers)
-      let body = request.body
-
-      if (request.json !== undefined) {
-        headers.set('content-type', 'application/json')
-        body = JSON.stringify(request.json)
-      }
-
-      await options.requestPolicy?.apply({ headers, method, url })
-      const signal = combineSignals(request.signal, request.timeoutMs)
-
-      let response: Response
+    async request<T>(
+      path: string,
+      requestOptions: RequestOptions = {},
+    ): Promise<T> {
       try {
-        response = await (options.fetch ?? globalThis.fetch)(url, {
-          ...request,
-          method,
-          headers,
-          body,
-          signal,
-        })
-      } catch {
-        const normalizedAbort = abortError(signal)
-        if (normalizedAbort) throw normalizedAbort
-        throw new ApiError('network', '网络请求失败')
+        return await request<T>(path, requestOptions)
+      } catch (error) {
+        options.onError?.(error, requestOptions)
+        throw error
       }
-
-      if (!response.ok) {
-        const errorBody = await readErrorBody(response, signal)
-        throw new ApiError(
-          'http',
-          messageFrom(
-            errorBody,
-            `请求失败（${response.status}）`,
-            request.errorDisplay,
-          ),
-          {
-            serviceError: serviceErrorValue(errorBody, request.errorDisplay),
-            status: response.status,
-            fieldErrors: safeFieldErrors(
-              fieldErrorValue(errorBody, request.errorDisplay),
-              request.errorDisplay,
-            ),
-          },
-        )
-      }
-
-      let result: unknown
-      try {
-        result = await parseResponse(
-          response,
-          request.response ?? 'json',
-          signal,
-        )
-      } catch (cause) {
-        throw (
-          abortError(signal) ??
-          (cause instanceof ApiError
-            ? cause
-            : new ApiError('network', '读取响应失败', {
-                status: response.status,
-              }))
-        )
-      }
-      if (request.isBusinessFailure?.(result)) {
-        throw new ApiError(
-          'business',
-          messageFrom(result, '业务请求失败', request.errorDisplay),
-          {
-            status: response.status,
-            fieldErrors: safeFieldErrors(
-              fieldErrorValue(result, request.errorDisplay),
-              request.errorDisplay,
-            ),
-          },
-        )
-      }
-      return result as T
     },
   }
 }

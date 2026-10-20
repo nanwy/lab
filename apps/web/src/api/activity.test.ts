@@ -82,7 +82,7 @@ it('待办创建与状态提交保持 content/set_time 和单项 ids/otype 契�
   )
   await expect(
     addTodo({ content: '模拟事项', set_time: item.set_time }),
-  ).resolves.toEqual(item)
+  ).resolves.toEqual({ id: item.id })
   for (const otype of [1, 2] as const) {
     vi.stubGlobal(
       'fetch',
@@ -99,16 +99,25 @@ it('待办创建与状态提交保持 content/set_time 和单项 ids/otype 契�
   }
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => Response.json({ status: 2, message: 'private-error' })),
+    vi.fn(async () => Response.json({ status: 2, message: '事项已被删除' })),
   )
   await expect(changeTodo('todo-1', 1)).rejects.toMatchObject({
     kind: 'business',
-    message: '操作未成功，请重试',
+    message: '事项已被删除',
   })
-  const fetch = vi.fn()
-  vi.stubGlobal('fetch', fetch)
-  await expect(addTodo({ content: '', set_time: '' })).rejects.toThrow()
-  expect(fetch).not.toHaveBeenCalled()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (_url: URL, options: RequestInit) => {
+      expect(JSON.parse(String(options.body))).toEqual({
+        content: null,
+        set_time: null,
+      })
+      return Response.json({ id: 'todo-empty' })
+    }),
+  )
+  await expect(addTodo({ content: '', set_time: '' })).resolves.toEqual({
+    id: 'todo-empty',
+  })
 })
 
 it('三种读取保留各自响应结构，不猜数量 key 或把分页当全量', async () => {

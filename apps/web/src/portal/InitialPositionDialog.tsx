@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
-import { useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
+import { ApiError } from '../api'
 import { Button } from '@workspace/ui/components/button'
 import {
   FieldGroup,
@@ -24,7 +25,6 @@ import {
 } from '../api/auth'
 import { establishSession } from '../auth/session'
 import { usePageSignal } from '../auth/use-page-signal'
-import { useAccessFailure } from '../auth/access'
 
 export function InitialPositionDialog({
   user,
@@ -38,9 +38,7 @@ export function InitialPositionDialog({
     queryFn: ({ signal }) => getPositions(signal),
     retry: false,
   })
-  const [error, setError] = useState('')
   const pageSignal = usePageSignal()
-  const accessFailure = useAccessFailure()
   const client = useQueryClient()
   const form = useForm({
     defaultValues: {
@@ -50,17 +48,11 @@ export function InitialPositionDialog({
     validators: { onSubmit: initialPositionSchema },
     onSubmit: async ({ value }) => {
       const signal = pageSignal()
-      setError('')
-      try {
-        const updated = await saveInitialPosition(value, signal)
-        if (signal.aborted) return
-        establishSession(client, updated)
-        await client.invalidateQueries({ queryKey: ['home'] })
-        if (!signal.aborted) close()
-      } catch (error) {
-        if (!signal.aborted && !accessFailure(error))
-          setError('岗位信息保存失败，请重试。')
-      }
+      const updated = await saveInitialPosition(value, signal)
+      if (signal.aborted) return
+      establishSession(client, updated)
+      await client.invalidateQueries({ queryKey: ['home'] })
+      if (!signal.aborted) close()
     },
   })
   return (
@@ -81,7 +73,14 @@ export function InitialPositionDialog({
           className="grid gap-5"
           onSubmit={(e) => {
             e.preventDefault()
-            form.handleSubmit()
+            void form.handleSubmit().catch((error: unknown) => {
+              if (!(error instanceof ApiError) || !error.handled)
+                toast.error(
+                  error instanceof ApiError
+                    ? error.message
+                    : '提交失败，请重试',
+                )
+            })
           }}
         >
           <FieldGroup className="gap-4">
@@ -130,11 +129,6 @@ export function InitialPositionDialog({
             ) : (
               <p>未开放岗位选择</p>
             )}
-            {error ? (
-              <p role="alert" className="text-destructive">
-                {error}
-              </p>
-            ) : null}
             <form.Subscribe selector={(s) => s.isSubmitting}>
               {(busy) => (
                 <LoadingButton

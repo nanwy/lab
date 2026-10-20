@@ -23,7 +23,7 @@ import { diagnosticQueryOptions } from './query-options'
 import { LoginPage, type LoginReason } from './auth/LoginPage'
 import { PersonalPage } from './auth/PersonalPage'
 import { ActivatePage } from './auth/ActivatePage'
-import { AccessEvents, ForbiddenPage } from './auth/access'
+import { ForbiddenPage } from './auth/access'
 import { ProtectedShell } from './portal/ProtectedShell'
 import { HomePage } from './portal/HomePage'
 import { PlatformBranding } from './portal/PlatformBranding'
@@ -46,12 +46,7 @@ function RootLayout() {
     path.startsWith('/basic/')
   return (
     <>
-      {business ? (
-        <>
-          <AccessEvents />
-          <PlatformBranding />
-        </>
-      ) : null}
+      {business ? <PlatformBranding /> : null}
       <AppShell />
     </>
   )

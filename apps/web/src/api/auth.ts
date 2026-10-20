@@ -33,21 +33,6 @@ const currentUserSchema = z.object({
 
 export type CurrentUser = z.infer<typeof currentUserSchema>
 
-const loginErrorDisplay = {
-  fieldErrorSource: 'root',
-  fieldErrors: {
-    username: {
-      用户名不存在: '用户名不存在',
-    },
-    password: {
-      用户名或密码错误: '用户名或密码错误',
-    },
-    code: {
-      验证码错误: '验证码错误',
-    },
-  },
-} as const
-
 function parseResponse<T>(schema: z.ZodType<T>, value: unknown) {
   const parsed = schema.safeParse(value)
   if (!parsed.success) {
@@ -64,7 +49,6 @@ export async function login(
     method: 'POST',
     json: loginCredentialsSchema.parse(credentials),
     signal,
-    errorDisplay: loginErrorDisplay,
     isBusinessFailure: (result) =>
       typeof result === 'object' &&
       result !== null &&
@@ -85,8 +69,16 @@ export async function getLoginBackground(signal?: AbortSignal) {
   return parseResponse(z.object({ front_background: z.string() }), value)
 }
 
-export async function logout(signal?: AbortSignal) {
-  const value = await apiClient.request('/front/logout/', { signal })
+export async function logout(
+  signal?: AbortSignal,
+  allowExpiredSession = false,
+) {
+  const value = await apiClient.request('/front/logout/', {
+    signal,
+    allowExpiredSession,
+    isBusinessFailure: (result) =>
+      !operationResultSchema.safeParse(result).success,
+  })
   return parseResponse(operationResultSchema, value)
 }
 
@@ -159,10 +151,6 @@ export async function saveProfile(
 export const avatarFileSchema = z
   .instanceof(File)
   .refine((file) => file.size <= 5 * 1024 * 1024, '图片大小不能超过5M')
-  .refine(
-    (file) => ['image/jpeg', 'image/png'].includes(file.type),
-    '只支持JPG、PNG、JPEG图片',
-  )
 export async function uploadAvatar(file: File, signal?: AbortSignal) {
   const body = new FormData()
   body.append('logo', avatarFileSchema.parse(file))
@@ -175,25 +163,14 @@ export async function uploadAvatar(file: File, signal?: AbortSignal) {
     }),
   )
 }
-export const passwordChangeSchema = z
-  .object({
-    cipher: z
-      .string()
-      .min(1, '请输入原始密码')
-      .max(100, '密码不能超过100个字符'),
-    password: z
-      .string()
-      .min(1, '请输入新密码')
-      .max(100, '密码不能超过100个字符'),
-    confirm_password: z
-      .string()
-      .min(1, '请重复输入确认密码')
-      .max(100, '密码不能超过100个字符'),
-  })
-  .refine((values) => values.password === values.confirm_password, {
-    path: ['confirm_password'],
-    message: '两次输入的密码不一致',
-  })
+export const passwordChangeSchema = z.object({
+  cipher: z.string().min(1, '请输入原始密码').max(100, '密码不能超过100个字符'),
+  password: z.string().min(1, '请输入新密码').max(100, '密码不能超过100个字符'),
+  confirm_password: z
+    .string()
+    .min(1, '请重复输入确认密码')
+    .max(100, '密码不能超过100个字符'),
+})
 export type PasswordChangeValues = z.infer<typeof passwordChangeSchema>
 export async function changePassword(
   values: PasswordChangeValues,
@@ -207,14 +184,6 @@ export async function changePassword(
       typeof value === 'object' &&
       value !== null &&
       Reflect.get(value, 'status') !== 1,
-    errorDisplay: {
-      fieldErrorSource: 'root',
-      fieldErrors: {
-        cipher: { 原密码错误: '原密码错误' },
-        password: { 密码不符合要求: '密码不符合要求' },
-        confirm_password: { 两次输入的密码不一致: '两次输入的密码不一致' },
-      },
-    },
   })
   return parseResponse(operationResultSchema, result)
 }

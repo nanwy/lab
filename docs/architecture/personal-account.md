@@ -21,7 +21,7 @@
 
 ## 明确差异与验证边界
 
-- 新增本地确认密码一致校验；原弹窗只校验非空。头像额外校验 MIME，原上传处理只显式检查大小，格式限制来自 input.accept 和提示。未推测邮箱、手机格式或密码强度规则。
+- 按原弹窗保留三项密码非空和 100 字符限制，不增加确认密码一致性或密码强度校验；具体失败交给接口。头像保留 5 MiB 限制及 input.accept，不再额外按 MIME 拒绝上传。资料长度、请求字段和成功判据均按上方 bundle 证据。
+- 删除无真实接口契约支撑的服务端字段错误映射与逐字段清错。HTTP error／业务 message 由 API 实例统一 toast。
 - 原改密成功先关闭弹窗再退出；本地保留原弹窗以提供退出失败恢复。使用共享 shadcn 样式，不声称逐像素还原。
-- MSW 模拟资料仅保存在当前标签页 sessionStorage，刷新可重开；模拟密码只保留于 handler 内存，整页刷新后恢复初始模拟密码。生产包不启动 MSW。这是模拟服务状态，不是业务用户缓存，也不是后端持久化验证。
-- 契约测试见 `apps/web/src/api/profile.test.ts`；生产与关闭 MSW 的浏览器回归见 `tests/modes/s03.spec.ts`、`forms.spec.ts`；MSW 完整往返见 `tests/browser/personal.spec.ts`。不执行原后端写入，不把测试 fixture 当作线上事实。
+- 契约测试见 `apps/web/src/api/profile.test.ts`；浏览器回归见 `tests/modes/s03.spec.ts`、`forms.spec.ts`；完整往返见 `tests/browser/personal.spec.ts`。自动化测试与真实接口写入验收分别记录。

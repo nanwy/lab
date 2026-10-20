@@ -1,68 +1,80 @@
 import { expect, test } from '@playwright/test'
 import { portalFixtures } from '../../apps/web/src/mocks/portal-fixtures'
 
-test('改密后复用原表单，退出等待期间禁用按钮，失败只重试退出', async ({
-  page,
-}) => {
-  const errors: string[] = []
-  page.on('pageerror', (error) => errors.push(error.message))
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text())
-  })
-  for (const [path, json] of Object.entries(portalFixtures))
-    await page.route(`**/api${path}`, (route) => route.fulfill({ json }))
-  await page.route('**/api/front/user/info/', (route) =>
-    route.fulfill({
-      json: { id: 'password-retry', extend_info: { first_entry: true } },
-    }),
-  )
-  let passwordRequests = 0
-  let logoutRequests = 0
-  let release!: () => void
-  await page.route('**/api/front/user/password/', (route) => {
-    passwordRequests++
-    return route.fulfill({ json: { status: 1 } })
-  })
-  await page.route('**/api/front/logout/', async (route) => {
-    const attempt = ++logoutRequests
-    await new Promise<void>((resolve) => {
-      release = resolve
+for (const expiredOnRetry of [false, true]) {
+  test(`改密后复用原表单，退出等待期间禁用按钮，失败只重试退出${expiredOnRetry ? '，服务端会话已失效' : ''}`, async ({
+    page,
+  }) => {
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text())
     })
-    await route.fulfill({ json: { status: attempt === 1 ? 2 : 1 } })
+    for (const [path, json] of Object.entries(portalFixtures))
+      await page.route(`**/api${path}`, (route) => route.fulfill({ json }))
+    await page.route('**/api/front/user/info/', (route) =>
+      route.fulfill({
+        json: { id: 'password-retry', extend_info: { first_entry: true } },
+      }),
+    )
+    let passwordRequests = 0
+    let logoutRequests = 0
+    let release!: () => void
+    await page.route('**/api/front/user/password/', (route) => {
+      passwordRequests++
+      return route.fulfill({ json: { status: 1 } })
+    })
+    await page.route('**/api/front/logout/', async (route) => {
+      const attempt = ++logoutRequests
+      await new Promise<void>((resolve) => {
+        release = resolve
+      })
+      await route.fulfill(
+        expiredOnRetry && attempt > 1
+          ? { status: 403, json: { error: '未登录' } }
+          : { json: { status: attempt === 1 ? 2 : 1 } },
+      )
+    })
+    await page.goto('/#/basic/home')
+    await page.getByText('用户菜单', { exact: true }).click()
+    await page.getByRole('button', { name: '修改密码', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('原密码', { exact: true }).fill('old-fixture')
+    await dialog.getByLabel('新密码', { exact: true }).fill('new-fixture')
+    await dialog.getByLabel('确认密码', { exact: true }).fill('new-fixture')
+    await dialog.getByRole('button', { name: '确定修改', exact: true }).click()
+    await expect.poll(() => logoutRequests).toBe(1)
+    const retry = dialog.getByRole('button', { name: '重试退出', exact: true })
+    await expect(retry).toBeDisabled()
+    await expect(dialog.getByLabel('原密码', { exact: true })).toBeDisabled()
+    await expect(dialog.getByLabel('新密码', { exact: true })).toBeDisabled()
+    await expect(dialog.getByLabel('确认密码', { exact: true })).toBeDisabled()
+    release()
+    await expect(
+      page.getByText('密码已修改，但退出失败。请重试退出，无需再次修改密码。'),
+    ).toBeVisible()
+    await expect(retry).toBeEnabled()
+    await expect(dialog.getByLabel('原密码', { exact: true })).toHaveValue('')
+    await retry.click()
+    await expect.poll(() => logoutRequests).toBe(2)
+    await expect(retry).toBeDisabled()
+    expect(passwordRequests).toBe(1)
+    release()
+    await expect(page).toHaveURL(/#\/login\?reason=password-changed/)
+    await expect(
+      page.getByText('密码修改成功，请使用新密码重新登录。'),
+    ).toBeVisible()
+    expect(passwordRequests).toBe(1)
+    expect(logoutRequests).toBe(2)
+    expect(errors).toEqual(
+      expiredOnRetry
+        ? [
+            'Failed to load resource: the server responded with a status of 403 (Forbidden)',
+          ]
+        : [],
+    )
   })
-  await page.goto('/#/basic/home')
-  await page.getByText('用户菜单', { exact: true }).click()
-  await page.getByRole('button', { name: '修改密码', exact: true }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('原密码', { exact: true }).fill('old-fixture')
-  await dialog.getByLabel('新密码', { exact: true }).fill('new-fixture')
-  await dialog.getByLabel('确认密码', { exact: true }).fill('new-fixture')
-  await dialog.getByRole('button', { name: '确定修改', exact: true }).click()
-  await expect.poll(() => logoutRequests).toBe(1)
-  const retry = dialog.getByRole('button', { name: '重试退出', exact: true })
-  await expect(retry).toBeDisabled()
-  await expect(dialog.getByLabel('原密码', { exact: true })).toBeDisabled()
-  await expect(dialog.getByLabel('新密码', { exact: true })).toBeDisabled()
-  await expect(dialog.getByLabel('确认密码', { exact: true })).toBeDisabled()
-  release()
-  await expect(
-    dialog.getByText('密码已修改，但退出失败。请重试退出，无需再次修改密码。'),
-  ).toBeVisible()
-  await expect(retry).toBeEnabled()
-  await expect(dialog.getByLabel('原密码', { exact: true })).toHaveValue('')
-  await retry.click()
-  await expect.poll(() => logoutRequests).toBe(2)
-  await expect(retry).toBeDisabled()
-  expect(passwordRequests).toBe(1)
-  release()
-  await expect(page).toHaveURL(/#\/login\?reason=password-changed/)
-  await expect(
-    page.getByText('密码修改成功，请使用新密码重新登录。'),
-  ).toBeVisible()
-  expect(passwordRequests).toBe(1)
-  expect(logoutRequests).toBe(2)
-  expect(errors).toEqual([])
-})
+}
 
 test('个人资料与改密使用可关联的标签和字段错误，修正后可提交', async ({
   page,
@@ -151,11 +163,6 @@ test('个人资料与改密使用可关联的标签和字段错误，修正后�
   ).toBeVisible()
   await dialog.getByLabel('原密码', { exact: true }).fill('old-fixture')
   await dialog.getByLabel('新密码', { exact: true }).fill('new-fixture')
-  await dialog.getByLabel('确认密码', { exact: true }).fill('different')
-  await submit.click()
-  await expect(
-    dialog.getByText('两次输入的密码不一致', { exact: true }),
-  ).toBeVisible()
   let requests = 0
   await page.route('**/api/front/user/password/', (route) => {
     requests++
@@ -169,7 +176,7 @@ test('个人资料与改密使用可关联的标签和字段错误，修正后�
   await dialog.getByLabel('确认密码', { exact: true }).fill('new-fixture')
   await submit.click()
   await expect(
-    dialog.getByText('密码修改失败，请检查输入或稍后重试。'),
+    page.locator('[data-sonner-toast]').filter({ hasText: '业务请求失败' }),
   ).toBeVisible()
   expect(requests).toBe(1)
   expect(errors).toEqual([])

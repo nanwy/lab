@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
 import { Button } from '@workspace/ui/components/button'
 import { Alert, AlertDescription } from '@workspace/ui/components/alert'
 import { activityKeys, getCollections, type Collection } from '../api/activity'
@@ -8,7 +9,6 @@ import { ActivityTable, ListPagination } from './ActivityTable'
 
 export function CollectionsPanel() {
   const [page, setPage] = useState(1)
-  const [notice, setNotice] = useState('')
   const size = 21
   const list = useQuery({
     queryKey: [...activityKeys.collections, 'list', page, size],
@@ -33,7 +33,7 @@ export function CollectionsPanel() {
             variant="ghost"
             className="h-auto max-w-full whitespace-normal text-left"
             onClick={() =>
-              setNotice(
+              toast.error(
                 item.is_status
                   ? '该类型资源暂未提供跳转入口。'
                   : '该资源已被下线无法查看！',
@@ -61,7 +61,6 @@ export function CollectionsPanel() {
   ]
   return (
     <section className="min-w-0 space-y-4" aria-label="收藏列表">
-      {notice ? <p role="status">{notice}</p> : null}
       {list.isPending ? (
         <p role="status">正在读取收藏…</p>
       ) : list.isError ? (
@@ -87,7 +86,6 @@ export function CollectionsPanel() {
             count={list.data.count}
             busy={list.isFetching}
             change={(value) => {
-              setNotice('')
               setPage(value)
             }}
           />

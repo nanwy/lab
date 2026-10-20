@@ -53,16 +53,12 @@ export const handlers = [
 
     if (mode === 'empty') return HttpResponse.json({ items: [] })
     if (mode === 'http-error') {
-      return HttpResponse.json(
-        { message: '模拟服务暂时不可用' },
-        { status: 503 },
-      )
+      return HttpResponse.json({ error: '模拟服务暂时不可用' }, { status: 503 })
     }
     if (mode === 'business-error') {
       return HttpResponse.json({
         success: false,
         message: '模拟资源状态不允许此操作',
-        fieldErrors: { state: '资源已锁定' },
       })
     }
     if (mode === 'slow' || mode === 'timeout') await delay(300)

@@ -2,6 +2,8 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react'
 import { useForm } from '@tanstack/react-form'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
+import { ApiError } from '../api'
 import { Button } from '@workspace/ui/components/button'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
 import { Input } from '@workspace/ui/components/input'
@@ -31,32 +33,31 @@ import {
 } from '@workspace/ui/components/alert-dialog'
 import { addTodo, changeTodo, newTodoSchema, type Todo } from '../api/activity'
 import { usePageSignal } from '../auth/use-page-signal'
-import { useAccessFailure } from '../auth/access'
 import { ActivityTable } from './ActivityTable'
 import { dateKey, TodoCalendar } from './TodoCalendar'
 import { refreshTodos, todosOptions } from './queries'
 
 const DeleteTodoModal = NiceModal.create(({ todo }: { todo: Todo }) => {
   const modal = useModal()
-  const [error, setError] = useState('')
   const client = useQueryClient()
   const signalForPage = usePageSignal()
-  const accessFailure = useAccessFailure()
   function close() {
     modal.resolve()
     modal.remove()
   }
   async function remove() {
     const signal = signalForPage()
-    setError('')
     try {
       await changeTodo(todo.id, 1, signal)
       if (signal.aborted) return
       await refreshTodos(client)
       if (!signal.aborted) close()
     } catch (error) {
-      if (!signal.aborted && !accessFailure(error))
-        setError('删除失败，请重试。')
+      if (signal.aborted) return
+      if (!(error instanceof ApiError) || !error.handled)
+        toast.error(
+          error instanceof ApiError ? error.message : '删除失败，请重试',
+        )
     }
   }
   return (
@@ -73,11 +74,6 @@ const DeleteTodoModal = NiceModal.create(({ todo }: { todo: Todo }) => {
             确认删除“{todo.content}”？删除后不可恢复。
           </AlertDialogDescription>
         </AlertDialogHeader>
-        {error ? (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel>取消</AlertDialogCancel>
           <LoadingButton variant="destructive" onClick={remove}>
@@ -93,29 +89,19 @@ export const TodosModal = NiceModal.create(() => {
   const modal = useModal()
   const [date, setDate] = useState(new Date())
   const [mode, setMode] = useState('month')
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
   const client = useQueryClient()
   const signalForPage = usePageSignal()
-  const accessFailure = useAccessFailure()
   const todos = useQuery(todosOptions)
   const form = useForm({
     defaultValues: { content: '', set_time: '' },
     validators: { onSubmit: newTodoSchema },
     onSubmit: async ({ value, formApi }) => {
       const signal = signalForPage()
-      setError('')
-      setNotice('')
-      try {
-        await addTodo(value, signal)
-        if (signal.aborted) return
-        formApi.setFieldValue('content', '')
-        await refreshTodos(client)
-        if (!signal.aborted) setNotice('待办已创建。')
-      } catch (error) {
-        if (!signal.aborted && !accessFailure(error))
-          setError('待办创建失败，输入内容已保留，请重试。')
-      }
+      await addTodo(value, signal)
+      if (signal.aborted) return
+      formApi.setFieldValue('content', '')
+      await refreshTodos(client)
+      if (!signal.aborted) toast.success('待办已创建。')
     },
   })
   function selectDate(value: Date) {
@@ -129,14 +115,15 @@ export const TodosModal = NiceModal.create(() => {
   }
   async function finish(todo: Todo) {
     const signal = signalForPage()
-    setError('')
-    setNotice('')
     try {
       await changeTodo(todo.id, 2, signal)
       if (!signal.aborted) await refreshTodos(client)
     } catch (error) {
-      if (!signal.aborted && !accessFailure(error))
-        setError('标注完成失败，请重试。')
+      if (signal.aborted) return
+      if (!(error instanceof ApiError) || !error.handled)
+        toast.error(
+          error instanceof ApiError ? error.message : '标注完成失败，请重试',
+        )
     }
   }
   const columns = [
@@ -191,7 +178,14 @@ export const TodosModal = NiceModal.create(() => {
             <form
               onSubmit={(event) => {
                 event.preventDefault()
-                form.handleSubmit()
+                void form.handleSubmit().catch((error: unknown) => {
+                  if (!(error instanceof ApiError) || !error.handled)
+                    toast.error(
+                      error instanceof ApiError
+                        ? error.message
+                        : '提交失败，请重试',
+                    )
+                })
               }}
             >
               <FieldGroup>
@@ -260,12 +254,6 @@ export const TodosModal = NiceModal.create(() => {
                 </form.Subscribe>
               </FieldGroup>
             </form>
-            {error ? (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : null}
-            {notice ? <p role="status">{notice}</p> : null}
             <h3 className="font-semibold">
               {mode === 'year' ? '当月任务' : '当天任务'} · {prefix}
             </h3>

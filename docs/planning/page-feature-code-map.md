@@ -4,12 +4,12 @@
 
 ## 阅读入口
 
-- 需求基线：[spec.md](/Users/nanfugongmeiying/Desktop/project/lab/xueyuan-rebuild/docs/planning/spec.md)（与分析目录的同名文件为同一业务规格的不同状态版本；采用当前重建仓库版本）。
+- 需求基线：[spec.md](/Users/nanfugongmeiying/Desktop/project/lab/xueyuan-rebuild/docs/planning/spec.md)（唯一业务规格，分析目录不再保留副本）。
 - 原站代码：[index-DECk1PRe.js](/Users/nanfugongmeiying/Desktop/project/lab/rea-analysis/xueyuan/artifact/index-DECk1PRe.js)；压缩产物无可维护源文件树，以原始符号和字符偏移定位。
 - 可检索台账：[page-feature-code-map.json](/Users/nanfugongmeiying/Desktop/project/lab/xueyuan-rebuild/docs/planning/page-feature-code-map.json)，含全部路由、自有组件、定义位置、API 候选上下文与用户故事原文。
 - 当前工程：[router.tsx](/Users/nanfugongmeiying/Desktop/project/lab/xueyuan-rebuild/apps/web/src/router.tsx)；状态说明：[implementation-status.md](/Users/nanfugongmeiying/Desktop/project/lab/xueyuan-rebuild/docs/implementation-status.md)。
 
-**当前结论：原站功能范围已建立逐组索引；S01 / F001 登录与会话已完成前端验收，其余正式业务待实施。** 原站证据来自静态分析；未执行原站 bundle 或请求原后端。S01 验收与差异见 [账号契约](../architecture/account-session.md)。
+本文件维护原站静态证据及审计时的工程代码定位；当前进度按 F 编号查询[实施计划](page-rebuild-implementation.md)。历史验证见[实施记录](../implementation-status.md)，协议与差异见对应架构契约。
 
 证据分为：①路由原文可证的入口/组件；②组件或请求封装直接可见的静态行为；③spec要求；④仍未知的实际授权/运行契约。API 族匹配只帮助定位，不能证明对应页面实际调用、服务可用或账号有权限。
 
@@ -79,7 +79,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/user/info/` @ `1807800`；`/api/front/login/` @ `1807642`。
 - **验收**：错误凭据失败；有效账号进入；过期后回登录。
 - **仍需补证**：验证码规则、Cookie/CSRF、会话有效期。
-- **需求/阶段/现状**：US 1, 2, 4, 10；P1；S01 前端验收完成，原后端未联调；差异与交接见 [账号契约](../architecture/account-session.md)。
+- **需求/阶段**：US 1, 2, 4, 10；P1。
 
 ### F002 公共 / 激活与入口守卫
 
@@ -91,7 +91,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/admin/system/active/status/` @ `1811268`；`/api/admin/system/active/online/ ` @ `1811336`。
 - **验收**：深链刷新、未登录、未激活分别有明确结果。
 - **仍需补证**：真实授权权限、License 内容与当前线上响应；静态流程已补证。
-- **需求/阶段/现状**：US 5；P1；完成（S02 前端复刻验收）。调用链与差异见 [应用入口与壳](../architecture/application-shell.md)。
+- **需求/阶段**：US 5；P1。
 
 ### F003 公共 / 布局与首页
 
@@ -103,7 +103,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/admin/system/logo/default/` @ `1807880`；`/api/admin/system/background/` @ `1807946`。
 - **验收**：主入口可达；刷新保留当前路由。
 - **仍需补证**：当前线上响应、角色矩阵；静态首页调用链已补证，未发现主题切换 UI。
-- **需求/阶段/现状**：US 6, 7；P1；完成（S02 前端复刻验收）。首页只读投影与后续 AI/操作机、F004 管理边界见 [应用入口与壳](../architecture/application-shell.md)。
+- **需求/阶段**：US 6, 7；P1。
 
 ### F004 公共 / 通知、待办与收藏
 
@@ -115,7 +115,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/user/collect/?${Vt(e)}` @ `1810016`；`/api/front/user/todo/?${Vt(e)}` @ `1810085`。
 - **验收**：状态变更后列表、数量与详情一致。
 - **仍需补证**：字段与已读调用链已补证；待办批接口每次提交单项；收藏页无批量取消调用；真实权限与响应未联调，见 docs/planning/s04-implementation.md。
-- **需求/阶段/现状**：US 8, 9；P5；正式业务未实现。
+- **需求/阶段**：US 8, 9；P5。
 
 ### F005 培训 / 课程中心与课程详情
 
@@ -127,7 +127,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/learn/task/self_study/open_courses/${e}/can_enter/` @ `1813396`；`/api/front/learn/task/self_study/open_courses/list/?` @ `1827782`。
 - **验收**：可进入课程加载目录；不可进入时解释原因。
 - **仍需补证**：筛选枚举、资源权限、评论是否可写。
-- **需求/阶段/现状**：US 36, 37, 42；P3；正式业务未实现。
+- **需求/阶段**：US 36, 37, 42；P3。
 
 ### F006 培训 / 视频与学习进度
 
@@ -139,7 +139,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/learn/task/self_study/open_courses/${e}/can_enter/` @ `1813396`；`/api/front/learn/task/self_study/open_courses/list/?` @ `1827782`。
 - **验收**：播放/暂停/重开后的进度与后端一致。
 - **仍需补证**：日志计算、心跳、拖动限制、重复上报处理；学习日志为写操作。
-- **需求/阶段/现状**：US 38, 39；P3；正式业务未实现。
+- **需求/阶段**：US 38, 39；P3。
 
 ### F007 培训 / 章节测验与实操检查点
 
@@ -151,7 +151,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/learn/task/self_study/open_courses/${e}/can_enter/` @ `1813396`；`/api/front/learn/task/self_study/open_courses/list/?` @ `1827782`。
 - **验收**：正确/错误/未答及重复提交按真实规则处理。
 - **仍需补证**：评分规则、题型、重试限制、环境依赖。
-- **需求/阶段/现状**：US 40, 41；P3；正式业务未实现。
+- **需求/阶段**：US 40, 41；P3。
 
 ### F008 培训 / 教学任务列表与详情
 
@@ -163,7 +163,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/learn/task/center_task/list/?` @ `1911572`；`/api/front/learn/task/center_task/?` @ `1911632`。
 - **验收**：同一任务各入口进度一致。
 - **仍需补证**：type枚举及各状态按钮规则。
-- **需求/阶段/现状**：US 43, 44, 45；P3；正式业务未实现。
+- **需求/阶段**：US 43, 44, 45；P3。
 
 ### F009 培训 / 专题与教学结果
 
@@ -175,7 +175,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/learn/task/center_task/teaching_task/${e}/` @ `1911808`；`/api/front/learn/task/center_task/teaching_task/${e.id}/course/?` @ `1911897`。
 - **验收**：任务学习记录与结果页一致。
 - **仍需补证**：专题与公开课程差异、计分结果。
-- **需求/阶段/现状**：US 44, 45；P3；正式业务未实现。
+- **需求/阶段**：US 44, 45；P3。
 
 ### F010 培训 / 虚拟科目
 
@@ -187,7 +187,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/wqzb/test_task/${e.id}/blue_team/?${Vt(e.filter)}` @ `1813477`；`/api/front/wqzb/test_task/${e.id}/blue_team/${e.blue_id}/init_data/` @ `1821246`。
 - **验收**：列表到训练到结果形成可验证流程。
 - **仍需补证**：科目类型、准入、完成条件。
-- **需求/阶段/现状**：US 46；P3；正式业务未实现。
+- **需求/阶段**：US 46；P3。
 
 ### F011 培训 / 学习路线
 
@@ -199,7 +199,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/guidance_control/learning_route/?${Vt(e)}` @ `1822762`；`/api/front/guidance_control/learning_route/${e}/` @ `1822828`。
 - **验收**：路线与个人学习路线的进度一致。
 - **仍需补证**：阶段解锁、课程/装备完成规则。
-- **需求/阶段/现状**：US 47, 48；P3；正式业务未实现。
+- **需求/阶段**：US 47, 48；P3。
 
 ### F012 培训 / 实操科目与任务
 
@@ -211,7 +211,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/wqzb/test_task/${e.id}/blue_team/?${Vt(e.filter)}` @ `1813477`；`/api/front/wqzb/test_task/${e.id}/blue_team/${e.blue_id}/init_data/` @ `1821246`。
 - **验收**：详情、训练、结果及再次进入一致。
 - **仍需补证**：kind枚举、训练提交和判分。
-- **需求/阶段/现状**：US 49, 50；P3；正式业务未实现。
+- **需求/阶段**：US 49, 50；P3。
 
 ### F013 培训 / 积分排行
 
@@ -223,7 +223,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/learn/task/center_task/teaching_task/${e.id}/rank/?` @ `1912010`；`/api/front/learn/task/center_task/league_board/user/rank_info/?${Vt(e)}` @ `1917288`。
 - **验收**：显示后端排行和并列规则。
 - **仍需补证**：积分口径、排序、分页。
-- **需求/阶段/现状**：US 51；P3；正式业务未实现。
+- **需求/阶段**：US 51；P3。
 
 ### F014 考核 / 考核任务
 
@@ -235,7 +235,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/exam/task/assessment/?` @ `1931695`；`/api/front/exam/task/assessment/${e}/` @ `1931833`。
 - **验收**：未开始/进行中/已交卷/无权访问均覆盖。
 - **仍需补证**：迟到、开考、交卷、重考条件。
-- **需求/阶段/现状**：US 52, 53；P4；正式业务未实现。
+- **需求/阶段**：US 52, 53；P4。
 
 ### F015 考核 / 答题与场景题
 
@@ -247,7 +247,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/exam/task/assessment/?` @ `1931695`；`/api/front/exam/task/assessment/${e}/` @ `1931833`。
 - **验收**：刷新恢复；漏答提示；交卷后禁止继续写答案。
 - **仍需补证**：倒计时、断线恢复、自动交卷、幂等规则。
-- **需求/阶段/现状**：US 54, 55, 56, 57, 58；P4；正式业务未实现。
+- **需求/阶段**：US 54, 55, 56, 57, 58；P4。
 
 ### F016 考核 / 结果与统计排行
 
@@ -259,7 +259,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/exam/task/assessment/?` @ `1931695`；`/api/front/exam/task/assessment/${e}/` @ `1931833`。
 - **验收**：结果与任务状态一致；未公布时不提前显示。
 - **仍需补证**：可见时间、统计范围、评分规则。
-- **需求/阶段/现状**：US 59, 60；P4；正式业务未实现。
+- **需求/阶段**：US 59, 60；P4。
 
 ### F017 考核 / 题目练习
 
@@ -271,7 +271,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/exam/task/assessment/?` @ `1931695`；`/api/front/exam/task/assessment/${e}/` @ `1931833`。
 - **验收**：练习结果不错误写入正式考试。
 - **仍需补证**：题型范围、错题/收藏入口待核对。
-- **需求/阶段/现状**：US 61；P4；正式业务未实现。
+- **需求/阶段**：US 61；P4。
 
 ### F018 装备 / 装备地图
 
@@ -283,7 +283,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/equipment/equip_map/info/?${Vt(t)}` @ `8207056`。
 - **验收**：地图与列表指向相同装备。
 - **仍需补证**：地图底图资源、楼层/位置结构。
-- **需求/阶段/现状**：US 62；P4；正式业务未实现。
+- **需求/阶段**：US 62；P4。
 
 ### F019 装备 / 装备列表与详情
 
@@ -294,7 +294,7 @@ flowchart TD
 - **接口定位线索**：/api/front/equipment/equip_practice/（含Jm动态前缀）; /api/front/equipment/。
 - **验收**：同一装备在列表、详情、预约状态一致。
 - **仍需补证**：列表真实数据来源及操作能力。
-- **需求/阶段/现状**：US 62, 63, 64, 65；P4；正式业务未实现。
+- **需求/阶段**：US 62, 63, 64, 65；P4。
 
 ### F020 装备 / 预约日历与记录
 
@@ -306,7 +306,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/equipment/equip_booking/message/${e.id}/?${Vt(e.filter)}` @ `8207116`；`/api/front/equipment/equip_booking/message/delete/` @ `8207197`。
 - **验收**：冲突/过期/重复预约拒绝；成功后日历更新。
 - **仍需补证**：审核、配额、取消期限、管理动作是否学员可见。
-- **需求/阶段/现状**：US 66, 67, 68；P4；正式业务未实现。
+- **需求/阶段**：US 66, 67, 68；P4。
 
 ### F021 演练 / 公开科目与训练科目
 
@@ -318,7 +318,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/rehearsal/subject_scene/?` @ `5994056`；`/api/front/rehearsal/drill_task/${e}/` @ `5995688`。
 - **验收**：不同kind分别验收，不只验收一种。
 - **仍需补证**：kind枚举、训练要求及完成判据。
-- **需求/阶段/现状**：US 69, 70, 71；P4；正式业务未实现。
+- **需求/阶段**：US 69, 70, 71；P4。
 
 ### F022 演练 / 演练任务
 
@@ -330,7 +330,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/rehearsal/drill_task/${e}/` @ `5995688`；`/api/front/rehearsal/drill_task/${e.id}/subject/task/?${Vt(e.filter)}` @ `5995739`。
 - **验收**：各类型任务入口和结果均可用。
 - **仍需补证**：type枚举、成员席位权限、评价和成果编辑资格、任务阶段与提交条件。
-- **需求/阶段/现状**：US 72, 74；P4；正式业务未实现。
+- **需求/阶段**：US 72, 74；P4。
 
 ### F023 演练 / 保障任务
 
@@ -342,7 +342,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/rehearsal/safeguard_task/${e}/` @ `5999071`；`/api/front/rehearsal/safeguard_task/${e.id}/subject/task/?${Vt(e.filter)}` @ `5999126`。
 - **验收**：列表、详情与执行结果一致。
 - **仍需补证**：成员席位、协作与消息发送资格、和演练任务关联；不据此发明指挥员角色。
-- **需求/阶段/现状**：US 73, 74；P4；正式业务未实现。
+- **需求/阶段**：US 73, 74；P4。
 
 ### F024 演练 / 实操训练
 
@@ -354,7 +354,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/wqzb/test_task/${e.id}/blue_team/?${Vt(e.filter)}` @ `1813477`；`/api/front/wqzb/test_task/${e.id}/blue_team/${e.blue_id}/init_data/` @ `1821246`。
 - **验收**：共享组件复用时保留不同业务参数。
 - **仍需补证**：与培训实操入口差异。
-- **需求/阶段/现状**：US 49, 50；P4；正式业务未实现。
+- **需求/阶段**：US 49, 50；P4。
 
 ### F025 演练 / 统计与排行
 
@@ -365,7 +365,7 @@ flowchart TD
 - **接口定位线索**：无；`P1s` 与 `D1s` 未发起统计或排行请求，附近 rehearsal API 不属于这两个占位组件的调用证据。
 - **验收**：两个路由分别显示原 bundle 中的“统计中心”和“排行榜”文字。
 - **仍需补证**：无；bundle 功能边界不扩展占位页面。
-- **需求/阶段/现状**：US 75；P4；按原 bundle 仅复刻占位入口。
+- **需求/阶段**：US 75；P4。
 
 ### F026 资源 / 手法库
 
@@ -377,7 +377,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/resources/attack/tree/` @ `1808213`；`/api/front/resources/attack/${e.id}/?` @ `1808260`。
 - **验收**：树与详情同步，返回保持上下文。
 - **仍需补证**：环境/练习是否在该详情入口开放、详情导航参数、关联内容。
-- **需求/阶段/现状**：US 76, 77；P5；正式业务未实现。
+- **需求/阶段**：US 76, 77；P5。
 
 ### F027 资源 / 工具库
 
@@ -389,7 +389,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/admin/resources/tool/tool/settings/` @ `1809204`；`/api/front/resources/tool/category/` @ `1809279`。
 - **验收**：列表、详情、允许的下载行为完整。
 - **仍需补证**：工具配置与实际下载方式。
-- **需求/阶段/现状**：US 78；P5；正式业务未实现。
+- **需求/阶段**：US 78；P5。
 
 ### F028 资源 / 漏洞库
 
@@ -401,7 +401,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/admin/resources/vuln/settings/` @ `1809548`；`/api/admin/resources/vuln/classify/?nopage=1` @ `1809618`。
 - **验收**：空结果、分页和详情一致。
 - **仍需补证**：字段、筛选、详情呈现；admin路径不代表管理员权限。
-- **需求/阶段/现状**：US 79；P5；正式业务未实现。
+- **需求/阶段**：US 79；P5。
 
 ### F029 资源 / 知识库
 
@@ -413,7 +413,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/resources/knowledge/?` @ `1809892`；`/api/front/resources/knowledge/${e}/` @ `1809944`。
 - **验收**：详情正确呈现且资源链接可用。
 - **仍需补证**：内容格式和附件。
-- **需求/阶段/现状**：US 80；P5；正式业务未实现。
+- **需求/阶段**：US 80；P5。
 
 ### F030 个人 / 任务中心
 
@@ -425,7 +425,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/user/todo/?${Vt(e)}` @ `1810085`；`/api/front/user/todo/` @ `1810151`。
 - **验收**：聚合入口与原业务入口状态一致。
 - **仍需补证**：任务类型与其他任务中心关系。
-- **需求/阶段/现状**：US 81；P5；正式业务未实现。
+- **需求/阶段**：US 81；P5。
 
 ### F031 个人 / 学习路线与学情画像
 
@@ -437,7 +437,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/user/learning_guide/statistics/` @ `1810532`；`/api/front/guidance_control/learning_route/?${Vt(e)}` @ `1822762`。
 - **验收**：来源与统计口径可追溯。
 - **仍需补证**：画像指标与图表数据契约。
-- **需求/阶段/现状**：US 82, 83；P5；正式业务未实现。
+- **需求/阶段**：US 82, 83；P5。
 
 ### F032 个人 / 我的笔记与共享笔记
 
@@ -449,7 +449,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/learn/task/my_notes/folders/?${Vt(e)}` @ `1811521`；`/api/front/learn/task/my_notes/folders/create/` @ `1811605`。
 - **验收**：保存重开、文件夹、分享与导出分别验收。
 - **仍需补证**：上传类型/大小、分享范围、目录/重名规则；平台资料是否第三入口待验证。
-- **需求/阶段/现状**：US 42, 84, 85, 86；P5；正式业务未实现。
+- **需求/阶段**：US 42, 84, 85, 86；P5。
 
 ### F033 个人 / 资源网盘
 
@@ -461,7 +461,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/learn/base/pan/attachment/filelist/?${Vt(e)}` @ `1812815`；`/api/front/base/pan/platform/filelist/?${Vt(e)}` @ `1812954`。
 - **验收**：路径导航、预览下载及错误处理正确。
 - **仍需补证**：可写目录、配额、文件类型与重名规则。
-- **需求/阶段/现状**：US 42, 87, 88, 89；P5；正式业务未实现。
+- **需求/阶段**：US 42, 87, 88, 89；P5。
 
 ### F034 实验台 / 实验列表与管理
 
@@ -473,7 +473,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/simulation/experiment/?${Vt(e)}` @ `1817747`；`/api/front/simulation/experiment/more/?${Vt(e)}` @ `1817803`。
 - **验收**：创建→编辑→重开；无权编辑拒绝。
 - **仍需补证**：所有权、发布方式、删除影响范围。
-- **需求/阶段/现状**：US 11, 12, 13, 14, 15；P1；正式业务未实现。
+- **需求/阶段**：US 11, 12, 13, 14, 15；P1。
 
 ### F035 实验台 / 场景概述与说明
 
@@ -485,7 +485,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/simulation/experiment/?${Vt(e)}` @ `1817747`；`/api/front/simulation/experiment/more/?${Vt(e)}` @ `1817803`。
 - **验收**：修改重开一致；只读不出现可写操作。
 - **仍需补证**：概述和说明的实际字段及可写条件。
-- **需求/阶段/现状**：US 15, 31；P2；正式业务未实现。
+- **需求/阶段**：US 15, 31；P2。
 
 ### F036 实验台 / 场景拓扑编辑
 
@@ -497,7 +497,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/topo/template/${e}/` @ `6074233`；`/api/front/topo/template/${e}/?detail=1` @ `6074277`。
 - **验收**：节点/边/位置/配置保存后重开一致。
 - **仍需补证**：不同入口能力裁剪、资源上限、数据契约。
-- **需求/阶段/现状**：US 16, 17, 18, 19, 20, 21, 22, 23, 24, 25；P1；正式业务未实现；存在工程样例。
+- **需求/阶段**：US 16, 17, 18, 19, 20, 21, 22, 23, 24, 25；P1。
 
 ### F037 实验台 / 环境与节点生命周期
 
@@ -509,7 +509,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/env/start/` @ `1808423`；`/api/front/env/delay/${e.run_id}/` @ `1808487`。
 - **验收**：异步状态可恢复；失败不伪报成功。
 - **仍需补证**：真实状态枚举、运行中可编辑规则、失败恢复。
-- **需求/阶段/现状**：US 26, 27, 28；P2；正式业务未实现。
+- **需求/阶段**：US 26, 27, 28；P2。
 
 ### F038 实验台 / 流量监控与捕获
 
@@ -521,7 +521,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/scene/record/start/` @ `1828436`；`/api/front/scene/record/status/` @ `1828503`。
 - **验收**：捕获状态与记录一致；离页资源按规则清理。
 - **仍需补证**：PCAP下载、轮询及资源释放。
-- **需求/阶段/现状**：US 29, 30；P2；正式业务未实现。
+- **需求/阶段**：US 29, 30；P2。
 
 ### F039 实验台 / 场景笔记
 
@@ -533,7 +533,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`${e.url||"/api/front/user/note/"}` @ `1811931`；`${e.url||"/api/front/user/note/"}${e.id}/` @ `1812028`。
 - **验收**：保存重开一致；导出内容与图片有效。
 - **仍需补证**：返回字段、外链图片与导出实际产物。
-- **需求/阶段/现状**：US 32, 33；P2；正式业务未实现。
+- **需求/阶段**：US 32, 33；P2。
 
 ### F040 实验台 / 检测手段
 
@@ -545,7 +545,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/wqzb/tool/version/cascade/` @ `1822386`；`/api/front/wqzb/detection_front/tools/` @ `1829358`。
 - **验收**：每个开放类型分别验收。
 - **仍需补证**：type枚举、任务状态与输出格式。
-- **需求/阶段/现状**：US 34；P2；正式业务未实现。
+- **需求/阶段**：US 34；P2。
 
 ### F041 实验台 / 攻击教学与模拟蓝军
 
@@ -557,7 +557,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/wqzb/test_task/${e.id}/blue_team/?${Vt(e.filter)}` @ `1813477`；`/api/front/wqzb/test_task/${e.id}/blue_team/${e.blue_id}/init_data/` @ `1821246`。
 - **验收**：配置与结果可追踪；执行在测试范围开放后联调。
 - **仍需补证**：调用链、执行条件、任务终止与结果。
-- **需求/阶段/现状**：US 35；P2；正式业务未实现。
+- **需求/阶段**：US 35；P2。
 
 ### F042 实验台 / 流量模拟、镜像与模板
 
@@ -569,7 +569,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/scene/${e.id}/backgroud_flow/?${Vt(e.filter)}` @ `1828767`；`/api/front/scene/${e.id}/backgroud_flow/${e.node_id}/config/?${Vt(e.filter)}` @ `1828837`。
 - **验收**：按真实入口逐项确认并记录不适用原因。
 - **仍需补证**：包格式、客户端、同步冲突与日志协议；删除使用GET仍属写操作。
-- **需求/阶段/现状**：US 16, 17, 18, 19, 20, 21, 22, 23, 29；P2；正式业务未实现。
+- **需求/阶段**：US 16, 17, 18, 19, 20, 21, 22, 23, 29；P2。
 
 ### F043 个人 / 离线学习
 
@@ -581,7 +581,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/offline/course/package/?` @ `1827612`；`/api/front/offline/course/package/` @ `1827689`。
 - **验收**：生成/下载/学习记录回传流程有真实证据。
 - **仍需补证**：离线客户端依赖、打包下载、日志回传协议。
-- **需求/阶段/现状**：US 90, 91；P5；正式业务未实现。
+- **需求/阶段**：US 90, 91；P5。
 
 ### F044 个人 / 个人中心与密码
 
@@ -593,7 +593,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/user/info/` @ `1807800`；`/api/front/user/password/` @ `1807729`。
 - **验收**：非法字段拒绝；成功状态重开保留。
 - **仍需补证**：真实密码强度与错误枚举、服务端主动失效策略未联调；type、资料字段和改密后主动退出调用链见[个人账号契约](../architecture/personal-account.md)。
-- **需求/阶段/现状**：US 92；P5；正式业务未实现。
+- **需求/阶段**：US 92；P5。
 
 ### F045 独立入口 / AI助手
 
@@ -605,7 +605,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/ai/applications/` @ `1808010`；`/api/front/ai/application/token/` @ `1808073`。
 - **验收**：流式输出/中断/重开历史一致。
 - **仍需补证**：流式协议、附件、消息提交接口与断线行为。
-- **需求/阶段/现状**：US 93, 94；P6；正式业务未实现。
+- **需求/阶段**：US 93, 94；P6。
 
 ### F046 独立入口 / VNC、KVM与控制台
 
@@ -617,7 +617,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/topo/node_run/${e}/novnc/` @ `6081783`。
 - **验收**：真实测试节点连通、断线重连、过期票据拒绝。
 - **仍需补证**：WebSocket地址、票据、代理与浏览器要求。
-- **需求/阶段/现状**：US 28, 95；P2；正式业务未实现。
+- **需求/阶段**：US 28, 95；P2。
 
 ### F047 独立入口 / 文件与Office预览
 
@@ -628,7 +628,7 @@ flowchart TD
 - **接口定位线索**：文件接口及logoSetting.onlyoffice_url等配置。
 - **验收**：无权限或文件失效时不展示残留内容。
 - **仍需补证**：预览服务、文件签名、跨域与格式范围。
-- **需求/阶段/现状**：US 87, 88, 89；P5；正式业务未实现。
+- **需求/阶段**：US 87, 88, 89；P5。
 
 ### F048 独立入口 / 蓝军、防御、导调态势
 
@@ -640,7 +640,7 @@ flowchart TD
   - 词法候选示例（非调用链）：`/api/front/wqzb/test_task/${e.id}/blue_team/${e.blue_id}/init_situation_node/?${Vt(e.search)}` @ `1815128`；`/api/front/wqzb/test_task/${e.id}/blue_team/${e.blue_id}/init_situation_node/` @ `1815235`。
 - **验收**：同一场景不同视角按权限展示。
 - **仍需补证**：静态展示/实时数据区别；真实角色名称未知。
-- **需求/阶段/现状**：US 96；P6；正式业务未实现。
+- **需求/阶段**：US 96；P6。
 
 ### F049 公共 / 异常、深链与生命周期
 
@@ -651,7 +651,7 @@ flowchart TD
 - **接口定位线索**：通用客户端与各模块接口。
 - **验收**：刷新深链、断网、拒绝访问、重复点击均验收。
 - **仍需补证**：后续业务逐切片验收生命周期，不把公共基础当全站完成。
-- **需求/阶段/现状**：US 3, 4, 5, 10, 24, 25, 97, 98, 99, 100, 101, 102, 103；P1；S02 公共基础完成；无权访问与取消行为差异见 [应用入口与壳](../architecture/application-shell.md)。
+- **需求/阶段**：US 3, 4, 5, 10, 24, 25, 97, 98, 99, 100, 101, 102, 103；P1。
 
 ## 三条关键链路
 
@@ -965,7 +965,7 @@ US100–103 是接入模式可识别、覆盖台账、阶段交付声明、视�
 - 原始摘录：[source-excerpts.md](/Users/nanfugongmeiying/Desktop/project/lab/rea-analysis/xueyuan/source-excerpts.md)；拓扑证据：[topology.md](/Users/nanfugongmeiying/Desktop/project/lab/rea-analysis/xueyuan/topology.md)；路由原表：[route-inventory-verified.json](/Users/nanfugongmeiying/Desktop/project/lab/rea-analysis/xueyuan/route-inventory-verified.json)；API 原表：[api-inventory.json](/Users/nanfugongmeiying/Desktop/project/lab/rea-analysis/xueyuan/api-inventory.json)。
 - 原 API 表有 584 处词法调用、536 个去重 URL 表达式；动态前缀、上传、WS 与 AI 流不保证包含。JSON 内候选允许跨组重复，不得相加当作接口总数。
 - 观察、需求、未知分别保留：原站 F025 占位；F041 五个教学页签静态存在；F040 五类检测为 penetration / defense / baseline / vulnerability / riskAssessment。它们的实际开放与执行结果仍未验证。
-- spec 顶部“尚未创建仓库”等状态是历史文本，当前已有工程；实施事实以代码及 implementation-status.md 为准。
+- 当前进度只在 [实施计划](page-rebuild-implementation.md) 中维护；本文与 JSON 索引不保存业务完成状态。
 
 按偏移读取原文（替换数字即可复核，Python 字符计数与本报告一致）：
 

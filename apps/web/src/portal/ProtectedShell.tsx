@@ -6,14 +6,14 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
+import { ApiError } from '../api'
 import { Button } from '@workspace/ui/components/button'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
 import { logout, type CurrentUser } from '../api/auth'
 import { getResourceSettings } from '../api/portal'
 import { clearSession, currentUserQueryOptions } from '../auth/session'
-import { useAccessFailure } from '../auth/access'
 import { usePageSignal } from '../auth/use-page-signal'
-import { appConfig } from '../config'
 import { navigation } from './navigation'
 import { platformLogoOptions } from './PlatformBranding'
 import { InitialPositionDialog } from './InitialPositionDialog'
@@ -23,10 +23,6 @@ import { ActivityButtons } from '../activity/ActivityButtons'
 
 export function ProtectedShell() {
   const session = useQuery(currentUserQueryOptions())
-  const handleAccess = useAccessFailure()
-  useEffect(() => {
-    if (session.error) handleAccess(session.error)
-  }, [session.error, handleAccess])
   if (session.isPending)
     return (
       <main className="p-10" role="status">
@@ -52,20 +48,17 @@ function LearnerShell({ user }: { user: CurrentUser }) {
     retry: false,
     staleTime: 30_000,
   })
-  const [logoutError, setLogoutError] = useState('')
   const [positionDismissed, setPositionDismissed] = useState(false)
   const [passwordPath, setPasswordPath] = useState<string | null>(null)
   const client = useQueryClient()
   const navigate = useNavigate()
   const pageSignal = usePageSignal()
-  const accessFailure = useAccessFailure()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   useEffect(() => {
     setPasswordPath(null)
   }, [pathname])
   async function signOut() {
     const signal = pageSignal()
-    setLogoutError('')
     try {
       await logout(signal)
       if (signal.aborted) return
@@ -76,8 +69,11 @@ function LearnerShell({ user }: { user: CurrentUser }) {
         replace: true,
       })
     } catch (error) {
-      if (!signal.aborted && !accessFailure(error))
-        setLogoutError('退出失败，当前会话仍保留，请重试。')
+      if (signal.aborted) return
+      if (!(error instanceof ApiError) || !error.handled)
+        toast.error(
+          error instanceof ApiError ? error.message : '退出失败，请重试',
+        )
     }
   }
   return (
@@ -157,11 +153,6 @@ function LearnerShell({ user }: { user: CurrentUser }) {
             </details>
           ))}
         </nav>
-        {appConfig.mockEnabled ? (
-          <p className="px-5 pt-3 text-xs text-muted-foreground lg:px-10">
-            本地模拟数据，不代表原平台业务状态。
-          </p>
-        ) : null}
         {settings.isError ? (
           <aside className="px-5 py-3" role="alert">
             资源配置读取失败。
@@ -169,11 +160,6 @@ function LearnerShell({ user }: { user: CurrentUser }) {
               重试资源配置
             </Button>
           </aside>
-        ) : null}
-        {logoutError ? (
-          <p role="alert" className="px-5 py-3 text-destructive">
-            {logoutError}
-          </p>
         ) : null}
         <main className="mx-auto max-w-7xl px-5 py-8 lg:px-10">
           <Outlet />

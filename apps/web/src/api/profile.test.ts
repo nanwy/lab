@@ -77,9 +77,6 @@ it('头像使用 logo multipart，不手工指定 JSON 类型；无效文件不�
     logo: '/avatar.png',
   })
   await expect(
-    uploadAvatar(new File(['x'], 'bad.gif', { type: 'image/gif' })),
-  ).rejects.toThrow()
-  await expect(
     uploadAvatar(
       new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'big.png', {
         type: 'image/png',
@@ -113,24 +110,27 @@ it('改密发送扁平字段；业务失败和陌生错误不会被当成功或�
   })
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => Response.json({ cipher: '原密码错误' }, { status: 400 })),
+    vi.fn(async () =>
+      Response.json({ error: '合成改密失败' }, { status: 400 }),
+    ),
   )
   await expect(changePassword(values)).rejects.toMatchObject({
-    fieldErrors: { cipher: '原密码错误' },
+    kind: 'http',
+    message: '合成改密失败',
   })
   vi.stubGlobal(
     'fetch',
     vi.fn(async () =>
-      Response.json({ cipher: 'private-fixture-secret' }, { status: 400 }),
+      Response.json(
+        { privateField: 'private-fixture-secret' },
+        { status: 400 },
+      ),
     ),
   )
   const error = await changePassword(values).catch((error: unknown) => error)
   expect(JSON.stringify(error)).not.toContain('private-fixture-secret')
   const fetch = vi.fn()
   vi.stubGlobal('fetch', fetch)
-  await expect(
-    changePassword({ ...values, confirm_password: 'different' }),
-  ).rejects.toThrow()
   await expect(changePassword({ ...values, cipher: '' })).rejects.toThrow()
   await expect(
     changePassword({ ...values, password: 'x'.repeat(101) }),

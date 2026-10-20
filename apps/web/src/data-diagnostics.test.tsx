@@ -2,10 +2,23 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { setupServer } from 'msw/node'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  expect,
+  it,
+  vi,
+} from 'vitest'
+import { toast } from '@workspace/ui/components/sonner'
 
 import { DataDiagnosticsPage } from './data-diagnostics'
 import { createSampleHandlers } from './mocks/sample-handlers'
+
+vi.mock('@workspace/ui/components/sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
+}))
 
 ;(
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -34,6 +47,7 @@ afterEach(async () => {
   client?.clear()
   container?.remove()
   server.resetHandlers()
+  vi.clearAllMocks()
 })
 afterAll(() => server.close())
 
@@ -89,22 +103,22 @@ it('pages and sorts the complete mock collection, filters at the server and sele
   expect(container.querySelector('tbody')?.textContent).not.toContain('样本 12')
 })
 
-it('validates nested dynamic fields, attaches server errors, saves and refreshes the visible list', async () => {
+it('validates nested dynamic fields, saves and refreshes the visible list', async () => {
   await text('样本 01')
   click('编辑 sample-01')
   input('样本名称', 'x')
   click('保存模拟样本')
   await text('名称至少 2 个字符')
-  input('样本名称', '保留名称')
+  input('样本名称', '样本 00 已更新')
   click('添加别名')
   click('保存模拟样本')
   await text('别名不能为空')
   input('别名 2', '新的嵌套别名')
   click('保存模拟样本')
-  await text('该名称由模拟服务保留，请换一个名称')
-  input('样本名称', '样本 00 已更新')
-  click('保存模拟样本')
-  await text('模拟保存成功，列表已刷新')
+  await text('样本 00 已更新')
+  expect(toast.success).toHaveBeenCalledExactlyOnceWith(
+    '模拟保存成功，列表已刷新',
+  )
   expect(container.querySelector('tbody')?.textContent).toContain(
     '样本 00 已更新',
   )

@@ -1,6 +1,8 @@
 import NiceModal, { useModal } from '@ebay/nice-modal-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { toast } from '@workspace/ui/components/sonner'
+import { ApiError } from '../api'
 import { Button } from '@workspace/ui/components/button'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
 import { Input } from '@workspace/ui/components/input'
@@ -34,7 +36,6 @@ import {
   type Experiment,
 } from '../api/experiments'
 import { usePageSignal } from '../auth/use-page-signal'
-import { useAccessFailure } from '../auth/access'
 import { ExperimentForm } from './ExperimentForm'
 
 export const EditExperimentModal = NiceModal.create(
@@ -77,23 +78,23 @@ export const DeleteExperimentModal = NiceModal.create(
   }) => {
     const modal = useModal()
     const signalForPage = usePageSignal()
-    const accessFailure = useAccessFailure()
-    const [error, setError] = useState('')
     function close() {
       modal.resolve()
       modal.remove()
     }
     async function remove() {
       const signal = signalForPage()
-      setError('')
       try {
         await deleteExperiment(experiment.id, signal)
         if (signal.aborted) return
         await deleted()
         if (!signal.aborted) close()
       } catch (failure) {
-        if (!signal.aborted && !accessFailure(failure))
-          setError('删除失败，实验记录已保留，请重试。')
+        if (signal.aborted) return
+        if (!(failure instanceof ApiError) || !failure.handled)
+          toast.error(
+            failure instanceof ApiError ? failure.message : '删除失败，请重试',
+          )
       }
     }
     return (
@@ -110,11 +111,6 @@ export const DeleteExperimentModal = NiceModal.create(
               确认删除“{experiment.name}”？删除后不可恢复。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {error ? (
-            <p role="alert" className="text-destructive">
-              {error}
-            </p>
-          ) : null}
           <AlertDialogFooter>
             <AlertDialogCancel onClick={close}>取消</AlertDialogCancel>
             <LoadingButton variant="destructive" onClick={remove}>
@@ -131,10 +127,8 @@ export const SelectSceneModal = NiceModal.create(() => {
   const modal = useModal()
   const client = useQueryClient()
   const signalForPage = usePageSignal()
-  const accessFailure = useAccessFailure()
   const [filter, setFilter] = useState({ page: 1, search: '' })
   const [selected, setSelected] = useState('')
-  const [error, setError] = useState('')
   const scenes = useQuery({
     queryKey: ['experiment-scenes', filter],
     queryFn: ({ signal }) =>
@@ -146,9 +140,8 @@ export const SelectSceneModal = NiceModal.create(() => {
     modal.remove()
   }
   async function importScene() {
-    setError('')
     if (!selected) {
-      setError('请选择场景')
+      toast.error('请选择场景')
       return
     }
     const signal = signalForPage()
@@ -158,8 +151,11 @@ export const SelectSceneModal = NiceModal.create(() => {
       await client.invalidateQueries({ queryKey: experimentKeys.lists })
       if (!signal.aborted) close()
     } catch (failure) {
-      if (!signal.aborted && !accessFailure(failure))
-        setError('导入失败，所选场景已保留，请重试。')
+      if (signal.aborted) return
+      if (!(failure instanceof ApiError) || !failure.handled)
+        toast.error(
+          failure instanceof ApiError ? failure.message : '导入失败，请重试',
+        )
     }
   }
   return (
@@ -231,11 +227,6 @@ export const SelectSceneModal = NiceModal.create(() => {
             />
           </>
         )}
-        {error ? (
-          <p role="alert" className="text-destructive">
-            {error}
-          </p>
-        ) : null}
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={close}>
             取消

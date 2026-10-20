@@ -30,6 +30,8 @@ TDD红灯：draw漏last_node；资源面板不存在；画布不能创建业务�
 
 TDD红灯分别为蓝军switch不存在、没有逐行删除按钮、ports字符串损坏却仍开放配置表单。修复后定向浏览器8项（新5项与直接受影响旧3项）通过，覆盖开关失败保留/关开后draw重开、非ports中间删除、未连中间NIC删除及所有会移动已连索引的行保护、损坏配置无PATCH与合法缺失默认。新增场景通过`s06.spec.ts`导入后实际执行，无独立失配测试文件。API域Vitest3项通过（含结构错误/默认/未知字段不变）；web类型和改动文件lint/格式通过，其余未变结果复用。未启动03/04或真实请求。
 
+修复提交 `dca12ed` 已合入 `integration/s06-topology`；双轴只读复查 `a606a5f...dca12ed`，Spec 两项与 Standards 一项均关闭，无剩余阻塞。实施工作树清理后保留集成工作树，未合并或覆盖原始脏工作区。
+
 ## 01：实验拓扑读取、移动、保存与重开（2026-10-20）
 
 正式入口 `/basic/user/bench/experiment/:id/scene` 使用实验详情唯一的 `topo_id`，通过统一客户端 GET/POST `/front/topo/{topo_id}/draw/?task_type=6`；保存请求为 `{topo: graph}`。实验 ID、画布节点 UUID 与节点业务行 `data.data_id` 分开，移动仅更新画布坐标，不改业务节点配置。原 `/topology` 工程样本入口保留。

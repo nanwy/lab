@@ -90,6 +90,17 @@ export async function exportCanvas(
           throw new Error('画布导出包含未能嵌入的字体或图片')
       }
     }
+    if (format === 'png') {
+      stage = 'PNG编码'
+      // 保持原 viewBox 与布局，直接以 3 倍尺寸栅格化矢量内容，
+      // 避免先生成 1 倍位图再放大造成文字和连线模糊。
+      const root = documentSvg.documentElement
+      for (const dimension of ['width', 'height'])
+        root.setAttribute(
+          dimension,
+          String(Number(root.getAttribute(dimension)) * 3),
+        )
+    }
     let url =
       'data:image/svg+xml;charset=utf-8,' +
       encodeURIComponent(new XMLSerializer().serializeToString(documentSvg))

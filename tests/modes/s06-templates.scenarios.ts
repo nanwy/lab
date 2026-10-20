@@ -274,8 +274,11 @@ test('PNG与SVG导出实际画布DOM，产物含图标与连线像素，空图�
         y: rect.y - canvas.y,
         width: rect.width,
         height: rect.height,
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height,
       }
     })
+  const dimensions: Array<{ width: number; height: number }> = []
   for (const format of ['PNG', 'SVG']) {
     const downloaded = page.waitForEvent('download')
     await page
@@ -288,7 +291,7 @@ test('PNG与SVG导出实际画布DOM，产物含图标与连线像素，空图�
     const bytes = await readFile(path)
     const dataUrl = `data:image/${format === 'PNG' ? 'png' : 'svg+xml'};base64,${bytes.toString('base64')}`
     const pixels = await page.evaluate(
-      async ({ url, labelBounds }) => {
+      async ({ url, labelBounds, scale }) => {
         const image = new Image()
         image.src = url
         await image.decode()
@@ -322,13 +325,13 @@ test('PNG与SVG导出实际画布DOM，产物含图标与连线像素，空图�
         }
         let labelWhite = 0
         for (
-          let y = Math.ceil(labelBounds.y + 2);
-          y < labelBounds.y + labelBounds.height - 2;
+          let y = Math.ceil((labelBounds.y + 2) * scale);
+          y < (labelBounds.y + labelBounds.height - 2) * scale;
           y++
         )
           for (
-            let x = Math.ceil(labelBounds.x + 2);
-            x < labelBounds.x + labelBounds.width - 2;
+            let x = Math.ceil((labelBounds.x + 2) * scale);
+            x < (labelBounds.x + labelBounds.width - 2) * scale;
             x++
           ) {
             const index = (y * canvas.width + x) * 4
@@ -347,8 +350,12 @@ test('PNG与SVG导出实际画布DOM，产物含图标与连线像素，空图�
           labelWhite,
         }
       },
-      { url: dataUrl, labelBounds },
+      { url: dataUrl, labelBounds, scale: format === 'PNG' ? 3 : 1 },
     )
+    dimensions.push({ width: pixels.width, height: pixels.height })
+    const resolution = format === 'PNG' ? 3 : 1
+    expect(pixels.width).toBe(labelBounds.canvasWidth * resolution)
+    expect(pixels.height).toBe(labelBounds.canvasHeight * resolution)
     expect(pixels.width).toBeGreaterThan(450)
     expect(pixels.height).toBeGreaterThan(400)
     expect(pixels.green).toBeGreaterThan(100)
@@ -360,6 +367,10 @@ test('PNG与SVG导出实际画布DOM，产物含图标与连线像素，空图�
       expect(bytes.toString()).toContain('第二设备')
     }
   }
+  expect(dimensions[0]).toEqual({
+    width: dimensions[1]!.width * 3,
+    height: dimensions[1]!.height * 3,
+  })
   await page.screenshot({ path: testInfo.outputPath('canvas-export.png') })
   expect(errors).toEqual([])
   cells.length = 0

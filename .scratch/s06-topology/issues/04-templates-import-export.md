@@ -4,7 +4,7 @@
 
 **Blocked by:** 03: 分组、图元与高级画布交互。
 
-**Status:** implemented-pending-review
+**Status:** done（静态证据范围；真实写入未验证）
 
 - [x] 入口/task_type 调用链已确认：完整拓扑模板、分块模板和拓扑文件导入在当前实验入口不可达，不新增按钮。证据见 [S06 适用范围](../../../docs/planning/s06-implementation.md) 与已有研究 `/tmp/xueyuan-s06-notes.50KSb2/contracts-02-04.md`。
 - [x] 节点配置“保存并设为模板”先成功 PATCH 节点，再 POST 完整 nodeInfo 到 `/front/node/template/`，name 取 config_info.base_info.name，保留 logo/config_info 与未知字段；失败保留编辑和已成功阶段。
@@ -13,3 +13,5 @@
 - [x] PNG/SVG 导出整个实际画布 DOM；产物能打开且可见节点、图标、连线。空图及导出失败明确提示，失败后保留原设计并能重试。
 - [x] 写操作遵守 readOnly/shared/lock，未知副作用操作不自动重试；模板保存和删除不改变其他流量能力状态。
 - [x] 定向测试覆盖节点模板保存—复用—HTTP重开、实际PNG/SVG内容、ID分离、失败恢复和权限。PNG/SVG不是可恢复设备配置的拓扑文件；“文件导入—保存—重开”因当前入口不可达而不适用，不能将视觉产物当作该闭环。
+
+实现提交`484eac7`，合并集成后`6be4507`。固定差异`b4f249b...6be4507`的Standards、Spec双轴均无发现；验证与适用范围见S06实施记录。当前进度只维护在实施计划。

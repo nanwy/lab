@@ -321,7 +321,11 @@ export function ExperimentTopologyEditor({
         toast.error(error.message)
     } else toast.error(error instanceof Error ? error.message : '拓扑操作失败')
   }
-  function patchNode(uuid: string, info: Record<string, unknown>) {
+  function patchNode(
+    uuid: string,
+    info: Record<string, unknown>,
+    isBlue: boolean,
+  ) {
     setNodes((current) =>
       current.map((node) =>
         node.id !== uuid
@@ -343,6 +347,7 @@ export function ExperimentTopologyEditor({
                         info.name,
                     ),
                     logo: info.logo,
+                    is_blue: isBlue || null,
                     nodeInfo: info,
                     action: 'update',
                   },
@@ -741,13 +746,30 @@ export function ExperimentTopologyEditor({
           </DialogHeader>
           {editable && editing === 'node' && selectedNode ? (
             <NodeConfiguration
+              isBlue={Boolean(selectedNode.data.raw.data?.is_blue)}
+              connectedPorts={[
+                ...edges.map((edge) => edge.data.raw),
+                ...passthroughCells,
+              ].flatMap((cell) => {
+                const indices: unknown[] = []
+                if (cell.source?.cell === selectedNode.id)
+                  indices.push(cell.data?.source)
+                if (cell.target?.cell === selectedNode.id)
+                  indices.push(cell.data?.target)
+                return indices.filter(
+                  (index): index is number =>
+                    typeof index === 'number' &&
+                    Number.isInteger(index) &&
+                    index >= 0,
+                )
+              })}
               onDirtyChange={setInspectorDirty}
               key={selectedNode.id}
               info={asObject(selectedNode.data.raw.data?.nodeInfo)}
               logo={selectedNode.data.raw.data?.logo}
               signal={() => operation.current.signal}
               onError={report}
-              onSave={async (value) => {
+              onSave={async (value, isBlue) => {
                 if (!editable) return
                 const uuid = selectedNode.id
                 const ports = asObject(value.config_info).ports
@@ -771,7 +793,7 @@ export function ExperimentTopologyEditor({
                     operation.current.signal,
                   )
                   if (operation.current.signal.aborted) return
-                  patchNode(uuid, value)
+                  patchNode(uuid, value, isBlue)
                   setEditing(null)
                 } finally {
                   if (!operation.current.signal.aborted) setBusy(false)

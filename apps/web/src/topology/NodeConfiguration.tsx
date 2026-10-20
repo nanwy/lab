@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, useStore } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
@@ -12,11 +12,13 @@ import {
   FieldError,
 } from '@workspace/ui/components/field'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
+import { Switch } from '@workspace/ui/components/switch'
 import {
   getNodeDefinitions,
   getNodeImages,
   uploadNodeLogo,
   asObject,
+  normalizeNodeConfiguration,
   type ConfigSchema,
   type ObjectValue,
 } from '../api/topology-resources'
@@ -40,32 +42,6 @@ function assign(config: ObjectValue, path: string, value: unknown) {
   }
   target[keys.at(-1)!] = value
 }
-function withDefaults(config: ObjectValue, schema: ConfigSchema): ObjectValue {
-  const next = structuredClone(config)
-  for (const [key, definition] of Object.entries(schema.properties ?? {})) {
-    if (key === '_config') continue
-    if (next[key] === undefined && definition.default !== undefined)
-      next[key] = structuredClone(definition.default)
-    if (definition.type === 'object')
-      next[key] = withDefaults(asObject(next[key]), definition)
-    if (definition.type === 'array') {
-      const count =
-        key === 'ports'
-          ? Number(
-              asObject(asObject(schema.properties?._config).port_numbers)
-                .default ?? 0,
-            )
-          : 0
-      const items = Array.isArray(next[key])
-        ? (next[key] as unknown[])
-        : Array.from({ length: count }, () => ({}))
-      next[key] = definition.items?.properties
-        ? items.map((item) => withDefaults(asObject(item), definition.items!))
-        : items
-    }
-  }
-  return next
-}
 export function NodeConfiguration({
   info,
   logo,
@@ -73,13 +49,17 @@ export function NodeConfiguration({
   onError,
   signal,
   onDirtyChange,
+  isBlue,
+  connectedPorts,
 }: {
   info: ObjectValue
   logo: unknown
-  onSave: (value: ObjectValue) => Promise<void>
+  onSave: (value: ObjectValue, isBlue: boolean) => Promise<void>
   onError: (error: unknown) => void
   signal: () => AbortSignal
   onDirtyChange: (dirty: boolean) => void
+  isBlue: boolean
+  connectedPorts: number[]
 }) {
   const definitions = useQuery({
     queryKey: ['node-definitions'],
@@ -87,6 +67,14 @@ export function NodeConfiguration({
     retry: false,
   })
   const schema = definitions.data?.[String(info.engin)]
+  const prepared = useMemo(() => {
+    if (!schema) return undefined
+    try {
+      return normalizeNodeConfiguration(info.config_info, schema)
+    } catch (error) {
+      return error instanceof Error ? error : new Error('节点配置契约错误')
+    }
+  }, [info.config_info, schema])
   if (definitions.isPending) return <p role="status">正在加载配置定义…</p>
   if (definitions.isError)
     return (
@@ -96,6 +84,7 @@ export function NodeConfiguration({
       </div>
     )
   if (!schema) return <p role="alert">当前设备没有配置定义，无法编辑。</p>
+  if (prepared instanceof Error) return <p role="alert">{prepared.message}</p>
   return (
     <ConfigurationFields
       info={info}
@@ -105,6 +94,9 @@ export function NodeConfiguration({
       onError={onError}
       signal={signal}
       onDirtyChange={onDirtyChange}
+      isBlue={isBlue}
+      connectedPorts={connectedPorts}
+      configuration={prepared!}
     />
   )
 }
@@ -116,25 +108,37 @@ function ConfigurationFields({
   onError,
   signal,
   onDirtyChange,
+  isBlue,
+  connectedPorts,
+  configuration,
 }: {
   info: ObjectValue
   logo: unknown
   schema: ConfigSchema
-  onSave: (value: ObjectValue) => Promise<void>
+  onSave: (value: ObjectValue, isBlue: boolean) => Promise<void>
   onError: (error: unknown) => void
   signal: () => AbortSignal
   onDirtyChange: (dirty: boolean) => void
+  isBlue: boolean
+  connectedPorts: number[]
+  configuration: ObjectValue
 }) {
-  const [original] = useState(() =>
-    withDefaults(asObject(info.config_info), schema),
-  )
+  const [original] = useState(configuration)
   const [currentLogo, setLogo] = useState(logo)
   const [uploading, setUploading] = useState(false)
-  const [counts, setCounts] = useState<Record<string, number>>(() =>
+  const [rows, setRows] = useState<Record<string, number[]>>(() =>
     Object.fromEntries(
       Object.entries(original)
         .filter(([, value]) => Array.isArray(value))
-        .map(([key, value]) => [key, (value as unknown[]).length]),
+        .map(([key, value]) => [
+          key,
+          (value as unknown[]).map((_, index) => index),
+        ]),
+    ),
+  )
+  const nextRowId = useRef(
+    Object.fromEntries(
+      Object.entries(rows).map(([key, ids]) => [key, ids.length]),
     ),
   )
   const fields = Object.entries(schema.properties ?? {}).filter(
@@ -149,28 +153,38 @@ function ConfigurationFields({
     retry: false,
   })
   const form = useForm({
-    defaultValues: flatten(original),
-    validators: { onSubmit: z.record(z.string(), z.unknown()) },
+    defaultValues: { configuration: flatten(original), isBlue },
+    validators: {
+      onSubmit: z.object({
+        configuration: z.record(z.string(), z.unknown()),
+        isBlue: z.boolean(),
+      }),
+    },
     onSubmit: async ({ value }) => {
       const config = structuredClone(original)
-      for (const [path, item] of Object.entries(value))
+      for (const [path, item] of Object.entries(value.configuration))
         assign(config, path, item)
-      for (const [key, count] of Object.entries(counts))
+      for (const [key, ids] of Object.entries(rows))
         if (Array.isArray(config[key]))
-          config[key] = (config[key] as unknown[]).slice(0, count)
+          config[key] = ids.map((index) => (config[key] as unknown[])[index])
       for (const key of ['base_info', 'host_net'])
         if (asObject(config[key]).gateway === '')
           asObject(config[key]).gateway = null
       try {
-        await onSave({ ...info, logo: currentLogo, config_info: config })
+        await onSave(
+          { ...info, logo: currentLogo, config_info: config },
+          value.isBlue,
+        )
       } catch (error) {
         onError(error)
       }
     },
   })
   const fieldsDirty = useStore(form.store, (state) => state.isDirty)
-  const arrayDirty = Object.entries(counts).some(
-    ([key, count]) => count !== (original[key] as unknown[])?.length,
+  const arrayDirty = Object.entries(rows).some(
+    ([key, ids]) =>
+      ids.length !== (original[key] as unknown[])?.length ||
+      ids.some((id, index) => id !== index),
   )
   useEffect(() => {
     onDirtyChange(
@@ -182,7 +196,7 @@ function ConfigurationFields({
     return (
       <form.Field
         key={path}
-        name={path}
+        name={`configuration.${path}`}
         children={(field) => {
           const isInvalid =
             field.state.meta.isTouched && !field.state.meta.isValid
@@ -341,12 +355,45 @@ function ConfigurationFields({
               objectFields(key, definition)
             ) : definition.type === 'array' ? (
               <>
-                {Array.from({ length: counts[key] ?? 0 }, (_, index) => (
-                  <fieldset className="space-y-3 border p-3" key={index}>
+                {(rows[key] ?? []).map((rowId, index) => (
+                  <fieldset className="space-y-3 border p-3" key={rowId}>
                     <legend>
                       {definition.description ?? key} {index + 1}
                     </legend>
-                    {objectFields(`${key}/${index}`, definition.items ?? {})}
+                    {objectFields(`${key}/${rowId}`, definition.items ?? {})}
+                    {Number(info.engin) !== 10 ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={
+                            (rows[key]?.length ?? 0) <=
+                              Number(
+                                asObject(
+                                  asObject(schema.properties?._config)
+                                    .port_numbers,
+                                ).minLength ?? 0,
+                              ) ||
+                            (key === 'ports' &&
+                              connectedPorts.some((port) => port >= index))
+                          }
+                          onClick={() =>
+                            setRows((current) => ({
+                              ...current,
+                              [key]: current[key]!.filter((id) => id !== rowId),
+                            }))
+                          }
+                        >
+                          删除{definition.description ?? key} {index + 1}
+                        </Button>
+                        {key === 'ports' &&
+                        connectedPorts.some((port) => port >= index) ? (
+                          <p>
+                            删除此行会改变已连接网卡的索引，请先删除关联链路。
+                          </p>
+                        ) : null}
+                      </>
+                    ) : null}
                   </fieldset>
                 ))}
                 {Number(info.engin) !== 10 ? (
@@ -355,7 +402,7 @@ function ConfigurationFields({
                       type="button"
                       variant="outline"
                       disabled={
-                        (counts[key] ?? 0) >=
+                        (rows[key]?.length ?? 0) >=
                         Number(
                           asObject(
                             asObject(schema.properties?._config).port_numbers,
@@ -363,12 +410,13 @@ function ConfigurationFields({
                         )
                       }
                       onClick={() => {
-                        const index = counts[key] ?? 0
+                        const index = nextRowId.current[key] ?? 0
+                        nextRowId.current[key] = index + 1
                         for (const [name, field] of Object.entries(
                           definition.items?.properties ?? {},
                         ))
                           form.setFieldValue(
-                            `${key}/${index}/${name}`,
+                            `configuration.${key}/${index}/${name}`,
                             field.default ??
                               (field.type === 'boolean'
                                 ? false
@@ -382,7 +430,7 @@ function ConfigurationFields({
                           index > 0
                         ) {
                           const previous = form.getFieldValue(
-                            `${key}/${index - 1}/mac`,
+                            `configuration.${key}/${rows[key]?.at(-1)}/mac`,
                           )
                           if (typeof previous === 'string') {
                             const parts = previous.split(':')
@@ -390,35 +438,18 @@ function ConfigurationFields({
                               Number(parts.at(-1)) + 1,
                             )
                             form.setFieldValue(
-                              `${key}/${index}/mac`,
+                              `configuration.${key}/${index}/mac`,
                               parts.join(':'),
                             )
                           }
                         }
-                        setCounts({ ...counts, [key]: index + 1 })
+                        setRows((current) => ({
+                          ...current,
+                          [key]: [...(current[key] ?? []), index],
+                        }))
                       }}
                     >
                       添加{definition.description ?? key}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={
-                        (counts[key] ?? 0) <=
-                        Number(
-                          asObject(
-                            asObject(schema.properties?._config).port_numbers,
-                          ).minLength ?? 0,
-                        )
-                      }
-                      onClick={() =>
-                        setCounts({
-                          ...counts,
-                          [key]: Math.max(0, (counts[key] ?? 0) - 1),
-                        })
-                      }
-                    >
-                      删除末项
                     </Button>
                   </div>
                 ) : null}
@@ -429,6 +460,27 @@ function ConfigurationFields({
           </FieldGroup>
         </div>
       ))}
+      <form.Field
+        name="isBlue"
+        children={(field) => {
+          const isInvalid =
+            field.state.meta.isTouched && !field.state.meta.isValid
+          return (
+            <Field data-invalid={isInvalid}>
+              <FieldLabel htmlFor={field.name}>蓝军设置</FieldLabel>
+              <Switch
+                id={field.name}
+                name={field.name}
+                checked={field.state.value}
+                onBlur={field.handleBlur}
+                aria-invalid={isInvalid}
+                onCheckedChange={field.handleChange}
+              />
+              {isInvalid && <FieldError errors={field.state.meta.errors} />}
+            </Field>
+          )
+        }}
+      />
       <Field>
         <FieldLabel htmlFor="node-logo">节点图标</FieldLabel>
         <Input

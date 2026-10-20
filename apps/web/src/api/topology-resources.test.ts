@@ -6,8 +6,60 @@ import {
   updateTopologyNode,
   createTopologyEdge,
   deleteTopologyObjects,
+  normalizeNodeConfiguration,
 } from './topology-resources'
 afterEach(() => vi.unstubAllGlobals())
+
+it('节点配置只对合法缺失应用默认，损坏对象/数组/数组项拒绝且输入不变', () => {
+  const schema = {
+    properties: {
+      base_info: {
+        type: 'object',
+        properties: { name: { type: 'string', default: '默认设备' } },
+      },
+      ports: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: { name: { type: 'string', default: 'eth' } },
+        },
+      },
+      _config: { port_numbers: { default: 1 } },
+    },
+  }
+  const source = { extension: { preserve: true } }
+  expect(normalizeNodeConfiguration(source, schema)).toEqual({
+    extension: { preserve: true },
+    base_info: { name: '默认设备' },
+    ports: [{ name: 'eth' }],
+  })
+  expect(source).toEqual({ extension: { preserve: true } })
+  for (const config of [
+    { base_info: 'bad' },
+    { ports: 'bad' },
+    { ports: [null] },
+    { ports: ['bad'] },
+    { ports: [[]] },
+  ]) {
+    const original = structuredClone(config)
+    expect(() => normalizeNodeConfiguration(config, schema)).toThrow(
+      '节点配置契约错误',
+    )
+    expect(config).toEqual(original)
+  }
+  expect(
+    normalizeNodeConfiguration(
+      {
+        base_info: { name: '', unknown: 5 },
+        ports: [{ name: 'eth0', unknown: { id: 2 } }],
+      },
+      schema,
+    ),
+  ).toEqual({
+    base_info: { name: '', unknown: 5 },
+    ports: [{ name: 'eth0', unknown: { id: 2 } }],
+  })
+})
 
 it('资源数组按原查询参数读取，最近十项且拒绝分页包装；镜像为详情对象', async () => {
   const paths: string[] = []

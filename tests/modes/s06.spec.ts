@@ -1,5 +1,6 @@
 import { expect, test as base } from '@playwright/test'
 import { portalFixtures } from '../../apps/web/src/mocks/portal-fixtures'
+import './s06-review.scenarios'
 
 const test = base.extend<{ errors: string[] }>({
   errors: [
@@ -400,7 +401,7 @@ test('配置按schema保留未知字段、默认值、数组数量与engin10限�
   ).toBeVisible()
   await page.getByRole('tab', { name: '网卡', exact: true }).click()
   await expect(
-    page.getByRole('button', { name: '删除末项', exact: true }),
+    page.getByRole('button', { name: '删除网卡 1', exact: true }),
   ).toBeDisabled()
   await page.getByRole('button', { name: '添加网卡', exact: true }).click()
   await expect(
@@ -430,9 +431,7 @@ test('配置按schema保留未知字段、默认值、数组数量与engin10限�
   await expect(
     page.getByRole('button', { name: '添加网卡', exact: true }),
   ).toHaveCount(0)
-  await expect(
-    page.getByRole('button', { name: '删除末项', exact: true }),
-  ).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^删除网卡 / })).toHaveCount(0)
 })
 
 test('端口可作为任一连线端点，既有边和分组可见', async ({ page }, testInfo) => {
@@ -771,13 +770,9 @@ test('占用网卡与环路被拒绝，多重链路失败重试，组内节点�
   await page.getByRole('button', { name: '创建链路', exact: true }).click()
   await expect(page.locator('.react-flow__edge')).toHaveCount(2)
   await page.locator('.react-flow__node[data-id="a"]').dblclick()
-  await page.getByRole('button', { name: '删除末项', exact: true }).click()
-  await page.getByRole('button', { name: '保存节点', exact: true }).click()
   await expect(
-    page
-      .locator('[data-sonner-toast]')
-      .filter({ hasText: '该网卡仍有链路连接' }),
-  ).toHaveCount(1)
+    page.getByRole('button', { name: '删除网卡 2', exact: true }),
+  ).toBeDisabled()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.getByRole('button', { name: 'Close', exact: true }).click()
   await page

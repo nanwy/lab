@@ -16,6 +16,7 @@ const resourceSchema = z.looseObject({
 })
 export type DeviceResource = z.infer<typeof resourceSchema>
 export type ConfigSchema = {
+  [key: string]: unknown
   type?: string
   description?: string
   properties?: Record<string, ConfigSchema>
@@ -204,4 +205,60 @@ export function asObject(value: unknown): ObjectValue {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
     ? (value as ObjectValue)
     : {}
+}
+
+/** schema确定后在编辑适配边界规范化一次；仅缺失字段使用默认，不修复损坏的已有结构。 */
+export function normalizeNodeConfiguration(
+  value: unknown,
+  schema: ConfigSchema,
+): ObjectValue {
+  function invalid(path: string): never {
+    throw new ApiError(
+      'invalid-response',
+      `节点配置契约错误：${path} 结构类型不符合配置定义，原图已保留。`,
+    )
+  }
+  function object(
+    value: unknown,
+    definition: ConfigSchema,
+    path: string,
+  ): ObjectValue {
+    if (value === undefined)
+      value = definition.default === undefined ? {} : definition.default
+    if (value === null || typeof value !== 'object' || Array.isArray(value))
+      return invalid(path)
+    const result = structuredClone(value) as ObjectValue
+    for (const [key, field] of Object.entries(definition.properties ?? {})) {
+      if (key === '_config') continue
+      const fieldPath = `${path}.${key}`
+      if (result[key] === undefined && field.default !== undefined)
+        result[key] = structuredClone(field.default)
+      if (field.type === 'object')
+        result[key] = object(result[key], field, fieldPath)
+      if (field.type === 'array') {
+        if (result[key] === undefined) {
+          const count =
+            key === 'ports'
+              ? (asObject(asObject(definition.properties?._config).port_numbers)
+                  .default ?? 0)
+              : 0
+          if (
+            typeof count !== 'number' ||
+            !Number.isInteger(count) ||
+            count < 0
+          )
+            return invalid(`${fieldPath}.default`)
+          result[key] = Array.from({ length: count }, () => ({}))
+        }
+        if (!Array.isArray(result[key])) return invalid(fieldPath)
+        result[key] = (result[key] as unknown[]).map((item, index) =>
+          field.items?.properties || field.items?.type === 'object'
+            ? object(item, field.items!, `${fieldPath}[${index}]`)
+            : item,
+        )
+      }
+    }
+    return result
+  }
+  return object(value, schema, 'config_info')
 }

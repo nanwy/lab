@@ -4,10 +4,12 @@ import { appConfig } from '../config'
 import { portalFixtures } from './portal-fixtures'
 import { createAccountHandlers } from './account-handlers'
 import { createActivityHandlers } from './activity-handlers'
+import { createExperimentHandlers } from './experiment-handlers'
 
 export const handlers = [
   ...createAccountHandlers(),
   ...createActivityHandlers(),
+  ...createExperimentHandlers(),
   ...Object.entries(portalFixtures).map(([path]) => {
     const [pathname, search] = path.split('?')
     return http.get(`${appConfig.apiBaseUrl}${pathname}`, ({ request }) => {

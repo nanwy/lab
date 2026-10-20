@@ -140,8 +140,14 @@ function LearnerShell({ user }: { user: CurrentUser }) {
                 {group.items.map((item) => (
                   <Link
                     key={item.path}
-                    to="/basic/$"
-                    params={{ _splat: item.path.slice(7) }}
+                    to={
+                      item.path === '/basic/user/bench' ? item.path : '/basic/$'
+                    }
+                    params={
+                      item.path === '/basic/user/bench'
+                        ? {}
+                        : { _splat: item.path.slice(7) }
+                    }
                     aria-current={pathname === item.path ? 'page' : undefined}
                   >
                     {item.name}

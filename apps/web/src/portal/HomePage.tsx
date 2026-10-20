@@ -131,8 +131,14 @@ export function HomePage() {
                   <Link
                     className="rounded-md border px-4 py-3 hover:bg-accent"
                     key={item.path}
-                    to="/basic/$"
-                    params={{ _splat: item.path.slice(7) }}
+                    to={
+                      item.path === '/basic/user/bench' ? item.path : '/basic/$'
+                    }
+                    params={
+                      item.path === '/basic/user/bench'
+                        ? {}
+                        : { _splat: item.path.slice(7) }
+                    }
                   >
                     {item.name}
                   </Link>

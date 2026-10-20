@@ -108,6 +108,9 @@ test('首页品牌、14 个导航入口、推荐设置与课程关闭门禁可�
       json: { platform_name: '测试训练平台', front_logo: '', icon: '' },
     }),
   )
+  await page.route('**/api/front/simulation/experiment/**', (r) =>
+    r.fulfill({ json: { count: 0, results: [] } }),
+  )
   await page.route(
     '**/api/front/learn/task/self_study/open_courses/*/brief/',
     (r) => r.fulfill({ json: { is_open: false } }),
@@ -146,10 +149,10 @@ test('首页品牌、14 个导航入口、推荐设置与课程关闭门禁可�
     .click()
   await expect(page).toHaveURL(/#\/basic\/user\/bench/)
   await page.reload()
-  await expect(page.getByRole('heading', { name: '我的实验台' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '我的工作台' })).toBeVisible()
   await expect(
     page.getByText('此业务页面属于后续实施切片', { exact: false }),
-  ).toBeVisible()
+  ).not.toBeVisible()
 })
 
 test('首次进入选择岗位后保存账号扩展资料，刷新不重复提示', async ({ page }) => {

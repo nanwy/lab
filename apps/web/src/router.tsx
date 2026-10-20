@@ -28,6 +28,12 @@ import { ProtectedShell } from './portal/ProtectedShell'
 import { HomePage } from './portal/HomePage'
 import { PlatformBranding } from './portal/PlatformBranding'
 import { navigation } from './portal/navigation'
+import { ExperimentList } from './experiments/ExperimentList'
+import {
+  ExperimentLayout,
+  ExperimentOverview,
+  ExperimentExplanation,
+} from './experiments/ExperimentContext'
 
 function RootLayout() {
   const path = useRouterState({ select: (s) => s.location.pathname })
@@ -401,6 +407,68 @@ const resourcesRoute = createRoute({
   component: ResourcesPage,
 })
 
+const experimentListRoute = createRoute({
+  getParentRoute: () => basicRoute,
+  path: '/user/bench',
+  component: ExperimentList,
+})
+
+const experimentRoute = createRoute({
+  getParentRoute: () => basicRoute,
+  path: '/user/bench/experiment/$id',
+  component: () => {
+    const { id } = experimentRoute.useParams()
+    return <ExperimentLayout key={id} id={id} />
+  },
+})
+const experimentIndexRoute = createRoute({
+  getParentRoute: () => experimentRoute,
+  path: '/',
+  component: () => {
+    const { id } = experimentRoute.useParams()
+    return (
+      <Navigate
+        to="/basic/user/bench/experiment/$id/overview"
+        params={{ id }}
+        replace
+      />
+    )
+  },
+})
+const experimentOverviewRoute = createRoute({
+  getParentRoute: () => experimentRoute,
+  path: '/overview',
+  component: ExperimentOverview,
+})
+const experimentExplanationRoute = createRoute({
+  getParentRoute: () => experimentRoute,
+  path: '/explain',
+  component: ExperimentExplanation,
+})
+const experimentFutureRoute = createRoute({
+  getParentRoute: () => experimentRoute,
+  path: '$',
+  component: () => {
+    const { _splat } = experimentFutureRoute.useParams()
+    if (
+      ![
+        'scene',
+        'simulate',
+        'flow',
+        'notes',
+        'detection/penetration',
+        'detection/defense',
+        'detection/baseline',
+        'detection/vulnerability',
+        'detection/riskAssessment',
+        'attackteaching',
+      ].includes(_splat ?? '')
+    )
+      return <NotFoundPage />
+    return <p role="note">此实验子页属于后续实施切片，尚未实现。</p>
+  },
+})
+
 const resourceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/resources/$resourceId',
@@ -455,6 +523,13 @@ const routeTree = rootRoute.addChildren([
     basicIndexRoute,
     sessionHomeRoute,
     personalRoute,
+    experimentListRoute,
+    experimentRoute.addChildren([
+      experimentIndexRoute,
+      experimentOverviewRoute,
+      experimentExplanationRoute,
+      experimentFutureRoute,
+    ]),
     futureRoute,
   ]),
   resourcesRoute,

@@ -13,5 +13,6 @@ if (!project || !server) throw new Error(`缺少 ${projectName} 专项测试配�
 export default defineConfig({
   ...modes,
   projects: [project],
-  webServer: server,
+  webServer:
+    process.env.PLAYWRIGHT_EXTERNAL_SERVER === 'true' ? undefined : server,
 })

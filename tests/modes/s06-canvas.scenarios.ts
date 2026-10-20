@@ -1,6 +1,140 @@
 import { expect, test } from '@playwright/test'
 import type { X6Graph } from '../../apps/web/src/topology/x6-adapter'
 
+test('取消多选对象后Delete只删除仍被选中的对象', async ({ page }) => {
+  await page.route('**/api/front/topo/topo-one/draw/?task_type=6', (route) =>
+    route.fulfill({
+      json: {
+        cells: ['a', 'b'].map((id, i) => ({
+          id,
+          shape: 'custom-react-node',
+          position: { x: 100 + 200 * i, y: 100 },
+          data: { name: id, nodeType: 'base_element', nodeInfo: { type: 2 } },
+        })),
+      },
+    }),
+  )
+  await page.goto('/#/basic/user/bench/experiment/one/scene')
+  const canvas = page.getByLabel('场景拓扑画布'),
+    a = canvas.locator('[data-id="a"]'),
+    b = canvas.locator('[data-id="b"]')
+  await a.click()
+  await b.click({ modifiers: ['Meta'] })
+  await b.click({ modifiers: ['Meta'] })
+  await expect(a).toHaveClass(/selected/)
+  await expect(b).not.toHaveClass(/selected/)
+  await page.keyboard.press('Delete')
+  await expect(a).toHaveCount(0)
+  await expect(b).toHaveCount(1)
+})
+
+test('文本尚未失焦时登记未保存状态，刷新会提示，失焦仍按原语义提交', async ({
+  page,
+}) => {
+  let stored: X6Graph = {
+    cells: [
+      {
+        id: 't',
+        shape: 'custom-react-text',
+        position: { x: 100, y: 100 },
+        data: {
+          name: '原文字',
+          nodeType: 'base_element',
+          nodeInfo: { type: 3 },
+        },
+      },
+    ],
+  }
+  await page.route('**/api/front/topo/topo-one/draw/?task_type=6', (route) => {
+    if (route.request().method() === 'POST')
+      stored = route.request().postDataJSON().topo
+    return route.fulfill({ json: stored })
+  })
+  await page.goto('/#/basic/user/bench/experiment/one/scene')
+  const text = page.getByRole('textbox', { name: '文本 原文字' })
+  await expect(page.getByText('所有修改已保存')).toBeVisible()
+  await text.fill('未失焦修改')
+  await expect(page.getByText('有未保存的修改')).toBeVisible({ timeout: 1200 })
+  let refreshWarned = false
+  page.once('dialog', async (dialog) => {
+    refreshWarned = dialog.type() === 'beforeunload'
+    await dialog.dismiss()
+  })
+  await page.evaluate(() => window.location.reload())
+  expect(refreshWarned).toBe(true)
+  await expect(text).toHaveValue('未失焦修改')
+  expect(stored.cells[0]!.data?.name).toBe('原文字')
+  await text.blur()
+  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
+  await expect(page.getByText('所有修改已保存')).toBeVisible()
+  await page.reload()
+  await expect(
+    page.getByRole('textbox', { name: '文本 未失焦修改' }),
+  ).toBeVisible()
+})
+
+test('基础元素连接无业务NIC的设备仍为纯图边且零业务请求', async ({ page }) => {
+  const writes: string[] = []
+  await page.route('**/api/front/topo/topo-one/**', (route) => {
+    if (!route.request().url().includes('/draw/')) {
+      writes.push(route.request().url())
+      return route.fulfill({ json: {} })
+    }
+    return route.fulfill({
+      json: {
+        cells: [
+          {
+            id: 'base',
+            shape: 'custom-react-node',
+            position: { x: 100, y: 100 },
+            ports: { items: [{ id: 'r', group: 'right' }] },
+            data: {
+              name: '人员',
+              nodeType: 'base_element',
+              nodeInfo: { type: 2 },
+            },
+          },
+          {
+            id: 'node',
+            shape: 'custom-react-node',
+            position: { x: 400, y: 150 },
+            ports: { items: [{ id: 'l', group: 'left' }] },
+            data: {
+              name: '无网卡设备',
+              data_id: 91,
+              nodeType: 'node',
+              nodeInfo: { id: 91, config_info: { ports: [] } },
+            },
+          },
+        ],
+      },
+    })
+  })
+  await page.goto('/#/basic/user/bench/experiment/one/scene')
+  const canvas = page.getByLabel('场景拓扑画布'),
+    source = (await canvas
+      .locator('[data-id="base"] [data-handleid="r"]')
+      .boundingBox())!,
+    target = (await canvas
+      .locator('[data-id="node"] [data-handleid="l"]')
+      .boundingBox())!
+  await page.mouse.move(
+    source.x + source.width / 2,
+    source.y + source.height / 2,
+  )
+  await page.mouse.down()
+  await page.mouse.move(
+    target.x + target.width / 2,
+    target.y + target.height / 2,
+    { steps: 10 },
+  )
+  await page.mouse.up()
+  await expect(canvas.locator('.react-flow__edge')).toHaveCount(1, {
+    timeout: 1200,
+  })
+  expect(writes).toEqual([])
+})
+
 test('框选旋转文字超出原矩形的可见区域仍能选中', async ({ page }) => {
   await page.route('**/api/front/topo/topo-one/draw/?task_type=6', (route) =>
     route.fulfill({
@@ -163,6 +297,25 @@ test('基础元素岗位可添加编辑删除，图元连线只保存图且锁�
   await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
   await expect(page.getByText('所有修改已保存')).toBeVisible()
   expect(businessWrites).toEqual([])
+  expect(
+    stored.cells.find((cell) => cell.data?.name === '参与人员')?.data,
+  ).toMatchObject({
+    logo: '/topology/person.svg',
+    nodeInfo: { logo: '/topology/person.svg' },
+  })
+  expect(
+    stored.cells.find((cell) => cell.data?.name === '安全检测岗')?.data,
+  ).toMatchObject({
+    logo: '/topology/position.svg',
+    nodeInfo: { logo: '/topology/position.svg' },
+  })
+  await page.screenshot({
+    path: '/tmp/xueyuan-s06-notes.50KSb2/03-static-symbols.png',
+    fullPage: true,
+  })
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, {
+    timeout: 6000,
+  })
   expect(stored.cells.find((cell) => cell.shape === 'edge')).toMatchObject({
     router: { name: 'orth' },
     data: { nodeType: 'base_element' },

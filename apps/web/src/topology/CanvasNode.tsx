@@ -14,6 +14,7 @@ import { Button } from '@workspace/ui/components/button'
 export const CanvasNodeContext = createContext<{
   editable: boolean
   onLabel: (id: string, label: string) => void
+  onTextDirty: (id: string, dirty: boolean) => void
   onTransform: (
     id: string,
     value: { rotation?: number; width?: number; height?: number },
@@ -21,6 +22,7 @@ export const CanvasNodeContext = createContext<{
 }>({
   editable: false,
   onLabel: () => {},
+  onTextDirty: () => {},
   onTransform: () => {},
 })
 
@@ -32,7 +34,13 @@ export function CanvasNode({
   width = 80,
   height = 80,
 }: NodeProps<Node<TopologyNodeData>>) {
-  const { editable, onLabel, onTransform } = useContext(CanvasNodeContext)
+  const { editable, onLabel, onTransform, onTextDirty } =
+    useContext(CanvasNodeContext)
+  const dirtyCleanup = useRef(onTextDirty)
+  useEffect(() => {
+    dirtyCleanup.current = onTextDirty
+  }, [onTextDirty])
+  useEffect(() => () => dirtyCleanup.current(id, false), [id])
   const flow = useReactFlow()
   const update = useUpdateNodeInternals()
   const activePointer = useRef<(() => void) | null>(null)
@@ -128,7 +136,13 @@ export function CanvasNode({
             aria-label={`文本 ${data.label}`}
             defaultValue={data.label}
             readOnly={!editable}
-            onBlur={(event) => onLabel(id, event.target.value)}
+            onChange={(event) =>
+              onTextDirty(id, event.target.value !== data.label)
+            }
+            onBlur={(event) => {
+              onLabel(id, event.target.value)
+              onTextDirty(id, false)
+            }}
           />
         ) : (
           <>

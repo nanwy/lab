@@ -20,7 +20,13 @@ type ResourceGroup = {
   children?: ResourceGroup[]
 }
 const basicElements: DeviceResource[] = [
-  { id: 'basic-person', name: '人员', nodeType: 'base_element', type: 2 },
+  {
+    id: 'basic-person',
+    name: '人员',
+    nodeType: 'base_element',
+    type: 2,
+    logo: '/topology/person.svg',
+  },
   { id: 'basic-text', name: '文本框', nodeType: 'base_element', type: 3 },
   {
     id: 'basic-area',
@@ -42,6 +48,7 @@ const positions: DeviceResource[] = [
   name,
   nodeType: 'base_element',
   type: 2,
+  logo: '/topology/position.svg',
 }))
 export function DeviceResources({
   onChoose,

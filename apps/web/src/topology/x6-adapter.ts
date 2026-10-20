@@ -430,9 +430,14 @@ export function toX6Graph(editor: EditorGraph): X6Graph {
         raw.y = position.y
       }
       if (node.parentId !== raw.parent) raw.parent = node.parentId
-      const children = editor.nodes
-        .filter((child) => child.parentId === node.id)
-        .map((child) => child.id)
+      const children = [
+        ...editor.nodes
+          .filter((child) => child.parentId === node.id)
+          .map((child) => child.id),
+        ...editor.passthroughCells
+          .filter((child) => child.parent === node.id)
+          .map((child) => child.id),
+      ]
       if (
         groupShapes.has(raw.shape) &&
         (raw.children !== undefined || children.length)

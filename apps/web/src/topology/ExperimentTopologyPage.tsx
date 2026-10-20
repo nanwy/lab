@@ -245,7 +245,12 @@ export function ExperimentTopologyEditor({
   const [busy, setBusy] = useState(false)
   const [context, setContext] = useState<{ x: number; y: number } | null>(null)
   const [inspectorDirty, setInspectorDirty] = useState(false)
-  const [locked, setLocked] = useState(Boolean(initial.rawGraph.lock))
+  const [pendingTexts, setPendingTexts] = useState<Set<string>>(() => new Set())
+  const [locked, setLocked] = useState<boolean | undefined>(
+    initial.rawGraph.lock === undefined
+      ? undefined
+      : Boolean(initial.rawGraph.lock),
+  )
   const clipboard = useRef<X6Graph | null>(null)
   const pasteCount = useRef(0)
   const panCleanup = useRef<(() => void) | null>(null)
@@ -276,8 +281,10 @@ export function ExperimentTopologyEditor({
   const dirty = serialized !== baseline
   const editable = !readOnly && !shared && !locked
   const blocker = useBlocker({
-    shouldBlockFn: () => dirty || inspectorDirty || busy,
-    enableBeforeUnload: dirty || inspectorDirty || busy,
+    shouldBlockFn: () =>
+      dirty || inspectorDirty || pendingTexts.size > 0 || busy,
+    enableBeforeUnload:
+      dirty || inspectorDirty || pendingTexts.size > 0 || busy,
     withResolver: true,
   })
   useEffect(() => {
@@ -351,7 +358,7 @@ export function ExperimentTopologyEditor({
 
   const selectedNodes = nodes.filter((node) => node.selected)
   const selectedNode =
-    nodes.find((node) => node.id === selected) ?? selectedNodes[0]
+    selectedNodes.find((node) => node.id === selected) ?? selectedNodes[0]
   const graphical =
     selectedNode &&
     (selectedNode.type === 'topologyGroup' ||
@@ -361,9 +368,19 @@ export function ExperimentTopologyEditor({
     if (selectedNode?.data.raw.shape === 'custom-react-text') return
     setEditing(selectedEdge ? 'link' : graphical ? 'label' : 'node')
   }
-  function installGraph(graph: X6Graph) {
+  function installGraph(graph: X6Graph, selectedId?: string) {
     const opened = fromX6Graph(graph)
-    setNodes(opened.nodes)
+    setNodes((current) =>
+      opened.nodes.map((node) => ({
+        ...node,
+        selected:
+          selectedId === undefined
+            ? current.some(
+                (previous) => previous.id === node.id && previous.selected,
+              )
+            : node.id === selectedId,
+      })),
+    )
     setEdges(opened.edges)
     setPassthroughCells(opened.passthroughCells)
   }
@@ -427,7 +444,7 @@ export function ExperimentTopologyEditor({
         },
       },
     })
-    installGraph(graph)
+    installGraph(graph, uuid)
     setSelected(uuid)
   }
   function finishSelection(event: React.MouseEvent) {
@@ -667,7 +684,9 @@ export function ExperimentTopologyEditor({
       }
     }
   }
-  const selectedEdge = edges.find((edge) => edge.id === selected)
+  const selectedEdge =
+    edges.find((edge) => edge.id === selected && edge.selected) ??
+    edges.find((edge) => edge.selected)
   function report(error: unknown) {
     if (error instanceof ApiError) {
       if (!error.handled && error.kind !== 'cancelled')
@@ -778,6 +797,7 @@ export function ExperimentTopologyEditor({
         data: {
           name: item.name,
           nodeType: 'base_element',
+          logo: item.logo,
           nodeInfo: item,
           ...(area ? { parent: true } : {}),
         },
@@ -960,6 +980,10 @@ export function ExperimentTopologyEditor({
     if (!editable || busy) return
     setContext(null)
     setSelected(node.id)
+    setNodes((current) =>
+      current.map((item) => ({ ...item, selected: item.id === node.id })),
+    )
+    setEdges((current) => current.map((edge) => ({ ...edge, selected: false })))
     setBusy(true)
     try {
       if (
@@ -990,6 +1014,14 @@ export function ExperimentTopologyEditor({
       value={{
         editable: editable && !busy,
         onLabel: changeLabel,
+        onTextDirty: (id, dirty) =>
+          setPendingTexts((current) => {
+            if (current.has(id) === dirty) return current
+            const next = new Set(current)
+            if (dirty) next.add(id)
+            else next.delete(id)
+            return next
+          }),
         onTransform: (uuid, value) => {
           if (!editable || busy) return
           setNodes((current) =>
@@ -1029,7 +1061,7 @@ export function ExperimentTopologyEditor({
                 ? '拓扑已锁定，仅可查看'
                 : readOnly || shared
                   ? '共享只读拓扑'
-                  : dirty || inspectorDirty
+                  : dirty || inspectorDirty || pendingTexts.size > 0
                     ? '有未保存的修改'
                     : '所有修改已保存'}
             </p>
@@ -1200,8 +1232,14 @@ export function ExperimentTopologyEditor({
                 if (editable && selectedNodes.length)
                   setContext({ x: event.clientX, y: event.clientY })
               }}
-              onNodeClick={(_event, node) => {
+              onNodeClick={(event, node) => {
                 setSelected(node.id)
+                if (!(event.target instanceof HTMLTextAreaElement))
+                  (
+                    event.currentTarget.closest(
+                      '[aria-label="场景拓扑画布"]',
+                    ) as HTMLElement | null
+                  )?.focus({ preventScroll: true })
                 if (editable)
                   setNodes((current) =>
                     current.map((item) =>
@@ -1246,28 +1284,33 @@ export function ExperimentTopologyEditor({
               onEdgeContextMenu={(event, edge) => {
                 event.preventDefault()
                 setSelected(edge.id)
+                setEdges((current) =>
+                  current.map((item) => ({
+                    ...item,
+                    selected: item.id === edge.id,
+                  })),
+                )
+                setNodes((current) =>
+                  current.map((node) => ({ ...node, selected: false })),
+                )
                 if (editable) setContext({ x: event.clientX, y: event.clientY })
               }}
               onConnect={connect}
-              isValidConnection={(connection) =>
-                connection.source !== connection.target &&
-                Boolean(
-                  nodes.find(
-                    (node) =>
-                      node.id === connection.source &&
-                      (nicIndices(node).length ||
-                        node.data.raw.data?.nodeType === 'base_element'),
+              isValidConnection={(connection) => {
+                const source = nodes.find(
+                    (node) => node.id === connection.source,
                   ),
-                ) &&
-                Boolean(
-                  nodes.find(
-                    (node) =>
-                      node.id === connection.target &&
-                      (nicIndices(node).length ||
-                        node.data.raw.data?.nodeType === 'base_element'),
-                  ),
+                  target = nodes.find((node) => node.id === connection.target)
+                if (!source || !target || source.id === target.id) return false
+                if (
+                  source.data.raw.data?.nodeType === 'base_element' ||
+                  target.data.raw.data?.nodeType === 'base_element'
                 )
-              }
+                  return true
+                return (
+                  nicIndices(source).length > 0 && nicIndices(target).length > 0
+                )
+              }}
               onNodesChange={(changes) =>
                 changeNodes(
                   changes.filter(

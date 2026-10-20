@@ -4,6 +4,36 @@ import { deterministicX6Graph } from './sample'
 import { fromX6Graph, toX6Graph } from './x6-adapter'
 
 describe('拓扑输入契约', () => {
+  it('未知组成员往返保留引用，明确删除或移出后才从children排除', () => {
+    const input = {
+      cells: [
+        {
+          id: 'g',
+          shape: 'custom-rect',
+          position: { x: 0, y: 0 },
+          children: ['u'],
+          data: { parent: true },
+        },
+        { id: 'u', shape: 'future', parent: 'g', unknown: 'keep' },
+      ],
+    }
+    const opened = fromX6Graph(input)
+    expect(
+      toX6Graph(opened).cells.find((cell) => cell.id === 'g')?.children,
+    ).toEqual(['u'])
+    expect(fromX6Graph(toX6Graph(opened)).nodes.map((node) => node.id)).toEqual(
+      ['g'],
+    )
+    opened.passthroughCells = []
+    expect(
+      toX6Graph(opened).cells.find((cell) => cell.id === 'g')?.children,
+    ).toEqual([])
+    const moved = fromX6Graph(input)
+    delete moved.passthroughCells[0]!.parent
+    expect(
+      toX6Graph(moved).cells.find((cell) => cell.id === 'g')?.children,
+    ).toEqual([])
+  })
   it('文本和区域编辑尺寸角度层级后保存重开，成员可移出并保持绝对坐标', () => {
     const opened = fromX6Graph({
       cells: [

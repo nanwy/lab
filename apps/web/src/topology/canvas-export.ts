@@ -45,6 +45,19 @@ export async function exportCanvas(
     stage = '导出模块加载'
     const { toSvg } = await import('html-to-image')
     stage = 'SVG生成或资源嵌入'
+    // html-to-image 深拷贝内嵌 SVG，却不复制其后代的计算样式。
+    // 脱离页面样式表后，标签背景等图元会回退为 SVG 默认黑色。
+    const svgChildren = (root: Element) =>
+      Array.from(root.querySelectorAll('svg')).flatMap((svg) =>
+        Array.from(svg.querySelectorAll<SVGElement>('*')),
+      )
+    const svgStyles = svgChildren(element).map((node) => {
+      const style = getComputedStyle(node)
+      return Array.from(
+        style,
+        (name) => [name, style.getPropertyValue(name)] as const,
+      )
+    })
     const svg = await toSvg(element, {
       cacheBust: true,
       includeQueryParams: true,
@@ -54,6 +67,15 @@ export async function exportCanvas(
       decodeURIComponent(svg.slice(svg.indexOf(',') + 1)),
       'image/svg+xml',
     )
+    const svgDescendants = svgChildren(
+      documentSvg.querySelector('foreignObject')!,
+    )
+    if (svgDescendants.length !== svgStyles.length)
+      throw new Error('画布在导出期间发生变化')
+    svgDescendants.forEach((node, index) => {
+      for (const [name, value] of svgStyles[index]!)
+        node.style.setProperty(name, value)
+    })
     for (const image of documentSvg.querySelectorAll('img'))
       if (!image.getAttribute('src')?.startsWith('data:'))
         throw new Error('画布导出包含未能嵌入的图标')
@@ -68,11 +90,13 @@ export async function exportCanvas(
           throw new Error('画布导出包含未能嵌入的字体或图片')
       }
     }
-    let url = svg
+    let url =
+      'data:image/svg+xml;charset=utf-8,' +
+      encodeURIComponent(new XMLSerializer().serializeToString(documentSvg))
     if (format === 'png') {
       stage = 'PNG编码'
       const image = new Image()
-      image.src = svg
+      image.src = url
       await image.decode()
       const canvas = document.createElement('canvas')
       canvas.width = image.naturalWidth

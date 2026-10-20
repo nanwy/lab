@@ -246,6 +246,7 @@ test('PNG与SVG导出实际画布DOM，产物含图标与连线像素，空图�
       source: { cell: 'device-one', port: 'p' },
       target: { cell: 'device-two', port: 'p' },
       attrs: { line: { stroke: '#ff0000', strokeWidth: 4 } },
+      labels: [{ position: 0.5, attrs: { label: { text: 'eth0' } } }],
     },
   ]
   await page.route('**/api/front/topo/topo-one/draw/?task_type=6', (route) =>
@@ -261,6 +262,20 @@ test('PNG与SVG导出实际画布DOM，产物含图标与连线像素，空图�
     'd',
     'M 180 140 L 350 140',
   )
+  const labelBounds = await page
+    .locator('.react-flow__edge-textbg')
+    .evaluate((label) => {
+      const rect = label.getBoundingClientRect()
+      const canvas = label
+        .closest('[aria-label="场景拓扑画布"]')!
+        .getBoundingClientRect()
+      return {
+        x: rect.x - canvas.x,
+        y: rect.y - canvas.y,
+        width: rect.width,
+        height: rect.height,
+      }
+    })
   for (const format of ['PNG', 'SVG']) {
     const downloaded = page.waitForEvent('download')
     await page
@@ -272,39 +287,73 @@ test('PNG与SVG导出实际画布DOM，产物含图标与连线像素，空图�
     await download.saveAs(path)
     const bytes = await readFile(path)
     const dataUrl = `data:image/${format === 'PNG' ? 'png' : 'svg+xml'};base64,${bytes.toString('base64')}`
-    const pixels = await page.evaluate(async (url) => {
-      const image = new Image()
-      image.src = url
-      await image.decode()
-      const canvas = document.createElement('canvas')
-      canvas.width = image.naturalWidth
-      canvas.height = image.naturalHeight
-      const context = canvas.getContext('2d')!
-      context.drawImage(image, 0, 0)
-      const data = context.getImageData(0, 0, canvas.width, canvas.height).data
-      let green = 0,
-        red = 0
-      for (let index = 0; index < data.length; index += 4) {
-        if (
-          data[index]! < 30 &&
-          data[index + 1]! > 140 &&
-          data[index + 1]! < 200 &&
-          data[index + 2]! < 30
+    const pixels = await page.evaluate(
+      async ({ url, labelBounds }) => {
+        const image = new Image()
+        image.src = url
+        await image.decode()
+        const canvas = document.createElement('canvas')
+        canvas.width = image.naturalWidth
+        canvas.height = image.naturalHeight
+        const context = canvas.getContext('2d')!
+        context.drawImage(image, 0, 0)
+        const data = context.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        ).data
+        let green = 0,
+          red = 0
+        for (let index = 0; index < data.length; index += 4) {
+          if (
+            data[index]! < 30 &&
+            data[index + 1]! > 140 &&
+            data[index + 1]! < 200 &&
+            data[index + 2]! < 30
+          )
+            green++
+          if (
+            data[index]! > 220 &&
+            data[index + 1]! < 30 &&
+            data[index + 2]! < 30
+          )
+            red++
+        }
+        let labelWhite = 0
+        for (
+          let y = Math.ceil(labelBounds.y + 2);
+          y < labelBounds.y + labelBounds.height - 2;
+          y++
         )
-          green++
-        if (
-          data[index]! > 220 &&
-          data[index + 1]! < 30 &&
-          data[index + 2]! < 30
-        )
-          red++
-      }
-      return { width: canvas.width, height: canvas.height, green, red }
-    }, dataUrl)
+          for (
+            let x = Math.ceil(labelBounds.x + 2);
+            x < labelBounds.x + labelBounds.width - 2;
+            x++
+          ) {
+            const index = (y * canvas.width + x) * 4
+            if (
+              data[index]! > 240 &&
+              data[index + 1]! > 240 &&
+              data[index + 2]! > 240
+            )
+              labelWhite++
+          }
+        return {
+          width: canvas.width,
+          height: canvas.height,
+          green,
+          red,
+          labelWhite,
+        }
+      },
+      { url: dataUrl, labelBounds },
+    )
     expect(pixels.width).toBeGreaterThan(450)
     expect(pixels.height).toBeGreaterThan(400)
     expect(pixels.green).toBeGreaterThan(100)
     expect(pixels.red).toBeGreaterThan(100)
+    expect(pixels.labelWhite).toBeGreaterThan(100)
     if (format === 'SVG') {
       expect(bytes.toString()).toContain('foreignObject')
       expect(bytes.toString()).toContain('react-flow__edge-path')

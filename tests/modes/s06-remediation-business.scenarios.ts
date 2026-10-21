@@ -112,6 +112,9 @@ async function mount(page: Page, initial: X6Graph = { cells: [] }) {
     })
   })
   await page.goto('/#/basic/user/bench/experiment/one/scene')
+  await expect(page).toHaveTitle('网络安全攻防训练平台')
+  await expect(page).toHaveURL(/experiment\/one\/scene/)
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   await expect(
     page.getByRole('button', { name: '业务设备', exact: true }),
   ).toBeVisible()
@@ -167,7 +170,7 @@ function linkedDevices(): X6Graph {
 
 test('专项业务：新增设备自动提交画布，配置默认行与MAC补零随配置保存重开', async ({
   page,
-}) => {
+}, testInfo) => {
   const state = await mount(page)
   await place(page, 240)
   await expect.poll(() => state.stored.cells.length).toBe(1)
@@ -193,8 +196,18 @@ test('专项业务：新增设备自动提交画布，配置默认行与MAC补�
     { mac: '00:00:00:00:00:01', extension: '保留' },
     { mac: '00:00:00:00:00:02' },
   ])
+  expect(
+    state.writes.find(
+      (write) =>
+        write.path.includes('/node/') && !write.path.endsWith('/node/'),
+    )?.body.config_info,
+  ).toMatchObject({
+    ports: info.config_info.ports,
+    disks: [{ name: '默认磁盘' }],
+  })
   await page.reload()
   await expect(page.locator('.react-flow__node')).toContainText('持久化配置')
+  await page.screenshot({ path: testInfo.outputPath('business-reopened.png') })
   expect(state.errors).toEqual([])
 })
 
@@ -270,6 +283,15 @@ test('专项业务：失效旧边占用两端NIC零，空闲NIC可连，链路�
     unknown: '保留旧边',
   })
   const state = await mount(page, initial)
+  await page.locator('.react-flow__node[data-id="a"]').dblclick()
+  await page.getByRole('tab', { name: '网卡', exact: true }).click()
+  await expect(
+    page.getByRole('button', { name: '删除网卡 1', exact: true }),
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('button', { name: '删除网卡 2', exact: true }),
+  ).toBeEnabled()
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
   await page.locator('.react-flow__node[data-id="a"]').click()
   await page.getByRole('button', { name: '连接设备', exact: true }).click()
   await page.getByLabel('目标设备', { exact: true }).selectOption('b')

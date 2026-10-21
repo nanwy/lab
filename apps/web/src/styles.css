@@ -1,5 +1,11 @@
 @import '@workspace/ui/globals.css';
 
+@keyframes ant-line {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+
 @layer base {
   :root {
     color: var(--foreground);

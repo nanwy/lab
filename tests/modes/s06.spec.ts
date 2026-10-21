@@ -4,6 +4,7 @@ import './s06-review.scenarios'
 import './s06-canvas.scenarios'
 import './s06-templates.scenarios'
 import './s06-remediation-business.scenarios'
+import './s06-remediation-visual.scenarios'
 
 const test = base.extend<{ errors: string[] }>({
   errors: [
@@ -231,7 +232,9 @@ test('设备新增配置失败恢复、NIC零连线、线路编辑删除与保�
   })
   await expect(page.getByText('所有修改已保存')).toBeVisible()
   expect(
-    writes.filter((write) => write.path.includes('/draw/')).flatMap(write => write.body.last_node ?? []),
+    writes
+      .filter((write) => write.path.includes('/draw/'))
+      .flatMap((write) => write.body.last_node ?? []),
   ).toEqual([7, 7])
   await page.reload()
   await expect(page.getByText('配置后的路由器', { exact: true })).toBeVisible()

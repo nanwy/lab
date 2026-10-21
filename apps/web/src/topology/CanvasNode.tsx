@@ -9,10 +9,15 @@ import {
 } from '@xyflow/react'
 import type { TopologyNodeData } from './x6-adapter'
 import { asObject } from '../api/topology-resources'
+import {
+  nodeStatusLabels,
+  type TopologyRuntimeStatus,
+} from '../api/topology-runtime'
 import { Button } from '@workspace/ui/components/button'
 
 export const CanvasNodeContext = createContext<{
   editable: boolean
+  runtime?: TopologyRuntimeStatus
   onLabel: (id: string, label: string) => void
   onTextDirty: (id: string, dirty: boolean) => void
   onTransform: (
@@ -34,7 +39,7 @@ export function CanvasNode({
   width = 80,
   height = 80,
 }: NodeProps<Node<TopologyNodeData>>) {
-  const { editable, onLabel, onTransform, onTextDirty } =
+  const { editable, runtime, onLabel, onTransform, onTextDirty } =
     useContext(CanvasNodeContext)
   const dirtyCleanup = useRef(onTextDirty)
   useEffect(() => {
@@ -154,6 +159,14 @@ export function CanvasNode({
               />
             ) : null}
             <strong>{data.label}</strong>
+            {!group && data.raw.data?.nodeType !== 'base_element' && runtime ? (
+              <span
+                className="block text-xs"
+                aria-label={`${data.label}运行状态`}
+              >
+                {nodeStatusLabels[runtime.nodes[id]?.status ?? 0]}
+              </span>
+            ) : null}
           </>
         )}
       </div>

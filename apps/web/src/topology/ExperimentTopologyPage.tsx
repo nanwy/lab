@@ -34,6 +34,13 @@ import {
   saveExperimentTopology,
   setExperimentTopologyLock,
 } from '../api/topology'
+import {
+  getTopologyRuntime,
+  runTopology,
+  nodeRuntimeActions,
+  runtimeActionLabels,
+  type NodeAction,
+} from '../api/topology-runtime'
 import { useExperiment } from '../experiments/ExperimentContext'
 import { DeviceResources } from './DeviceResources'
 import { NodeConfiguration } from './NodeConfiguration'
@@ -151,13 +158,21 @@ function Connection({
         : []
     })
   }, [path, data?.raw.labels])
+  const runtimeColor =
+    typeof data?.runtimeStatus === 'number'
+      ? (({ 1: '#aaa', 2: '#87d068', 3: 'red' } as Record<number, string>)[
+          data.runtimeStatus
+        ] ?? '#1890ff')
+      : undefined
   const animation = asObject(line?.style).animation
   return (
     <>
       <BaseEdge
         path={path}
         style={{
-          stroke: typeof line?.stroke === 'string' ? line.stroke : undefined,
+          stroke:
+            runtimeColor ??
+            (typeof line?.stroke === 'string' ? line.stroke : undefined),
           strokeWidth:
             typeof line?.strokeWidth === 'number'
               ? line.strokeWidth
@@ -292,6 +307,17 @@ export function ExperimentTopologyEditor({
   const [businessSaveRequested, setBusinessSaveRequested] = useState(false)
   const [businessSaveFailed, setBusinessSaveFailed] = useState(false)
   const saveController = useRef<AbortController | null>(null)
+  const runtimeRequest = useRef(false)
+  const [showRuntimeErrors, setShowRuntimeErrors] = useState(false)
+  const runtime = useQuery({
+    queryKey: ['topology-runtime', id],
+    queryFn: ({ signal }) => getTopologyRuntime(id, signal),
+    retry: false,
+    gcTime: 0,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
   const dirty = serialized !== baseline
   const needsSave = dirty || businessSaveFailed
   const editable = !readOnly && !shared && !locked
@@ -331,7 +357,7 @@ export function ExperimentTopologyEditor({
   }, [businessSaveRequested, busy, saving])
 
   async function save(afterBusiness = false) {
-    if (!editable || saving || (!needsSave && !afterBusiness)) return
+    if (!editable || busy || saving || (!needsSave && !afterBusiness)) return
     const controller = new AbortController()
     saveController.current = controller
     setSaving(true)
@@ -401,6 +427,71 @@ export function ExperimentTopologyEditor({
     selectedNode &&
     (selectedNode.type === 'topologyGroup' ||
       selectedNode.data.raw.data?.nodeType === 'base_element')
+  async function operateRuntime(
+    action: NodeAction,
+    target?: string | string[],
+  ) {
+    if (
+      readOnly ||
+      busy ||
+      saving ||
+      businessSaveRequested ||
+      runtimeRequest.current
+    )
+      return
+    if (
+      target &&
+      ![target]
+        .flat()
+        .every((uuid) =>
+          nodes.some(
+            (node) =>
+              node.id === uuid &&
+              node.type !== 'topologyGroup' &&
+              node.data.raw.data?.nodeType !== 'base_element',
+          ),
+        )
+    )
+      return
+    if (shared && typeof target !== 'string') return
+    if (Array.isArray(target) && !target.length) return
+    runtimeRequest.current = true
+    setContext(null)
+    setBusy(true)
+    try {
+      await runTopology(id, action, target, operation.current.signal)
+      if (!operation.current.signal.aborted) {
+        toast.success(`${runtimeActionLabels[action]}成功`)
+        await runtime.refetch()
+      }
+    } catch (error) {
+      report(error)
+    } finally {
+      runtimeRequest.current = false
+      if (!operation.current.signal.aborted) setBusy(false)
+    }
+  }
+  const selectedRuntimeNodes = selectedNodes.filter(
+    (node) =>
+      node.type !== 'topologyGroup' &&
+      node.data.raw.data?.nodeType !== 'base_element',
+  )
+  const runtimeErrors = runtime.data
+    ? [
+        ...Object.entries(runtime.data.nodes).map(([uuid, entry]) => ({
+          ...entry,
+          title: `节点：${entry.name ?? uuid}`,
+        })),
+        ...Object.entries(runtime.data.edges).map(([rowId, entry]) => ({
+          ...entry,
+          title: `边：${entry.nodea_name ?? rowId} - ${entry.nodez_name ?? ''}`,
+        })),
+      ]
+        .filter((entry) => entry.status === 3)
+        .sort((a, b) =>
+          (b.update_time ?? '').localeCompare(a.update_time ?? ''),
+        )
+    : []
   function editSelected() {
     if (!editable || busy) return
     if (selectedNode?.data.raw.shape === 'custom-react-text') return
@@ -1037,7 +1128,7 @@ export function ExperimentTopologyEditor({
     setEditing('link')
   }
   async function openNodeMenu(node: FlowNode, point: { x: number; y: number }) {
-    if (!editable || busy) return
+    if (readOnly || busy || saving) return
     setContext(null)
     setSelected(node.id)
     setNodes((current) =>
@@ -1073,6 +1164,7 @@ export function ExperimentTopologyEditor({
     <CanvasNodeContext.Provider
       value={{
         editable: editable && !busy,
+        runtime: runtime.data,
         onLabel: changeLabel,
         onTextDirty: (id, dirty) =>
           setPendingTexts((current) => {
@@ -1160,13 +1252,97 @@ export function ExperimentTopologyEditor({
               </Button>
             ) : null}
             <Button
-              disabled={!editable || !needsSave || saving}
+              disabled={!editable || busy || !needsSave || saving}
               onClick={() => void save()}
             >
               {saving ? '正在保存拓扑…' : '保存拓扑'}
             </Button>
           </div>
         </header>
+        {!readOnly && !shared ? (
+          <>
+            <div
+              className="flex flex-wrap items-center gap-2"
+              aria-label="拓扑运行操作"
+            >
+              <Button
+                disabled={busy || saving || businessSaveRequested}
+                onClick={() => void operateRuntime('start')}
+              >
+                启动场景
+              </Button>
+              <Button
+                variant="outline"
+                disabled={busy || saving || businessSaveRequested}
+                onClick={() => void operateRuntime('stop')}
+              >
+                释放场景
+              </Button>
+              <Button
+                variant="outline"
+                disabled={busy || saving || runtime.isFetching}
+                onClick={() => void runtime.refetch()}
+              >
+                {runtime.isFetching ? '正在读取运行状态…' : '刷新运行状态'}
+              </Button>
+              {selectedRuntimeNodes.length > 1 ? (
+                <>
+                  <Button
+                    variant="outline"
+                    disabled={busy || saving}
+                    onClick={() =>
+                      void operateRuntime(
+                        'start',
+                        selectedRuntimeNodes.map((node) => node.id),
+                      )
+                    }
+                  >
+                    批量启动
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={busy || saving}
+                    onClick={() =>
+                      void operateRuntime(
+                        'stop',
+                        selectedRuntimeNodes.map((node) => node.id),
+                      )
+                    }
+                  >
+                    批量释放
+                  </Button>
+                </>
+              ) : null}
+              <Button
+                variant="outline"
+                onClick={() => setShowRuntimeErrors(!showRuntimeErrors)}
+              >
+                {showRuntimeErrors ? '关闭错误信息' : '开启错误信息'}
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              节点释放后会删除相关数据，请谨慎操作
+            </p>
+            {runtime.isError ? (
+              <p role="alert">运行状态读取失败：{runtime.error.message}</p>
+            ) : null}
+            {showRuntimeErrors ? (
+              <aside aria-label="错误信息提示" className="rounded border p-3">
+                <h3>错误信息提示</h3>
+                {runtimeErrors.length ? (
+                  runtimeErrors.map((entry, index) => (
+                    <div key={index}>
+                      <strong>{entry.title}</strong>
+                      <p>{entry.error_msg || '暂未获取到错误信息！'}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p>暂无错误信息</p>
+                )}
+              </aside>
+            ) : null}
+          </>
+        ) : null}
         {editable ? (
           <div className="flex flex-wrap gap-2" aria-label="选中对象操作">
             <Button
@@ -1302,9 +1478,17 @@ export function ExperimentTopologyEditor({
               }
             }}
           >
-            <ReactFlow
+            <ReactFlow<FlowNode, FlowEdge>
               nodes={nodes}
-              edges={edges}
+              edges={edges.map((edge) => ({
+                ...edge,
+                data: {
+                  ...edge.data,
+                  runtimeStatus:
+                    runtime.data?.edges[String(edge.data.raw.data?.data_id)]
+                      ?.status,
+                },
+              }))}
               connectionMode={ConnectionMode.Loose}
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
@@ -1482,17 +1666,40 @@ export function ExperimentTopologyEditor({
             </ReactFlow>
           </div>
         </div>
-        {editable && context ? (
+        {!readOnly && context ? (
           <div
             role="menu"
             aria-label="拓扑对象菜单"
             className="fixed z-50 grid gap-1 rounded border bg-background p-2 shadow-lg"
             style={{
               left: Math.max(0, Math.min(context.x, window.innerWidth - 180)),
-              top: Math.max(0, Math.min(context.y, window.innerHeight - 110)),
+              top: Math.max(0, Math.min(context.y, window.innerHeight - 300)),
+              maxHeight: '80vh',
+              overflowY: 'auto',
             }}
           >
-            {selectedNode?.data.raw.shape !== 'custom-react-text' ? (
+            {selectedNode && !graphical
+              ? nodeRuntimeActions(
+                  runtime.data?.nodes[selectedNode.id]?.status,
+                  asObject(
+                    asObject(selectedNode.data.raw.data?.nodeInfo).config_info,
+                  ).type,
+                ).map((action) => (
+                  <Button
+                    key={action}
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={
+                      busy || saving || runtime.isFetching || !runtime.data
+                    }
+                    onClick={() => void operateRuntime(action, selectedNode.id)}
+                  >
+                    {runtimeActionLabels[action]}
+                  </Button>
+                ))
+              : null}
+            {editable &&
+            selectedNode?.data.raw.shape !== 'custom-react-text' ? (
               <Button
                 role="menuitem"
                 variant="ghost"
@@ -1505,7 +1712,7 @@ export function ExperimentTopologyEditor({
                 编辑
               </Button>
             ) : null}
-            {selectedNodes.length ? (
+            {editable && selectedNodes.length ? (
               <Button
                 role="menuitem"
                 variant="ghost"
@@ -1517,12 +1724,12 @@ export function ExperimentTopologyEditor({
                 创建分组
               </Button>
             ) : null}
-            {selectedNode?.type === 'topologyGroup' ? (
+            {editable && selectedNode?.type === 'topologyGroup' ? (
               <Button role="menuitem" variant="ghost" onClick={() => ungroup()}>
                 解除分组
               </Button>
             ) : null}
-            {selectedNode?.type !== 'topologyGroup' ? (
+            {editable && selectedNode?.type !== 'topologyGroup' ? (
               <Button
                 role="menuitem"
                 variant="ghost"
@@ -1669,7 +1876,15 @@ export function ExperimentTopologyEditor({
                   (node) => node.id === (selectedEdge?.source ?? linkSource),
                 )!}
                 nodes={nodes}
-                edges={edges}
+                edges={edges.map((edge) => ({
+                  ...edge,
+                  data: {
+                    ...edge.data,
+                    runtimeStatus:
+                      runtime.data?.edges[String(edge.data.raw.data?.data_id)]
+                        ?.status,
+                  },
+                }))}
                 passthrough={passthroughCells}
                 edge={selectedEdge}
                 onError={report}

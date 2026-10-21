@@ -22,6 +22,9 @@ test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/(front|admin|captcha)\//, (route) =>
     route.fulfill({ json: {} }),
   )
+  await page.route('**/api/front/topo/*/status/?task_type=6', (route) =>
+    route.fulfill({ json: { nodes: {}, edges: {} } }),
+  )
   for (const [path, json] of Object.entries(portalFixtures))
     await page.route(`**/api${path}`, (route) => route.fulfill({ json }))
   await page.route('**/api/front/user/info/', (route) =>
@@ -483,6 +486,7 @@ test('端口可作为任一连线端点，既有边和分组可见', async ({ pa
 
 async function moveNode(page: import('@playwright/test').Page) {
   const node = page.locator('.react-flow__node[data-id="device-one"]')
+  await node.scrollIntoViewIfNeeded()
   const box = await node.boundingBox()
   if (!box) throw new Error('图节点不可见')
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)

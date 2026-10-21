@@ -241,6 +241,8 @@ test('基础元素岗位可添加编辑删除，图元连线只保存图且锁�
     route.fulfill({ json: [] }),
   )
   await page.route('**/api/front/topo/topo-one/**', (route) => {
+    if (new URL(route.request().url()).pathname.endsWith('/status/'))
+      return route.fulfill({ json: { nodes: {}, edges: {} } })
     if (!route.request().url().includes('/draw/')) {
       businessWrites.push(route.request().url())
       return route.fulfill({ json: {} })

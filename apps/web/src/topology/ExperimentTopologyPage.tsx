@@ -307,7 +307,7 @@ export function ExperimentTopologyEditor({
   const [businessSaveRequested, setBusinessSaveRequested] = useState(false)
   const [businessSaveFailed, setBusinessSaveFailed] = useState(false)
   const saveController = useRef<AbortController | null>(null)
-  const runtimeRequest = useRef(false)
+  const runtimeRequest = useRef<NodeAction | null>(null)
   const [showRuntimeErrors, setShowRuntimeErrors] = useState(false)
   const runtime = useQuery({
     queryKey: ['topology-runtime', id],
@@ -455,7 +455,7 @@ export function ExperimentTopologyEditor({
       return
     if (shared && typeof target !== 'string') return
     if (Array.isArray(target) && !target.length) return
-    runtimeRequest.current = true
+    runtimeRequest.current = action
     setContext(null)
     setBusy(true)
     try {
@@ -467,7 +467,7 @@ export function ExperimentTopologyEditor({
     } catch (error) {
       report(error)
     } finally {
-      runtimeRequest.current = false
+      runtimeRequest.current = null
       if (!operation.current.signal.aborted) setBusy(false)
     }
   }
@@ -1205,6 +1205,11 @@ export function ExperimentTopologyEditor({
       }}
     >
       <section className="@container space-y-4" aria-label="实验场景拓扑">
+        {busy && runtimeRequest.current ? (
+          <p role="status">
+            正在{runtimeActionLabels[runtimeRequest.current]}，请稍候…
+          </p>
+        ) : null}
         {businessSaveFailed ? (
           <p role="alert">
             业务操作已成功，画布保存失败。请点击保存拓扑重试，已成功的业务操作不会重复。
@@ -1393,7 +1398,9 @@ export function ExperimentTopologyEditor({
             {resource ? (
               <p role="status">点击画布放置：{resource.name}</p>
             ) : null}
-            {busy ? <p role="status">正在提交拓扑操作…</p> : null}
+            {busy && !runtimeRequest.current ? (
+              <p role="status">正在提交拓扑操作…</p>
+            ) : null}
           </div>
         ) : null}
         {initial.issues.length ? (
@@ -1876,15 +1883,7 @@ export function ExperimentTopologyEditor({
                   (node) => node.id === (selectedEdge?.source ?? linkSource),
                 )!}
                 nodes={nodes}
-                edges={edges.map((edge) => ({
-                  ...edge,
-                  data: {
-                    ...edge.data,
-                    runtimeStatus:
-                      runtime.data?.edges[String(edge.data.raw.data?.data_id)]
-                        ?.status,
-                  },
-                }))}
+                edges={edges}
                 passthrough={passthroughCells}
                 edge={selectedEdge}
                 onError={report}

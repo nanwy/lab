@@ -274,7 +274,22 @@ test('锁图可运行而不可编辑；状态读取失败可按原刷新入口�
   await expect(
     page.getByRole('menuitem', { name: '删除', exact: true }),
   ).toHaveCount(0)
+  let release!: () => void
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route(
+    '**/api/front/topo/topo-one/node/a/start/?task_type=6',
+    async (route) => {
+      await held
+      return route.fallback()
+    },
+  )
   await page.getByRole('menuitem', { name: '启动', exact: true }).click()
+  await expect(
+    page.getByRole('status').filter({ hasText: '正在启动，请稍候…' }),
+  ).toBeVisible()
+  release()
   await expect(a.getByText('启动成功', { exact: true })).toBeVisible()
   await expect(
     page.getByRole('button', { name: '保存拓扑', exact: true }),

@@ -293,17 +293,18 @@ export function ExperimentTopologyEditor({
   const [businessSaveFailed, setBusinessSaveFailed] = useState(false)
   const saveController = useRef<AbortController | null>(null)
   const dirty = serialized !== baseline
+  const needsSave = dirty || businessSaveFailed
   const editable = !readOnly && !shared && !locked
   const blocker = useBlocker({
     shouldBlockFn: () =>
-      dirty ||
+      needsSave ||
       inspectorDirty ||
       pendingTexts.size > 0 ||
       busy ||
       saving ||
       businessSaveRequested,
     enableBeforeUnload:
-      dirty ||
+      needsSave ||
       inspectorDirty ||
       pendingTexts.size > 0 ||
       busy ||
@@ -330,7 +331,7 @@ export function ExperimentTopologyEditor({
   }, [businessSaveRequested, busy, saving])
 
   async function save(afterBusiness = false) {
-    if (!editable || saving || (!dirty && !afterBusiness)) return
+    if (!editable || saving || (!needsSave && !afterBusiness)) return
     const controller = new AbortController()
     saveController.current = controller
     setSaving(true)
@@ -1125,7 +1126,7 @@ export function ExperimentTopologyEditor({
                 ? '拓扑已锁定，仅可查看'
                 : readOnly || shared
                   ? '共享只读拓扑'
-                  : dirty || inspectorDirty || pendingTexts.size > 0
+                  : needsSave || inspectorDirty || pendingTexts.size > 0
                     ? '有未保存的修改'
                     : '所有修改已保存'}
             </p>
@@ -1159,7 +1160,7 @@ export function ExperimentTopologyEditor({
               </Button>
             ) : null}
             <Button
-              disabled={!editable || !dirty || saving}
+              disabled={!editable || !needsSave || saving}
               onClick={() => void save()}
             >
               {saving ? '正在保存拓扑…' : '保存拓扑'}

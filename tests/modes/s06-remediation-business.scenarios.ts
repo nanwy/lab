@@ -270,6 +270,96 @@ test('专项业务：自动保存期间的新拖动保持未保存，显式保�
   expect(state.errors).toEqual([])
 })
 
+test('专项业务：原值配置的画布失败仍可重试并保护离页，成功后清除待保存状态', async ({
+  page,
+}, testInfo) => {
+  const state = await mount(page, linkedDevices())
+  const node = page.locator('.react-flow__node[data-id="a"]')
+  await node.dblclick()
+  await page.getByLabel('设备名称', { exact: true }).fill('已保存配置')
+  await page.getByRole('button', { name: '保存节点', exact: true }).click()
+  await expect(page.getByText('所有修改已保存', { exact: true })).toBeVisible()
+  const savedGraph = structuredClone(state.stored)
+
+  // 同一页面命中已成功配置缓存；重开后则重新 PATCH，两个入口的图均无变化。
+  for (const reopened of [false, true]) {
+    if (reopened) {
+      await page.reload()
+      await expect(node).toContainText('已保存配置')
+    }
+    const businessWrites = state.writes.filter(
+      (w) => !w.path.includes('/draw/'),
+    ).length
+    const drawWrites = state.writes.filter((w) =>
+      w.path.includes('/draw/'),
+    ).length
+    await page.getByLabel('场景拓扑画布', { exact: true }).focus()
+    await page.keyboard.press('ControlOrMeta+a')
+    await page
+      .getByRole('button', { name: '编辑选中对象', exact: true })
+      .click()
+    state.failDraw = true
+    await page.getByRole('button', { name: '保存节点', exact: true }).click()
+    await expect(page.getByText(/业务操作已成功，画布保存失败/)).toBeVisible()
+    expect(state.writes.at(-1)?.body.topo).toEqual(savedGraph)
+    await expect(
+      page.getByRole('button', { name: '保存拓扑', exact: true }),
+    ).toBeEnabled()
+    await expect(
+      page.getByText('有未保存的修改', { exact: true }),
+    ).toBeVisible()
+    await page.getByRole('link', { name: '场景说明' }).click()
+    await expect(page.getByText(/已经成功的远端业务操作不会撤销/)).toBeVisible()
+    await page.getByRole('button', { name: '继续编辑', exact: true }).click()
+    await expect(page).toHaveURL(/experiment\/one\/scene/)
+    let refreshWarned = false
+    page.once('dialog', async (dialog) => {
+      refreshWarned = dialog.type() === 'beforeunload'
+      await dialog.dismiss()
+    })
+    await page.evaluate(() => window.location.reload())
+    expect(refreshWarned).toBe(true)
+    await page.screenshot({
+      path: testInfo.outputPath(`pending-draw-${reopened}.png`),
+    })
+
+    state.failDraw = false
+    await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
+    await expect(
+      page.getByText('所有修改已保存', { exact: true }),
+    ).toBeVisible()
+    await expect(page.getByText(/业务操作已成功，画布保存失败/)).toHaveCount(0)
+    await expect(
+      page.getByRole('button', { name: '保存拓扑', exact: true }),
+    ).toBeDisabled()
+    expect(state.writes.filter((w) => !w.path.includes('/draw/'))).toHaveLength(
+      businessWrites + Number(reopened),
+    )
+    expect(state.writes.filter((w) => w.path.includes('/draw/'))).toHaveLength(
+      drawWrites + 2,
+    )
+    expect(state.stored).toEqual(savedGraph)
+    let unexpectedRefreshWarning = false
+    const acceptUnexpectedDialog = async (
+      dialog: import('@playwright/test').Dialog,
+    ) => {
+      unexpectedRefreshWarning = true
+      await dialog.accept()
+    }
+    page.on('dialog', acceptUnexpectedDialog)
+    await page.reload()
+    page.off('dialog', acceptUnexpectedDialog)
+    expect(unexpectedRefreshWarning).toBe(false)
+    await page.getByRole('link', { name: '场景说明' }).click()
+    await expect(page).toHaveURL(/experiment\/one\/explain/)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await page.goto('/#/basic/user/bench/experiment/one/scene')
+    await expect(node).toContainText('已保存配置')
+  }
+  await page.screenshot({ path: testInfo.outputPath('draw-retry-saved.png') })
+  expect(state.errors).toEqual([])
+})
+
 test('专项业务：失效旧边占用两端NIC零，空闲NIC可连，链路画布失败不重复创建', async ({
   page,
 }) => {

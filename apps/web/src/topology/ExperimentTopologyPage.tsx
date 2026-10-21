@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useBlocker } from '@tanstack/react-router'
 import {
@@ -133,6 +133,25 @@ function Connection({
           `L ${targetX} ${targetY}`,
         ].join(' ')
   const line = data?.style.line as Record<string, unknown> | undefined
+  const labels = useMemo(() => {
+    if (!Array.isArray(data?.raw.labels)) return []
+    // 使用与 BaseEdge 相同的 d，由浏览器按实际线路弧长定位，包含正交圆角与折点。
+    const geometry = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'path',
+    )
+    geometry.setAttribute('d', path)
+    const length = geometry.getTotalLength()
+    return data.raw.labels.flatMap((label) => {
+      const item = asObject(label)
+      const position = typeof item.position === 'number' ? item.position : 0.5
+      const text = asObject(asObject(item.attrs).label).text
+      return typeof text === 'string'
+        ? [{ text, point: geometry.getPointAtLength(length * position) }]
+        : []
+    })
+  }, [path, data?.raw.labels])
+  const animation = asObject(line?.style).animation
   return (
     <>
       <BaseEdge
@@ -148,24 +167,12 @@ function Connection({
             typeof line?.strokeDasharray === 'number'
               ? String(line.strokeDasharray)
               : undefined,
+          animation: typeof animation === 'string' ? animation : undefined,
         }}
       />
-      {Array.isArray(data?.raw.labels)
-        ? data.raw.labels.map((label, index) => {
-            const item = asObject(label)
-            const position =
-              typeof item.position === 'number' ? item.position : 0.5
-            const text = asObject(asObject(item.attrs).label).text
-            return typeof text === 'string' ? (
-              <EdgeText
-                key={index}
-                x={sourceX + (targetX - sourceX) * position}
-                y={sourceY + (targetY - sourceY) * position}
-                label={text}
-              />
-            ) : null
-          })
-        : null}
+      {labels.map(({ text, point }, index) => (
+        <EdgeText key={index} x={point.x} y={point.y} label={text} />
+      ))}
     </>
   )
 }
@@ -1702,6 +1709,13 @@ export function ExperimentTopologyEditor({
                         port: targetHandle ?? undefined,
                       },
                       router: { name: value.lineType },
+                      attrs: {
+                        line: {
+                          stroke: '#1890ff',
+                          strokeDasharray: 5,
+                          style: { animation: 'ant-line 30s infinite linear' },
+                        },
+                      },
                       labels: [
                         {
                           position: 0.2,
@@ -1736,7 +1750,7 @@ export function ExperimentTopologyEditor({
                         data: {
                           vertices: [],
                           router: raw.router,
-                          style: {},
+                          style: raw.attrs,
                           raw,
                         },
                       },

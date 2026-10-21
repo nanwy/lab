@@ -3,6 +3,7 @@ import { portalFixtures } from '../../apps/web/src/mocks/portal-fixtures'
 import './s06-review.scenarios'
 import './s06-canvas.scenarios'
 import './s06-templates.scenarios'
+import './s06-remediation-visual.scenarios'
 
 const test = base.extend<{ errors: string[] }>({
   errors: [

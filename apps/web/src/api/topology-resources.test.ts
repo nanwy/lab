@@ -116,6 +116,48 @@ it('节点配置只对合法缺失应用默认，损坏对象/数组/数组项�
   })
 })
 
+it('缺失普通数组与无数量定义的网卡初始化一行，已有空数组与显式数量保留', () => {
+  const row = {
+    type: 'array',
+    items: { properties: { name: { default: '默认行' } } },
+  }
+  const schema = { properties: { ports: row, disks: row } }
+  expect(normalizeNodeConfiguration({}, schema)).toEqual({
+    ports: [{ name: '默认行' }],
+    disks: [{ name: '默认行' }],
+  })
+  expect(normalizeNodeConfiguration({ ports: [], disks: [] }, schema)).toEqual({
+    ports: [],
+    disks: [],
+  })
+  expect(
+    normalizeNodeConfiguration(
+      {},
+      {
+        properties: {
+          ...schema.properties,
+          _config: { port_numbers: { default: 2 } },
+        },
+      },
+    ),
+  ).toEqual({
+    ports: [{ name: '默认行' }, { name: '默认行' }],
+    disks: [{ name: '默认行' }],
+  })
+  expect(
+    normalizeNodeConfiguration(
+      {},
+      { properties: { ports: row, _config: { port_numbers: { default: 0 } } } },
+    ),
+  ).toEqual({ ports: [] })
+  expect(
+    normalizeNodeConfiguration(
+      {},
+      { properties: { ports: row, _config: { port_numbers: {} } } },
+    ),
+  ).toEqual({ ports: [] })
+})
+
 it('资源数组按原查询参数读取，最近十项且拒绝分页包装；镜像为详情对象', async () => {
   const paths: string[] = []
   vi.stubGlobal(

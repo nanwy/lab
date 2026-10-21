@@ -449,7 +449,7 @@ function ConfigurationFields({
                             const parts = previous.split(':')
                             parts[parts.length - 1] = String(
                               Number(parts.at(-1)) + 1,
-                            )
+                            ).padStart(2, '0')
                             form.setFieldValue(
                               `configuration.${key}/${index}/mac`,
                               parts.join(':'),

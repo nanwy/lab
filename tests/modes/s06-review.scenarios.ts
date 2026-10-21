@@ -134,7 +134,6 @@ test('蓝军设置独立来自图元，失败保留并在draw保存重开恢复'
   await page.getByRole('button', { name: '保存节点', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   expect(state.patches.at(-1)?.is_blue).toBe(false)
-  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
   await expect(page.getByText('所有修改已保存')).toBeVisible()
   expect(state.stored().cells[0]?.data?.is_blue).toBeNull()
   expect(
@@ -146,7 +145,6 @@ test('蓝军设置独立来自图元，失败保留并在draw保存重开恢复'
   await expect(blue).not.toBeChecked()
   await blue.check()
   await page.getByRole('button', { name: '保存节点', exact: true }).click()
-  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
   await expect(page.getByText('所有修改已保存')).toBeVisible()
   await page.reload()
   await page.locator('.react-flow__node[data-id="one"]').dblclick()
@@ -211,7 +209,6 @@ test('数组逐行删除保留中间剩余项的未知字段，未连中间NIC�
       { name: '磁盘C', extension: { id: 'c' } },
     ],
   })
-  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
   await expect(page.getByText('所有修改已保存')).toBeVisible()
   expect(
     state.stored().cells.find((cell) => cell.id === 'edge')?.data?.source,

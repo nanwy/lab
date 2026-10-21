@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useBlocker } from '@tanstack/react-router'
 import {
@@ -282,14 +282,26 @@ export function ExperimentTopologyEditor({
     JSON.stringify(toX6Graph(initial)),
   )
   const [saving, setSaving] = useState(false)
+  const [businessSaveRequested, setBusinessSaveRequested] = useState(false)
+  const [businessSaveFailed, setBusinessSaveFailed] = useState(false)
   const saveController = useRef<AbortController | null>(null)
   const dirty = serialized !== baseline
   const editable = !readOnly && !shared && !locked
   const blocker = useBlocker({
     shouldBlockFn: () =>
-      dirty || inspectorDirty || pendingTexts.size > 0 || busy,
+      dirty ||
+      inspectorDirty ||
+      pendingTexts.size > 0 ||
+      busy ||
+      saving ||
+      businessSaveRequested,
     enableBeforeUnload:
-      dirty || inspectorDirty || pendingTexts.size > 0 || busy,
+      dirty ||
+      inspectorDirty ||
+      pendingTexts.size > 0 ||
+      busy ||
+      saving ||
+      businessSaveRequested,
     withResolver: true,
   })
   useEffect(() => {
@@ -301,8 +313,17 @@ export function ExperimentTopologyEditor({
     }
   }, [])
 
-  async function save() {
-    if (!editable || saving || !dirty) return
+  // 业务结果先进入画布，再在已提交的 React 状态上取快照，避免保存操作前的旧闭包。
+  const saveBusinessResult = useEffectEvent(() => {
+    setBusinessSaveRequested(false)
+    void save(true)
+  })
+  useEffect(() => {
+    if (businessSaveRequested && !busy && !saving) saveBusinessResult()
+  }, [businessSaveRequested, busy, saving])
+
+  async function save(afterBusiness = false) {
+    if (!editable || saving || (!dirty && !afterBusiness)) return
     const controller = new AbortController()
     saveController.current = controller
     setSaving(true)
@@ -313,8 +334,11 @@ export function ExperimentTopologyEditor({
       // 保存基线属于本次提交的快照；请求期间的新拖动继续保持 dirty。
       setBaseline(serialized)
       setLastNode((current) => current.slice(submittedLast.length))
+      setBusinessSaveFailed(false)
       toast.success('拓扑保存成功')
     } catch (error) {
+      if (afterBusiness && !controller.signal.aborted)
+        setBusinessSaveFailed(true)
       if (
         error instanceof ApiError &&
         !error.handled &&
@@ -349,6 +373,7 @@ export function ExperimentTopologyEditor({
       setLocked(nextLock)
       setBaseline(JSON.stringify(toX6Graph(submitted)))
       setLastNode((current) => current.slice(submittedLast.length))
+      setBusinessSaveFailed(false)
       setContext(null)
       setResource(null)
     } catch (error) {
@@ -869,6 +894,7 @@ export function ExperimentTopologyEditor({
       ])
       setLastNode((current) => [...current, item.id])
       setResource(null)
+      setBusinessSaveRequested(true)
     } catch (error) {
       report(error)
     } finally {
@@ -960,6 +986,7 @@ export function ExperimentTopologyEditor({
           ),
       )
       setSelected(null)
+      setBusinessSaveRequested(true)
     } catch (error) {
       report(error)
     } finally {
@@ -1078,6 +1105,11 @@ export function ExperimentTopologyEditor({
       }}
     >
       <section className="@container space-y-4" aria-label="实验场景拓扑">
+        {businessSaveFailed ? (
+          <p role="alert">
+            业务操作已成功，画布保存失败。请点击保存拓扑重试，已成功的业务操作不会重复。
+          </p>
+        ) : null}
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">场景拓扑</h2>
@@ -1520,7 +1552,7 @@ export function ExperimentTopologyEditor({
                       : '连接设备'}
               </DialogTitle>
               <DialogDescription>
-                配置成功后保存拓扑以持久化画布。
+                配置成功后自动保存拓扑；画布保存失败可通过保存拓扑重试。
               </DialogDescription>
             </DialogHeader>
             {editable && editing === 'label' && selectedNode ? (
@@ -1531,6 +1563,7 @@ export function ExperimentTopologyEditor({
                 onDirtyChange={setInspectorDirty}
                 onSave={(name) => {
                   changeLabel(selectedNode.id, name)
+                  setBusinessSaveRequested(true)
                   setEditing(null)
                 }}
               />
@@ -1542,6 +1575,11 @@ export function ExperimentTopologyEditor({
                   ...edges.map((edge) => edge.data.raw),
                   ...passthroughCells,
                 ].flatMap((cell) => {
+                  if (
+                    cell.shape !== 'edge' ||
+                    cell.data?.nodeType === 'base_element'
+                  )
+                    return []
                   const indices: unknown[] = []
                   if (cell.source?.cell === selectedNode.id)
                     indices.push(cell.data?.source)
@@ -1566,12 +1604,17 @@ export function ExperimentTopologyEditor({
                   const ports = asObject(value.config_info).ports
                   if (
                     Array.isArray(ports) &&
-                    edges.some(
-                      (edge) =>
-                        (edge.source === uuid &&
-                          Number(edge.data.raw.data?.source) >= ports.length) ||
-                        (edge.target === uuid &&
-                          Number(edge.data.raw.data?.target) >= ports.length),
+                    [
+                      ...edges.map((edge) => edge.data.raw),
+                      ...passthroughCells,
+                    ].some(
+                      (cell) =>
+                        cell.shape === 'edge' &&
+                        cell.data?.nodeType !== 'base_element' &&
+                        ((cell.source?.cell === uuid &&
+                          Number(cell.data?.source) >= ports.length) ||
+                          (cell.target?.cell === uuid &&
+                            Number(cell.data?.target) >= ports.length)),
                     )
                   )
                     throw new Error('该网卡仍有链路连接，请先删除关联链路')
@@ -1588,6 +1631,7 @@ export function ExperimentTopologyEditor({
                       if (operation.current.signal.aborted) return
                       savedNodeConfiguration.current = snapshot
                       patchNode(uuid, value, isBlue)
+                      setBusinessSaveRequested(true)
                     }
                     if (operation.current.signal.aborted) return
                     if (asTemplate) {
@@ -1597,6 +1641,7 @@ export function ExperimentTopologyEditor({
                         queryKey: ['topology-resources'],
                       })
                     }
+                    setBusinessSaveRequested(true)
                     setEditing(null)
                   } finally {
                     if (!operation.current.signal.aborted) setBusy(false)
@@ -1617,6 +1662,7 @@ export function ExperimentTopologyEditor({
                 )!}
                 nodes={nodes}
                 edges={edges}
+                passthrough={passthroughCells}
                 edge={selectedEdge}
                 onError={report}
                 onSave={async (value) => {
@@ -1647,6 +1693,7 @@ export function ExperimentTopologyEditor({
                       ),
                     )
                     setEditing(null)
+                    setBusinessSaveRequested(true)
                     return
                   }
                   const source = nodes.find((node) => node.id === linkSource),
@@ -1657,8 +1704,20 @@ export function ExperimentTopologyEditor({
                     source.id === target.id ||
                     !nicIndices(source).includes(value.sourcePort) ||
                     !nicIndices(target).includes(value.targetPort) ||
-                    occupied(source.id, value.sourcePort, edges) ||
-                    occupied(target.id, value.targetPort, edges)
+                    occupied(
+                      source.id,
+                      value.sourcePort,
+                      edges,
+                      undefined,
+                      passthroughCells,
+                    ) ||
+                    occupied(
+                      target.id,
+                      value.targetPort,
+                      edges,
+                      undefined,
+                      passthroughCells,
+                    )
                   )
                     throw new Error('网卡不可用，请重新选择合法端点')
                   const uuid = crypto.randomUUID()
@@ -1744,6 +1803,7 @@ export function ExperimentTopologyEditor({
                     setEditing(null)
                     setLinkSource(null)
                     setPendingConnection(null)
+                    setBusinessSaveRequested(true)
                   } finally {
                     if (!operation.current.signal.aborted) setBusy(false)
                   }
@@ -1762,7 +1822,7 @@ export function ExperimentTopologyEditor({
             <DialogHeader>
               <DialogTitle>放弃未保存的拓扑？</DialogTitle>
               <DialogDescription>
-                继续离开会丢失尚未保存的拓扑修改。
+                继续离开会丢失尚未保存的本地拓扑修改，已经成功的远端业务操作不会撤销。
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end gap-3">

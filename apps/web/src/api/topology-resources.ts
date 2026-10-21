@@ -263,11 +263,13 @@ export function normalizeNodeConfiguration(
         result[key] = object(result[key], field, fieldPath)
       if (field.type === 'array') {
         if (result[key] === undefined) {
+          const portNumbers = asObject(
+            definition.properties?._config,
+          ).port_numbers
           const count =
-            key === 'ports'
-              ? (asObject(asObject(definition.properties?._config).port_numbers)
-                  .default ?? 0)
-              : 0
+            key === 'ports' && portNumbers !== undefined
+              ? (asObject(portNumbers).default ?? 0)
+              : 1
           if (
             typeof count !== 'number' ||
             !Number.isInteger(count) ||

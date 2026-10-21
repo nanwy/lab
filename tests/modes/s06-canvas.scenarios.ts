@@ -294,7 +294,6 @@ test('基础元素岗位可添加编辑删除，图元连线只保存图且锁�
   await page.getByLabel('名称', { exact: true }).fill('')
   await page.getByRole('button', { name: '应用名称', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
   await expect(page.getByText('所有修改已保存')).toBeVisible()
   expect(businessWrites).toEqual([])
   expect(

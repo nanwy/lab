@@ -176,7 +176,6 @@ test('节点模板保存失败保留编辑，重试不重复PATCH，复用新ID�
     node_id: created?.device_id,
     extension: { preserved: true },
   })
-  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
   await expect(page.getByText('所有修改已保存')).toBeVisible()
   await page.reload()
   await expect(page.locator('.react-flow__node')).toHaveCount(2)

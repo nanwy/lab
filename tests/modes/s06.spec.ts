@@ -3,6 +3,7 @@ import { portalFixtures } from '../../apps/web/src/mocks/portal-fixtures'
 import './s06-review.scenarios'
 import './s06-canvas.scenarios'
 import './s06-templates.scenarios'
+import './s06-remediation-business.scenarios'
 
 const test = base.extend<{ errors: string[] }>({
   errors: [
@@ -228,11 +229,9 @@ test('设备新增配置失败恢复、NIC零连线、线路编辑删除与保�
     dst: { node_id: uuids[0], port: 0 },
     src: { node_id: uuids[1], port: 0 },
   })
-  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
   await expect(page.getByText('所有修改已保存')).toBeVisible()
   expect(
-    writes.filter((write) => write.path.includes('/draw/')).at(-1)!.body
-      .last_node,
+    writes.filter((write) => write.path.includes('/draw/')).flatMap(write => write.body.last_node ?? []),
   ).toEqual([7, 7])
   await page.reload()
   await expect(page.getByText('配置后的路由器', { exact: true })).toBeVisible()
@@ -255,7 +254,6 @@ test('设备新增配置失败恢复、NIC零连线、线路编辑删除与保�
   await page.locator('.react-flow__node').first().click()
   await page.keyboard.press('Delete')
   await expect(page.locator('.react-flow__node')).toHaveCount(1)
-  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
   await expect(page.getByText('所有修改已保存')).toBeVisible()
   await page.reload()
   await expect(page.locator('.react-flow__node')).toHaveCount(1)
@@ -424,7 +422,6 @@ test('配置按schema保留未知字段、默认值、数组数量与engin10限�
     security_groups: [{ id: 'keep' }],
   })
   expect(patch?.logo).toBe('/s06-icon.svg')
-  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
   await expect(page.getByText('所有修改已保存')).toBeVisible()
   engin = 10
   await page.reload()
@@ -794,7 +791,6 @@ test('占用网卡与环路被拒绝，多重链路失败重试，组内节点�
   await expect(page.locator('.react-flow__node')).toHaveCount(2)
   await expect(page.locator('.react-flow__edge')).toHaveCount(0)
   expect(deletion).toEqual({ node_list: [101], edge_list: [501, 503, 502] })
-  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
   await expect(page.getByText('所有修改已保存')).toBeVisible()
   expect(stored.cells.find((cell) => cell.id === 'group')?.children).toEqual([
     'b',
@@ -854,7 +850,6 @@ test('拖入设备失败不遗留节点，锁定图禁止所有写入口', async
     'transform',
     'matrix(1, 0, 0, 1, 150, 150)',
   )
-  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
   await expect(page.getByText('所有修改已保存')).toBeVisible()
   locked = true
   await page.reload()

@@ -12,6 +12,7 @@ import { asObject } from '../api/topology-resources'
 import type {
   TopologyNode as FullNode,
   TopologyEdge as FullEdge,
+  X6Cell,
 } from './x6-adapter'
 type TopologyNode = Pick<FullNode, 'id' | 'data'>
 type TopologyEdge = Pick<FullEdge, 'id' | 'data' | 'source' | 'target'>
@@ -34,18 +35,22 @@ export function occupied(
   index: number,
   edges: TopologyEdge[],
   except?: string,
+  passthrough: X6Cell[] = [],
 ) {
-  return edges.some(
-    (edge) =>
-      edge.id !== except &&
-      ((edge.source === nodeId && edge.data.raw.data?.source === index) ||
-        (edge.target === nodeId && edge.data.raw.data?.target === index)),
+  return [...edges.map((edge) => edge.data.raw), ...passthrough].some(
+    (cell) =>
+      cell.shape === 'edge' &&
+      cell.data?.nodeType !== 'base_element' &&
+      cell.id !== except &&
+      ((cell.source?.cell === nodeId && cell.data?.source === index) ||
+        (cell.target?.cell === nodeId && cell.data?.target === index)),
   )
 }
 export function LinkConfiguration({
   source,
   nodes,
   edges,
+  passthrough = [],
   edge,
   onSave,
   onError,
@@ -54,6 +59,7 @@ export function LinkConfiguration({
   source: TopologyNode
   nodes: TopologyNode[]
   edges: TopologyEdge[]
+  passthrough?: X6Cell[]
   edge?: TopologyEdge
   onSave: (value: {
     target: string
@@ -196,10 +202,17 @@ export function LinkConfiguration({
                                         index,
                                         edges,
                                         edge?.id,
+                                        passthrough,
                                       )}
                                     >
                                       {nicLabel(node, index)}
-                                      {occupied(node.id, index, edges, edge?.id)
+                                      {occupied(
+                                        node.id,
+                                        index,
+                                        edges,
+                                        edge?.id,
+                                        passthrough,
+                                      )
                                         ? '（已占用）'
                                         : ''}
                                     </option>

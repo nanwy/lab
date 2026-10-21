@@ -2,8 +2,57 @@ import { describe, expect, it } from 'vitest'
 
 import { deterministicX6Graph } from './sample'
 import { fromX6Graph, toX6Graph } from './x6-adapter'
+import { occupied } from './LinkConfiguration'
 
 describe('拓扑输入契约', () => {
+  it('失效磁吸点旧业务边仍占用两端NIC零，纯图边不占用且其他NIC可连', () => {
+    const graph = fromX6Graph({
+      cells: [
+        {
+          id: 'a',
+          shape: 'custom-react-node',
+          position: { x: 0, y: 0 },
+          data: { name: 'A' },
+        },
+        {
+          id: 'b',
+          shape: 'custom-react-node',
+          position: { x: 200, y: 0 },
+          data: { name: 'B' },
+        },
+        {
+          id: 'old',
+          shape: 'edge',
+          source: { cell: 'a', port: 'missing' },
+          target: { cell: 'b', port: 'missing' },
+          data: { data_id: 88, source: 0, target: 0 },
+          extension: '保留',
+        },
+        {
+          id: 'graphic',
+          shape: 'edge',
+          source: { cell: 'a' },
+          target: { cell: 'b' },
+          data: { nodeType: 'base_element', source: 1, target: 1 },
+        },
+      ],
+    })
+    expect(
+      occupied('a', 0, graph.edges, undefined, graph.passthroughCells),
+    ).toBe(true)
+    expect(
+      occupied('b', 0, graph.edges, undefined, graph.passthroughCells),
+    ).toBe(true)
+    expect(
+      occupied('a', 1, graph.edges, undefined, graph.passthroughCells),
+    ).toBe(false)
+    expect(
+      occupied('b', 1, graph.edges, undefined, graph.passthroughCells),
+    ).toBe(false)
+    expect(
+      toX6Graph(graph).cells.find((cell) => cell.id === 'old'),
+    ).toMatchObject({ extension: '保留', data: { source: 0, target: 0 } })
+  })
   it('未知组成员往返保留引用，明确删除或移出后才从children排除', () => {
     const input = {
       cells: [

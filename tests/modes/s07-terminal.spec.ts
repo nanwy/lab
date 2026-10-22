@@ -90,15 +90,22 @@ test('vpcs心跳、闲置提示与手动重连；断开和离页后停止输入�
   next.socket.close({ code: 1008, reason: '拒绝过期会话' })
   await expect(page.getByRole('alertdialog')).toContainText('连接已关闭')
   await page.getByRole('button', { name: '关闭连接', exact: true }).click()
-  await page.locator('.xterm-helper-textarea').pressSequentially('local-only')
-  await expect(terminal).not.toContainText('local-only')
+  await expect(page.locator('.xterm')).toHaveCount(0)
+  await page.keyboard.type('local-only')
   expect(next.sent).toEqual([])
   await page.clock.fastForward(60_000)
   expect(next.sent).toEqual([])
-  await page.goto('/#/vnccontrol/docker/other-node')
-  await expect(terminal).toContainText('会话')
+  const beforeSwitch = sessions.length
+  await page.evaluate(() => {
+    window.location.hash = '/vnccontrol/docker/other-node'
+  })
+  await expect.poll(() => sessions.length).toBeGreaterThan(beforeSwitch)
   const last = sessions.at(-1)!
-  await page.goto('/#/vnccontrol/invalid/bad')
+  await expect(terminal).toContainText(`会话${sessions.length}`)
+  await expect(terminal).not.toContainText('新会话字节输出')
+  await page.evaluate(() => {
+    window.location.hash = '/vnccontrol/invalid/bad'
+  })
   await expect(page.getByRole('alert')).toHaveText('不支持的文本终端类型')
   await expect.poll(() => last.closed).toBe(true)
   await page.clock.fastForward(120_000)
@@ -237,12 +244,8 @@ test('原生WS握手拒绝与上游超时显示失败，关闭后无本地回显
         '连接失败，请确认节点运行状态及会话权限。',
       )
       await page.getByRole('button', { name: '关闭连接', exact: true }).click()
-      await page
-        .locator('.xterm-helper-textarea')
-        .pressSequentially('no-local-echo')
-      await expect(page.locator('.xterm-rows')).not.toContainText(
-        'no-local-echo',
-      )
+      await expect(page.locator('.xterm')).toHaveCount(0)
+      await page.keyboard.type('no-local-echo')
     }
     expect(networkErrors.length).toBeGreaterThan(0)
     for (const error of networkErrors) {

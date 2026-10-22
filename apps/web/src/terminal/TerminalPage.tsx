@@ -38,7 +38,9 @@ function TerminalSession({ type, id }: { type: TextConsoleType; id: string }) {
   const container = useRef<HTMLDivElement>(null)
   const [attempt, setAttempt] = useState(0)
   const [message, setMessage] = useState('')
+  const [closed, setClosed] = useState(false)
   useEffect(() => {
+    if (closed) return
     const terminal = new Terminal({
       cols: 118,
       rows: 24,
@@ -87,7 +89,7 @@ function TerminalSession({ type, id }: { type: TextConsoleType; id: string }) {
       socket.close()
       terminal.dispose()
     }
-  }, [type, id, attempt])
+  }, [type, id, attempt, closed])
   return (
     <>
       <div
@@ -103,7 +105,13 @@ function TerminalSession({ type, id }: { type: TextConsoleType; id: string }) {
             <AlertDialogDescription>{message}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <Button variant="outline" onClick={() => setMessage('')}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setClosed(true)
+                setMessage('')
+              }}
+            >
               关闭连接
             </Button>
             <Button

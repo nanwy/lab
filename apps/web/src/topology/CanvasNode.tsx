@@ -159,6 +159,9 @@ export function CanvasNode({
               />
             ) : null}
             <strong>{data.label}</strong>
+            {asObject(data.raw.data?.nodeInfo).network_cut === true ? (
+              <span className="block text-xs">入口点</span>
+            ) : null}
             {!group && data.raw.data?.nodeType !== 'base_element' && runtime ? (
               <span
                 className="block text-xs"

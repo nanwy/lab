@@ -30,6 +30,24 @@ import {
 import { toast } from '@workspace/ui/components/sonner'
 import { ApiError } from '../api'
 import {
+  NodeRuntimeResources,
+  type NodeResourceMode,
+} from './NodeRuntimeResources'
+import {
+  saveNodeResourceTopology,
+  setNetworkEntrance,
+  uploadRuntimeFile,
+} from '../api/node-runtime-resources'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+} from '@workspace/ui/components/alert-dialog'
+import { LoadingButton } from '@workspace/ui/components/loading-button'
+import {
   getExperimentTopology,
   saveExperimentTopology,
   setExperimentTopologyLock,
@@ -269,6 +287,14 @@ export function ExperimentTopologyEditor({
   const [busy, setBusy] = useState(false)
   const [context, setContext] = useState<{ x: number; y: number } | null>(null)
   const [inspectorDirty, setInspectorDirty] = useState(false)
+  const [nodeResource, setNodeResource] = useState<{
+    node: FlowNode
+    mode: NodeResourceMode
+  } | null>(null)
+  const [entranceNode, setEntranceNode] = useState<FlowNode | null>(null)
+  const uploadInput = useRef<HTMLInputElement>(null)
+  const uploadTarget = useRef<string | null>(null)
+  const resourceRequest = useRef(false)
   const [pendingTexts, setPendingTexts] = useState<Set<string>>(() => new Set())
   const [locked, setLocked] = useState<boolean | undefined>(
     initial.rawGraph.lock === undefined
@@ -470,6 +496,112 @@ export function ExperimentTopologyEditor({
       runtimeRequest.current = null
       if (!operation.current.signal.aborted) setBusy(false)
     }
+  }
+  async function runResource(work: () => Promise<unknown>) {
+    if (
+      readOnly ||
+      busy ||
+      saving ||
+      resourceRequest.current ||
+      businessSaveRequested
+    )
+      throw new ApiError('business', '请等待当前操作完成')
+    resourceRequest.current = true
+    setBusy(true)
+    try {
+      await work()
+      if (!operation.current.signal.aborted) {
+        toast.success('操作成功')
+        await runtime.refetch()
+      }
+    } catch (error) {
+      report(error)
+      throw error
+    } finally {
+      resourceRequest.current = false
+      if (!operation.current.signal.aborted) setBusy(false)
+    }
+  }
+  async function convertNode(template: Record<string, unknown>) {
+    if (!nodeResource || readOnly || shared) return
+    const uuid = nodeResource.node.id
+    const next: EditorGraph = structuredClone(draft)
+    const node = next.nodes.find((node) => node.id === uuid)
+    if (!node) return
+    const previousInfo = asObject(node.data.raw.data?.nodeInfo)
+    node.data.label = String(template.name)
+    node.data.raw.data = {
+      ...node.data.raw.data,
+      name: template.name,
+      logo: template.logo,
+      action: 'update',
+      nodeInfo: {
+        ...template,
+        id: previousInfo.id,
+        device_id: uuid,
+        config_info: { ...asObject(template.config_info), node_id: uuid },
+      },
+    }
+    await runResource(() =>
+      saveNodeResourceTopology(id, next, operation.current.signal),
+    )
+    if (operation.current.signal.aborted) return
+    installGraph(toX6Graph(next), uuid)
+    setBaseline(JSON.stringify(toX6Graph(next)))
+    setNodeResource(null)
+  }
+  async function chooseEntrance() {
+    if (!entranceNode || readOnly || shared) return
+    const uuid = entranceNode.id
+    const next: EditorGraph = structuredClone(draft)
+    for (const node of next.nodes) {
+      if (
+        node.type === 'topologyGroup' ||
+        node.data.raw.data?.nodeType === 'base_element'
+      )
+        continue
+      node.data.raw.data = {
+        ...node.data.raw.data,
+        network_cut: node.id === uuid,
+        nodeInfo: {
+          ...asObject(node.data.raw.data?.nodeInfo),
+          network_cut: node.id === uuid,
+        },
+      }
+    }
+    await runResource(async () => {
+      await setNetworkEntrance(id, uuid, operation.current.signal)
+      if (!operation.current.signal.aborted)
+        await saveNodeResourceTopology(id, next, operation.current.signal)
+    })
+    if (operation.current.signal.aborted) return
+    installGraph(toX6Graph(next))
+    setBaseline(JSON.stringify(toX6Graph(next)))
+    setEntranceNode(null)
+  }
+  const resourceInfo = asObject(selectedNode?.data.raw.data?.nodeInfo)
+  const resourceConfig = asObject(resourceInfo.config_info)
+  const resourceState = selectedNode
+    ? (runtime.data?.nodes[selectedNode.id]?.status ?? 0)
+    : 0
+  function openResource(mode: NodeResourceMode) {
+    if (!selectedNode || graphical || busy || saving || readOnly) return
+    if (mode === 'image') {
+      if (resourceState !== 4) {
+        toast.warning('保存镜像只有在关机状态下可操作！')
+        return
+      }
+      if (
+        !['string', 'number'].includes(
+          typeof asObject(resourceConfig.base_info).images_id,
+        )
+      ) {
+        toast.error('当前节点未关联镜像，请重新选择镜像！')
+        return
+      }
+    }
+    setContext(null)
+    setNodeResource({ node: selectedNode, mode })
   }
   const selectedRuntimeNodes = selectedNodes.filter(
     (node) =>
@@ -1205,6 +1337,9 @@ export function ExperimentTopologyEditor({
       }}
     >
       <section className="@container space-y-4" aria-label="实验场景拓扑">
+        {busy && resourceRequest.current ? (
+          <p role="status">正在处理节点资源，请稍候…</p>
+        ) : null}
         {busy && runtimeRequest.current ? (
           <p role="status">
             正在{runtimeActionLabels[runtimeRequest.current]}，请稍候…
@@ -1705,6 +1840,102 @@ export function ExperimentTopologyEditor({
                   </Button>
                 ))
               : null}
+            {selectedNode && !graphical ? (
+              <>
+                <Button
+                  role="menuitem"
+                  variant="ghost"
+                  disabled={busy || saving}
+                  onClick={() => openResource('detail')}
+                >
+                  详情
+                </Button>
+                {resourceState !== 5 &&
+                ['libvirt', 'libvirt_middle_intercept'].includes(
+                  String(resourceConfig.type),
+                ) ? (
+                  <Button
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={busy || saving}
+                    onClick={() => openResource('snapshot')}
+                  >
+                    快照
+                  </Button>
+                ) : null}
+                {resourceState !== 5 &&
+                [
+                  'qemu',
+                  'libvirt',
+                  'libvirt_middle_intercept',
+                  'docker',
+                ].includes(String(resourceConfig.type)) ? (
+                  <Button
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={busy || saving}
+                    onClick={() => openResource('image')}
+                  >
+                    保存镜像
+                  </Button>
+                ) : null}
+                {resourceState === 0 && !shared ? (
+                  <Button
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={busy || saving}
+                    onClick={() => openResource('convert')}
+                  >
+                    节点转换
+                  </Button>
+                ) : null}
+                {resourceState !== 5 &&
+                !shared &&
+                ['network', 'nat_net', 'bridge_net'].includes(
+                  String(resourceConfig.type),
+                ) ? (
+                  <Button
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={busy || saving}
+                    onClick={() => {
+                      setContext(null)
+                      setEntranceNode(selectedNode)
+                    }}
+                  >
+                    设置入口
+                  </Button>
+                ) : null}
+                {resourceState === 2 &&
+                ['router', 'nat_net'].includes(String(resourceConfig.type)) ? (
+                  <Button
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={busy || saving}
+                    onClick={() => openResource('nat')}
+                  >
+                    NAT网络
+                  </Button>
+                ) : null}
+                {resourceState === 2 &&
+                resourceConfig.type === 'libvirt' &&
+                asObject(resourceConfig.base_info).console_type === 'vnc' ? (
+                  <Button
+                    title="Linux操作系统，上传文件存放在/dev/cdrom目录下，需挂载后访问；Windows操作系统，上传文件存放在挂载盘中"
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={busy || saving}
+                    onClick={() => {
+                      uploadTarget.current = selectedNode.id
+                      setContext(null)
+                      uploadInput.current?.click()
+                    }}
+                  >
+                    上传文件
+                  </Button>
+                ) : null}
+              </>
+            ) : null}
             {editable &&
             selectedNode?.data.raw.shape !== 'custom-react-text' ? (
               <Button
@@ -1751,6 +1982,60 @@ export function ExperimentTopologyEditor({
             ) : null}
           </div>
         ) : null}
+        <input
+          type="file"
+          hidden
+          ref={uploadInput}
+          aria-label="节点运行文件"
+          onChange={(event) => {
+            const file = event.target.files?.[0],
+              uuid = uploadTarget.current
+            event.target.value = ''
+            if (file && uuid)
+              void runResource(() =>
+                uploadRuntimeFile(uuid, file, operation.current.signal),
+              ).catch(() => {})
+          }}
+        />
+        {nodeResource ? (
+          <NodeRuntimeResources
+            key={`${nodeResource.node.id}:${nodeResource.mode}`}
+            id={id}
+            node={nodeResource.node}
+            mode={nodeResource.mode}
+            status={runtime.data?.nodes[nodeResource.node.id]?.status ?? 0}
+            busy={busy || saving}
+            signal={() => operation.current.signal}
+            onDirtyChange={setInspectorDirty}
+            close={() => setNodeResource(null)}
+            run={runResource}
+            convert={convertNode}
+            onError={report}
+          />
+        ) : null}
+        <AlertDialog
+          open={entranceNode !== null}
+          onOpenChange={(open) => {
+            if (!open && !busy) setEntranceNode(null)
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>设置入口</AlertDialogTitle>
+              <AlertDialogDescription>
+                确认要设置当前网络为入口点？
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogCancel disabled={busy}>取消</AlertDialogCancel>
+            <LoadingButton
+              loading={busy}
+              onClick={chooseEntrance}
+              onError={report}
+            >
+              确认
+            </LoadingButton>
+          </AlertDialogContent>
+        </AlertDialog>
         <Dialog
           open={editing !== null}
           onOpenChange={(open) => {

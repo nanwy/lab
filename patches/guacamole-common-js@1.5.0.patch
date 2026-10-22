@@ -10,11 +10,13 @@ index 9117f2cc1034393fcee219d51b86f92ab60b012a..173350f4e2bdbecb22617c48bd7bd87d
 +    var destroyed = false;
 +    function switchToSyncFlush() {
          if (inProgressFrame && !document.hasFocus()) {
- 
+-
++
              // Cancel pending asynchronous processing of frame ...
 @@ -4331,13 +4332,23 @@ Guacamole.Display = function() {
              syncFlush();
- 
+-
++
          }
 -    }, true);
 +    }
@@ -27,14 +29,16 @@ index 9117f2cc1034393fcee219d51b86f92ab60b012a..173350f4e2bdbecb22617c48bd7bd87d
 +        inProgressFrame = null;
 +        frames.length = 0;
 +    };
- 
+-
++
      /**
       * Flushes all pending frames.
       * @private
       */
      function __flush_frames() {
 +        if (destroyed) return;
- 
+-
++
          if (window.requestAnimationFrame && document.hasFocus())
              asyncFlush();
 diff --git a/dist/esm/guacamole-common.js b/dist/esm/guacamole-common.js
@@ -49,11 +53,13 @@ index 0eb036296ba0bdac76b602a432f3483c1b1f12b8..efec9885895cd4468286fddd35a2f337
 +    var destroyed = false;
 +    function switchToSyncFlush() {
          if (inProgressFrame && !document.hasFocus()) {
- 
+-
++
              // Cancel pending asynchronous processing of frame ...
 @@ -4331,13 +4332,23 @@ Guacamole.Display = function() {
              syncFlush();
- 
+-
++
          }
 -    }, true);
 +    }
@@ -66,13 +72,15 @@ index 0eb036296ba0bdac76b602a432f3483c1b1f12b8..efec9885895cd4468286fddd35a2f337
 +        inProgressFrame = null;
 +        frames.length = 0;
 +    };
- 
+-
++
      /**
       * Flushes all pending frames.
       * @private
       */
      function __flush_frames() {
 +        if (destroyed) return;
- 
+-
++
          if (window.requestAnimationFrame && document.hasFocus())
              asyncFlush();

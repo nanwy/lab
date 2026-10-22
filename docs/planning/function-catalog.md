@@ -372,7 +372,8 @@
 - 操作范围：启动/停止/释放/延期、节点状态、控制台、配置与资源操作
 - 接口族/线索：`/api/front/env/; /api/admin/wqzb/node_instance/; /api/front/topo/node_run/`
 - 权限/数据边界：运行状态、配额、任务与节点归属
-- 证据缺口：真实状态枚举、运行中可编辑规则、失败恢复
+- 静态契约：实验task_type=6的节点状态0–6、动作门控与资源/控制台调用见[S07记录](s07-implementation.md)；其他业务环境延期不由实验入口猜造。
+- 证据缺口：真实运行字段、配额、账号/任务/节点归属和失败联调结果
 - 验收：异步状态可恢复；失败不伪报成功
 - 阶段：P2。
 
@@ -460,9 +461,9 @@
 
 - 入口：`/vnccontrol/:type/:id; /kvmvnc/:type/:id/:name; /controlpanel/:system/:id; /mpst/fullscreen/:type/:id`
 - 操作范围：会话连接、输入、全屏、尺寸同步、重连与关闭
-- 接口族/线索：`待核对控制台HTTP/WS会话契约`
+- 接口族/线索：同源 `/ws/dockerssh/{id}/`、`/ws/vpcssh/{id}/`、`/ws/kvmvnc/{id}/`、`/ws/kvmrdp/{id}/`；RDP准备与noVNC地址来自 `/api/front/topo/node_run/{id}/`，具体契约见[S07记录](s07-implementation.md)
 - 权限/数据边界：节点归属、运行状态、会话授权
-- 证据缺口：WebSocket地址、票据、代理与浏览器要求
+- 证据缺口：真实WS握手授权与HTTPS/WSS部署、节点权限及不同浏览器；原controlpanel独立路由缺少外部业务props，不能由system/id猜造任务/资源上下文
 - 验收：真实测试节点连通、断线重连、过期票据拒绝
 - 阶段：P2。
 

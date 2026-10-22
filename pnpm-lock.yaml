@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   guacamole-common-js@1.5.0:
-    hash: 79bac7cba7cfed61fbb51d91e571a6bb77aa6fb2ae8876b08b8b0a7f8d9b3472
+    hash: 11e5d751158c2dca0e28746006dc2c4ee041cb09fa1e4c084e8ae575772628ff
     path: patches/guacamole-common-js@1.5.0.patch
 
 importers:
@@ -78,7 +78,7 @@ importers:
         version: 12.10.1(@types/react@19.3.0)(immer@11.1.21)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       guacamole-common-js:
         specifier: 1.5.0
-        version: 1.5.0(patch_hash=79bac7cba7cfed61fbb51d91e571a6bb77aa6fb2ae8876b08b8b0a7f8d9b3472)
+        version: 1.5.0(patch_hash=11e5d751158c2dca0e28746006dc2c4ee041cb09fa1e4c084e8ae575772628ff)
       html-to-image:
         specifier: 1.11.13
         version: 1.11.13
@@ -5147,7 +5147,7 @@ snapshots:
 
   graphql@16.14.2: {}
 
-  guacamole-common-js@1.5.0(patch_hash=79bac7cba7cfed61fbb51d91e571a6bb77aa6fb2ae8876b08b8b0a7f8d9b3472): {}
+  guacamole-common-js@1.5.0(patch_hash=11e5d751158c2dca0e28746006dc2c4ee041cb09fa1e4c084e8ae575772628ff): {}
 
   happy-dom@20.14.5:
     dependencies:

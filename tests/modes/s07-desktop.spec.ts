@@ -351,7 +351,7 @@ test('节点图形VNC/RDP/noVNC按能力与准备请求开放，不混用画布I
 test('操作机分配、启动失败重试、选择切换、嵌入/全屏、释放与配置更新沿原调用链', async ({
   page,
   context,
-}) => {
+}, testInfo) => {
   const state = await mount(page)
   let machines: Array<Record<string, unknown>> = []
   let fail = true
@@ -383,6 +383,7 @@ test('操作机分配、启动失败重试、选择切换、嵌入/全屏、释�
             id: 41,
             target_image: 77,
             name: '操作机甲',
+            create_time: '2026-10-22 09:30:00',
             status: 0,
             is_distribute: true,
             img_type: 2,
@@ -414,6 +415,14 @@ test('操作机分配、启动失败重试、选择切换、嵌入/全屏、释�
   await expect(page.getByText('暂未分配操作机', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '分配操作机', exact: true }).click()
   const row = page.getByRole('row').filter({ hasText: '操作机甲' })
+  await expect(row).toContainText('账号：cloversec')
+  await expect(row).toContainText('密码：cloversec')
+  await expect(row).toContainText('支持SSH远程连接')
+  await expect(row).toContainText('2026-10-22 09:30:00')
+  const windows = page.getByRole('row').filter({ hasText: '操作机乙' })
+  await expect(windows).toContainText('账号：administrator')
+  await expect(windows).toContainText('支持远程桌面')
+  await page.screenshot({ path: testInfo.outputPath('operation-machines.png') })
   await row.getByRole('button', { name: '启动', exact: true }).click()
   await page.getByRole('button', { name: '确认', exact: true }).click()
   await expect(

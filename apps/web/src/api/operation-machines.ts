@@ -10,6 +10,7 @@ const machineSchema = z.looseObject({
   img_type: z.number().optional(),
   is_distribute: z.boolean().optional(),
   float_ip: z.string().nullish(),
+  create_time: z.string().nullish(),
   error_msg: z.string().nullish(),
   config: z
     .object({

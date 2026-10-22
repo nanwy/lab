@@ -227,6 +227,32 @@ export function OperationMachines({
             },
             { accessorKey: 'float_ip', header: '浮动IP' },
             {
+              id: 'login',
+              header: '登录说明',
+              cell: ({ row }) =>
+                [1, 2].includes(row.original.img_type ?? 0) ? (
+                  <div className="whitespace-nowrap">
+                    <p>
+                      账号：
+                      {row.original.img_type === 1
+                        ? 'administrator'
+                        : 'cloversec'}
+                    </p>
+                    <p>密码：cloversec</p>
+                    <p>
+                      {row.original.img_type === 1
+                        ? '支持远程桌面'
+                        : '支持SSH远程连接'}
+                    </p>
+                  </div>
+                ) : null,
+            },
+            {
+              accessorKey: 'create_time',
+              header: '创建时间',
+              cell: ({ row }) => row.original.create_time ?? '--',
+            },
+            {
               id: 'actions',
               header: '操作',
               cell: ({ row }) => {

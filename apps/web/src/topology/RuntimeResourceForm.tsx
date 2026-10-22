@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useForm, useStore } from '@tanstack/react-form'
 import { z } from 'zod'
 import {
@@ -9,6 +9,14 @@ import {
 } from '@workspace/ui/components/field'
 import { Input } from '@workspace/ui/components/input'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxContent,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+} from '@workspace/ui/components/combobox'
 
 // 快照名、NAT及模板选择都是字符串字段；仅共享这些实际重复的表单结构。
 export function RuntimeResourceForm({
@@ -24,6 +32,7 @@ export function RuntimeResourceForm({
     name: string
     label: string
     maxLength?: number
+    searchable?: boolean
     options?: Array<{ value: string; label: string }>
   }>
   schema: z.ZodType<Record<string, string>, Record<string, string>>
@@ -31,6 +40,7 @@ export function RuntimeResourceForm({
   label: string
   onDirtyChange: (dirty: boolean) => void
 }) {
+  const container = useRef<HTMLFormElement>(null)
   const form = useForm({
     defaultValues: initial,
     validators: { onSubmit: schema },
@@ -45,6 +55,7 @@ export function RuntimeResourceForm({
   }, [dirty, onDirtyChange])
   return (
     <form
+      ref={container}
       onSubmit={(event) => {
         event.preventDefault()
         void form.handleSubmit()
@@ -70,23 +81,63 @@ export function RuntimeResourceForm({
                   >,
                 ) => field.handleChange(event.target.value),
               }
+              let input: React.ReactNode
+              if (definition.options && definition.searchable) {
+                input = (
+                  <Combobox
+                    items={definition.options}
+                    value={
+                      definition.options.find(
+                        (option) => option.value === field.state.value,
+                      ) ?? null
+                    }
+                    itemToStringLabel={(option) => option.label}
+                    onValueChange={(option) =>
+                      field.handleChange(option?.value ?? '')
+                    }
+                    filter={(option, query) =>
+                      option.label.toLowerCase().includes(query.toLowerCase())
+                    }
+                  >
+                    <ComboboxInput
+                      id={field.name}
+                      name={field.name}
+                      aria-invalid={isInvalid}
+                      onBlur={field.handleBlur}
+                      placeholder="请选择节点模板"
+                    />
+                    <ComboboxContent container={container}>
+                      <ComboboxEmpty>暂无匹配节点模板</ComboboxEmpty>
+                      <ComboboxList>
+                        {(option: { value: string; label: string }) => (
+                          <ComboboxItem key={option.value} value={option}>
+                            {option.label}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                )
+              } else if (definition.options) {
+                input = (
+                  <select {...props} className="rounded border p-2">
+                    <option value="">请选择</option>
+                    {definition.options.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                )
+              } else {
+                input = <Input {...props} maxLength={definition.maxLength} />
+              }
               return (
                 <Field data-invalid={isInvalid}>
                   <FieldLabel htmlFor={field.name}>
                     {definition.label}
                   </FieldLabel>
-                  {definition.options ? (
-                    <select {...props} className="rounded border p-2">
-                      <option value="">请选择</option>
-                      {definition.options.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <Input {...props} maxLength={definition.maxLength} />
-                  )}
+                  {input}
                   {isInvalid && <FieldError errors={field.state.meta.errors} />}
                 </Field>
               )

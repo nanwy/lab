@@ -403,6 +403,7 @@ function Conversion(props: Props) {
         {
           name: 'template',
           label: '转换节点',
+          searchable: true,
           options: templates.data.map((item) => ({
             value: String(item.id),
             label: item.name,

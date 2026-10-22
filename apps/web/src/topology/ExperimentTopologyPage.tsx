@@ -2035,7 +2035,12 @@ export function ExperimentTopologyEditor({
                     variant="ghost"
                     disabled={busy || saving}
                     onClick={() => {
-                      uploadTarget.current = selectedNode.id
+                      const nodeId = resourceConfig.node_id
+                      if (typeof nodeId !== 'string' || !nodeId.trim()) {
+                        toast.error('缺少有效的运行节点标识')
+                        return
+                      }
+                      uploadTarget.current = nodeId
                       setContext(null)
                       uploadInput.current?.click()
                     }}

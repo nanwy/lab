@@ -234,7 +234,7 @@ test('关机保存镜像：载入全部配置、校验、失败保留、数组�
 
 test('节点转换仅保存draw，保留业务ID与未知图字段，详情沿schema只读显示', async ({
   page,
-}) => {
+}, testInfo) => {
   const state = await mount(page, true)
   const info = state.stored.cells[0]!.data!.nodeInfo as Record<string, unknown>
   Object.assign(info, {
@@ -281,9 +281,10 @@ test('节点转换仅保存draw，保留业务ID与未知图字段，详情沿sc
     query = new URL(route.request().url()).search
     return route.fulfill({
       json: [
+        { id: 801, name: 'Windows模板', config_info: { type: 'libvirt' } },
         {
           id: 800,
-          name: '转换模板',
+          name: '转换模板 Linux',
           engin: 1,
           config_info: {
             type: 'docker',
@@ -300,7 +301,21 @@ test('节点转换仅保存draw，保留业务ID与未知图字段，详情沿sc
   await expect(
     page.getByText('请选择需要转换的节点', { exact: true }),
   ).toBeVisible()
-  await page.getByLabel('转换节点', { exact: true }).selectOption('800')
+  const template = page.getByRole('combobox', { name: '转换节点', exact: true })
+  await template.fill('lInUx')
+  await expect(
+    page.getByRole('option', { name: '转换模板 Linux' }),
+  ).toBeVisible()
+  await expect(page.getByRole('option', { name: 'Windows模板' })).toHaveCount(0)
+  await template.fill('不存在的模板')
+  await expect(
+    page.getByText('暂无匹配节点模板', { exact: true }),
+  ).toBeVisible()
+  await template.fill('lInUx')
+  await page.screenshot({ path: testInfo.outputPath('conversion-search.png') })
+  await page
+    .getByRole('option', { name: '转换模板 Linux', exact: true })
+    .click()
   await page.getByRole('button', { name: '确认转换', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(node).toContainText('转换模板')
@@ -412,14 +427,15 @@ test('NAT新增删除与网络入口设置按原协议工作，入口结果随dr
   expect(state.errors).toEqual([])
 })
 
-test('运行文件上传仅向当前支持的节点发送FormData，详情关闭取消读取', async ({
+test('运行文件上传使用运行节点ID而非画布UUID，详情关闭取消读取', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 1200 })
   const state = await mount(page)
   const info = state.stored.cells[0]!.data!.nodeInfo as Record<string, unknown>
   info.config_info = {
     type: 'libvirt',
-    node_id: 'a',
+    node_id: 'runtime-upload-node',
     base_info: { console_type: 'vnc', images_id: 7 },
   }
   await page.route('**/api/front/topo/topo-one/status/?task_type=6', (route) =>
@@ -427,11 +443,14 @@ test('运行文件上传仅向当前支持的节点发送FormData，详情关闭
   )
   await page.reload()
   let uploaded = ''
-  await page.route('**/api/front/topo/node_run/a/upload_file/', (route) => {
-    expect(route.request().method()).toBe('POST')
-    uploaded = route.request().postDataBuffer()!.toString()
-    return route.fulfill({ json: { status: 1 } })
-  })
+  await page.route(
+    '**/api/front/topo/node_run/runtime-upload-node/upload_file/',
+    (route) => {
+      expect(route.request().method()).toBe('POST')
+      uploaded = route.request().postDataBuffer()!.toString()
+      return route.fulfill({ json: { status: 1 } })
+    },
+  )
   const node = page.locator('.react-flow__node[data-id="a"]')
   await node.click({ button: 'right' })
   const fileChooser = page.waitForEvent('filechooser')
@@ -464,5 +483,12 @@ test('运行文件上传仅向当前支持的节点发送FormData，详情关闭
   await expect.poll(() => aborted).toContain('/api/front/node/image/list/7/')
   release()
   await expect(page.getByRole('dialog')).toHaveCount(0)
+  delete (info.config_info as Record<string, unknown>).node_id
+  await page.reload()
+  await node.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: '上传文件', exact: true }).click()
+  await expect(
+    page.getByText('缺少有效的运行节点标识', { exact: true }),
+  ).toBeVisible()
   expect(state.errors).toEqual([])
 })

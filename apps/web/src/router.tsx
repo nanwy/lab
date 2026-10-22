@@ -11,7 +11,7 @@ import {
   type ErrorComponentProps,
   type RouterHistory,
 } from '@tanstack/react-router'
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 
 import { can, mockIdentity } from './identity'
 import { DiagnosticsPage } from './diagnostics-page'
@@ -470,6 +470,22 @@ const experimentSceneRoute = createRoute({
   component: ExperimentTopologyPage,
 })
 
+const terminalRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/vnccontrol/$type/$id',
+  component: () => {
+    const { type, id } = terminalRoute.useParams()
+    return (
+      <Suspense fallback={<p role="status">正在加载终端…</p>}>
+        <LazyTerminalPage type={type} id={id} />
+      </Suspense>
+    )
+  },
+})
+const LazyTerminalPage = lazy(async () => ({
+  default: (await import('./terminal/TerminalPage')).TerminalPage,
+}))
+
 const resourceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/resources/$resourceId',
@@ -540,6 +556,7 @@ const routeTree = rootRoute.addChildren([
   apiDiagnosticsRoute,
   dataDiagnosticsRoute,
   topologyRoute,
+  terminalRoute,
   diagnosticErrorRoute,
 ])
 

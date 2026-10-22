@@ -29,6 +29,7 @@ import {
 } from '@workspace/ui/components/dialog'
 import { toast } from '@workspace/ui/components/sonner'
 import { ApiError } from '../api'
+import { textConsoleType, textConsoleHref } from '../api/terminal'
 import {
   NodeRuntimeResources,
   type NodeResourceMode,
@@ -1842,6 +1843,35 @@ export function ExperimentTopologyEditor({
               : null}
             {selectedNode && !graphical ? (
               <>
+                {resourceState === 2 &&
+                textConsoleType(
+                  resourceConfig.type,
+                  asObject(resourceConfig.base_info).console_type,
+                ) ? (
+                  <Button
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={busy || saving || runtime.isFetching}
+                    onClick={() => {
+                      setContext(null)
+                      try {
+                        const type = textConsoleType(
+                          resourceConfig.type,
+                          asObject(resourceConfig.base_info).console_type,
+                        )!
+                        window.open(
+                          textConsoleHref(type, resourceConfig.node_id),
+                          '_blank',
+                          'noopener',
+                        )
+                      } catch (error) {
+                        report(error)
+                      }
+                    }}
+                  >
+                    VNC
+                  </Button>
+                ) : null}
                 <Button
                   role="menuitem"
                   variant="ghost"

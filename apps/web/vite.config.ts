@@ -35,6 +35,17 @@ export default defineConfig(({ mode }) => {
                 })
               },
             },
+            '^/ws/(dockerssh|vpcssh)/': {
+              target,
+              changeOrigin: true,
+              ws: true,
+              configure(proxy) {
+                proxy.on('proxyReqWs', (request) => {
+                  if (authorization && !request.hasHeader('authorization'))
+                    request.setHeader('authorization', authorization)
+                })
+              },
+            },
           }
         : undefined,
     },

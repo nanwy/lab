@@ -10,7 +10,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 
 afterEach(() => vi.unstubAllEnvs())
 
-it('文本WS升级请求转发到同一上游，保留路径和Cookie且上游认证仅在服务端补入', async () => {
+it('文本和图形WS升级请求转发到同一上游，保留路径和Cookie且上游认证仅在服务端补入', async () => {
   const seen: Array<{ url?: string; cookie?: string; authorization?: string }> =
     []
   const upstream = createServer()
@@ -47,6 +47,8 @@ it('文本WS升级请求转发到同一上游，保留路径和Cookie且上游�
     for (const [path, authorization] of [
       ['dockerssh/run-one/', undefined],
       ['vpcssh/node%20two/', 'Token isolated-application'],
+      ['kvmvnc/run-vnc/', undefined],
+      ['kvmrdp/run-rdp/', undefined],
     ] as const) {
       await new Promise<void>((resolve, reject) => {
         const req = request(
@@ -84,6 +86,16 @@ it('文本WS升级请求转发到同一上游，保留路径和Cookie且上游�
         url: '/ws/vpcssh/node%20two/',
         cookie: 'sessionid=isolated-test',
         authorization: 'Token isolated-application',
+      },
+      {
+        url: '/ws/kvmvnc/run-vnc/',
+        cookie: 'sessionid=isolated-test',
+        authorization: 'Basic isolated-test',
+      },
+      {
+        url: '/ws/kvmrdp/run-rdp/',
+        cookie: 'sessionid=isolated-test',
+        authorization: 'Basic isolated-test',
       },
     ])
   } finally {

@@ -1,0 +1,78 @@
+diff --git a/dist/cjs/guacamole-common.js b/dist/cjs/guacamole-common.js
+index 9117f2cc1034393fcee219d51b86f92ab60b012a..173350f4e2bdbecb22617c48bd7bd87d7593dc74 100644
+--- a/dist/cjs/guacamole-common.js
++++ b/dist/cjs/guacamole-common.js
+@@ -4320,7 +4320,8 @@ Guacamole.Display = function() {
+     // Switch from asynchronous frame handling to synchronous frame handling if
+     // requestAnimationFrame() is unlikely to be usable (browsers may not
+     // invoke the animation frame callback if the relevant tab is not focused)
+-    window.addEventListener('blur', function switchToSyncFlush() {
++    var destroyed = false;
++    function switchToSyncFlush() {
+         if (inProgressFrame && !document.hasFocus()) {
+ 
+             // Cancel pending asynchronous processing of frame ...
+@@ -4331,13 +4332,23 @@ Guacamole.Display = function() {
+             syncFlush();
+ 
+         }
+-    }, true);
++    }
++    window.addEventListener('blur', switchToSyncFlush, true);
++    // Release resources owned by this display when its remote session closes.
++    this.destroy = function destroy() {
++        destroyed = true;
++        window.removeEventListener('blur', switchToSyncFlush, true);
++        if (inProgressFrame) window.cancelAnimationFrame(inProgressFrame);
++        inProgressFrame = null;
++        frames.length = 0;
++    };
+ 
+     /**
+      * Flushes all pending frames.
+      * @private
+      */
+     function __flush_frames() {
++        if (destroyed) return;
+ 
+         if (window.requestAnimationFrame && document.hasFocus())
+             asyncFlush();
+diff --git a/dist/esm/guacamole-common.js b/dist/esm/guacamole-common.js
+index 0eb036296ba0bdac76b602a432f3483c1b1f12b8..efec9885895cd4468286fddd35a2f337dbcd92dc 100644
+--- a/dist/esm/guacamole-common.js
++++ b/dist/esm/guacamole-common.js
+@@ -4320,7 +4320,8 @@ Guacamole.Display = function() {
+     // Switch from asynchronous frame handling to synchronous frame handling if
+     // requestAnimationFrame() is unlikely to be usable (browsers may not
+     // invoke the animation frame callback if the relevant tab is not focused)
+-    window.addEventListener('blur', function switchToSyncFlush() {
++    var destroyed = false;
++    function switchToSyncFlush() {
+         if (inProgressFrame && !document.hasFocus()) {
+ 
+             // Cancel pending asynchronous processing of frame ...
+@@ -4331,13 +4332,23 @@ Guacamole.Display = function() {
+             syncFlush();
+ 
+         }
+-    }, true);
++    }
++    window.addEventListener('blur', switchToSyncFlush, true);
++    // Release resources owned by this display when its remote session closes.
++    this.destroy = function destroy() {
++        destroyed = true;
++        window.removeEventListener('blur', switchToSyncFlush, true);
++        if (inProgressFrame) window.cancelAnimationFrame(inProgressFrame);
++        inProgressFrame = null;
++        frames.length = 0;
++    };
+ 
+     /**
+      * Flushes all pending frames.
+      * @private
+      */
+     function __flush_frames() {
++        if (destroyed) return;
+ 
+         if (window.requestAnimationFrame && document.hasFocus())
+             asyncFlush();

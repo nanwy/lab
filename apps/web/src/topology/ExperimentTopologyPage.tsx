@@ -31,6 +31,12 @@ import { toast } from '@workspace/ui/components/sonner'
 import { ApiError } from '../api'
 import { textConsoleType, textConsoleHref } from '../api/terminal'
 import {
+  desktopHref,
+  getNoVncUrl,
+  prepareRdp,
+  validateDesktop,
+} from '../api/desktop'
+import {
   NodeRuntimeResources,
   type NodeResourceMode,
 } from './NodeRuntimeResources'
@@ -579,6 +585,28 @@ export function ExperimentTopologyEditor({
     installGraph(toX6Graph(next))
     setBaseline(JSON.stringify(toX6Graph(next)))
     setEntranceNode(null)
+  }
+  const [menuCapability, setMenuCapability] = useState<{
+    uuid: string
+    isRdp: boolean
+  } | null>(null)
+  async function openDesktop(kind: 'vnc' | 'rdp' | 'novnc') {
+    if (!selectedNode || readOnly || busy || saving) return
+    setContext(null)
+    setBusy(true)
+    try {
+      const uuid = resourceConfig.node_id
+      validateDesktop('vnc', uuid)
+      if (kind === 'rdp') await prepareRdp(uuid, operation.current.signal)
+      const href =
+        kind === 'novnc'
+          ? await getNoVncUrl(uuid, operation.current.signal)
+          : desktopHref(kind, uuid, selectedNode.data.label)
+      if (!operation.current.signal.aborted)
+        window.open(href, '_blank', 'noopener')
+    } finally {
+      if (!operation.current.signal.aborted) setBusy(false)
+    }
   }
   const resourceInfo = asObject(selectedNode?.data.raw.data?.nodeInfo)
   const resourceConfig = asObject(resourceInfo.config_info)
@@ -1273,8 +1301,8 @@ export function ExperimentTopologyEditor({
       if (
         node.type !== 'topologyGroup' &&
         node.data.raw.data?.nodeType !== 'base_element'
-      )
-        await queryClient.fetchQuery({
+      ) {
+        const capability = await queryClient.fetchQuery({
           queryKey: ['topology-node-menu', node.id],
           queryFn: ({ signal }) =>
             getTopologyNodeMenuInfo(
@@ -1285,6 +1313,12 @@ export function ExperimentTopologyEditor({
           staleTime: 0,
           gcTime: 0,
         })
+        if (!operation.current.signal.aborted)
+          setMenuCapability({
+            uuid: node.id,
+            isRdp: capability.is_rdp === true,
+          })
+      }
       if (!operation.current.signal.aborted) setContext(point)
     } catch (error) {
       report(error)
@@ -1871,6 +1905,51 @@ export function ExperimentTopologyEditor({
                   >
                     VNC
                   </Button>
+                ) : null}
+                {resourceState === 2 &&
+                ['libvirt', 'libvirt_middle_intercept'].includes(
+                  String(resourceConfig.type),
+                ) &&
+                !textConsoleType(
+                  resourceConfig.type,
+                  asObject(resourceConfig.base_info).console_type,
+                ) ? (
+                  <LoadingButton
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={busy || saving || runtime.isFetching}
+                    onClick={() => openDesktop('vnc')}
+                    onError={report}
+                  >
+                    VNC
+                  </LoadingButton>
+                ) : null}
+                {resourceState === 2 &&
+                resourceConfig.type === 'libvirt' &&
+                menuCapability?.uuid === selectedNode.id &&
+                menuCapability.isRdp ? (
+                  <LoadingButton
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={busy || saving || runtime.isFetching}
+                    onClick={() => openDesktop('rdp')}
+                    onError={report}
+                  >
+                    RDP
+                  </LoadingButton>
+                ) : null}
+                {resourceState === 2 &&
+                ['libvirt', 'qemu'].includes(String(resourceConfig.type)) &&
+                asObject(resourceConfig.base_info).console_type === 'vnc' ? (
+                  <LoadingButton
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={busy || saving || runtime.isFetching}
+                    onClick={() => openDesktop('novnc')}
+                    onError={report}
+                  >
+                    noVNC
+                  </LoadingButton>
                 ) : null}
                 <Button
                   role="menuitem"

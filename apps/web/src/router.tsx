@@ -486,6 +486,46 @@ const LazyTerminalPage = lazy(async () => ({
   default: (await import('./terminal/TerminalPage')).TerminalPage,
 }))
 
+const LazyDesktopPage = lazy(async () => ({
+  default: (await import('./desktop/DesktopPage')).DesktopPage,
+}))
+const desktopRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/kvmvnc/$type/$id/$name',
+  component: () => {
+    const params = desktopRoute.useParams()
+    return (
+      <Suspense fallback={<p role="status">正在加载控制台…</p>}>
+        <LazyDesktopPage {...params} />
+      </Suspense>
+    )
+  },
+})
+const fullscreenRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/mpst/fullscreen/$type/$id',
+  component: () => {
+    const params = fullscreenRoute.useParams()
+    return (
+      <Suspense fallback={<p role="status">正在加载控制台…</p>}>
+        <LazyDesktopPage {...params} fullscreen />
+      </Suspense>
+    )
+  },
+})
+const LazyControlPanel = lazy(async () => ({
+  default: (await import('./desktop/DesktopPage')).ControlPanelPage,
+}))
+const controlPanelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/controlpanel/$system/$id',
+  component: () => (
+    <Suspense>
+      <LazyControlPanel />
+    </Suspense>
+  ),
+})
+
 const resourceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/resources/$resourceId',
@@ -557,6 +597,9 @@ const routeTree = rootRoute.addChildren([
   dataDiagnosticsRoute,
   topologyRoute,
   terminalRoute,
+  desktopRoute,
+  fullscreenRoute,
+  controlPanelRoute,
   diagnosticErrorRoute,
 ])
 

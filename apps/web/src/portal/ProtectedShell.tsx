@@ -20,6 +20,7 @@ import { InitialPositionDialog } from './InitialPositionDialog'
 import { PasswordDialog } from '../auth/PasswordDialog'
 import NiceModal from '@ebay/nice-modal-react'
 import { ActivityButtons } from '../activity/ActivityButtons'
+import { OperationMachinesButton } from '../desktop/OperationMachines'
 
 export function ProtectedShell() {
   const session = useQuery(currentUserQueryOptions())
@@ -97,6 +98,7 @@ function LearnerShell({ user }: { user: CurrentUser }) {
           </Link>
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <ActivityButtons />
+            <OperationMachinesButton />
             <span>
               当前用户 ID：<strong>{String(user.id)}</strong>
             </span>

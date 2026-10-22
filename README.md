@@ -39,8 +39,10 @@ pnpm check
 正常开发直接使用真实接口。环境变量示例位于 `apps/web/.env.example`，
 本机配置位于已忽略的 `apps/web/.env.development.local`。
 `VITE_API_BASE_URL` 指定浏览器访问的 API 地址，默认 `/api`；
-Vite 通过服务端变量 `LOCAL_API_TARGET` 转发 API、媒体及文本终端 `/ws/dockerssh/`、`/ws/vpcssh/` 到后端，并按需使用 `LOCAL_API_BASIC_AUTH`。文本终端沿原协议使用页面同源 WS/WSS 和浏览器 Cookie，不在 URL 中附加 Token。
+Vite 通过服务端变量 `LOCAL_API_TARGET` 转发 API、媒体及控制台 `/ws/dockerssh/`、`/ws/vpcssh/`、`/ws/kvmvnc/`、`/ws/kvmrdp/` 到后端，并按需使用 `LOCAL_API_BASIC_AUTH`。控制台沿原协议使用页面同源 WS/WSS 和浏览器 Cookie，不在 URL 中附加 Token。
 所有 `VITE_` 变量都会进入浏览器代码，只配置公开参数，凭据仅保存在服务端变量中。
+图形控制台使用 Apache Guacamole 客户端的 npm 分发版 `guacamole-common-js@1.5.0`；锁文件中的本地补丁仅补齐 Display 卸载时的监听/动画帧清理，随 pnpm 安装应用，不手改 node_modules。
+
 修改代理配置后重启开发服务。应用认证与 CSRF 见[账号契约](docs/architecture/account-session.md)。
 
 通用组件通过 shadcn 官方 CLI 安装到 `packages/ui`，由 `@workspace/ui` 导出；主题和 `cn` 工具也在该包维护。

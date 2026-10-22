@@ -199,7 +199,7 @@ test('运行节点文本入口按原类型映射，使用config连接标识且�
   await node.click({ button: 'right' })
   await expect(
     page.getByRole('menuitem', { name: 'VNC', exact: true }),
-  ).toHaveCount(0)
+  ).toHaveCount(1)
   expect(state.errors).toEqual([])
 })
 

@@ -42,6 +42,7 @@ import {
 import { currentUserQueryOptions, establishSession } from './session'
 import { usePageSignal } from './use-page-signal'
 import { NoticesPanel } from '../activity/Notices'
+import { OperationMachines } from '../desktop/OperationMachines'
 import { CollectionsPanel } from '../activity/CollectionsPanel'
 
 const tabs = {
@@ -139,15 +140,7 @@ export function PersonalPage({ type }: { type: keyof typeof tabs }) {
       ) : type === 'enshrine' ? (
         <CollectionsPanel />
       ) : (
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">{tabs[type]}</h2>
-          <p role="note">
-            {type === 'resource'
-              ? '虚拟资源业务随操作机相关切片实现。'
-              : '完整收藏和消息管理由 S04 实现。'}
-            此入口尚未提供对应业务操作。
-          </p>
-        </section>
+        <OperationMachines />
       )}
     </section>
   )

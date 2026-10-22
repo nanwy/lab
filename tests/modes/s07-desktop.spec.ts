@@ -181,6 +181,16 @@ test('RDP剪贴板及会话文件系统可读目录、下载与按ACK上传，�
       ),
     )
     .toBe(true)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.keyboard.press('b')
+  await expect
+    .poll(() =>
+      requests.filter((item) => item[0] === 'key' && item[1] === '98'),
+    )
+    .toEqual([
+      ['key', '98', '1'],
+      ['key', '98', '0'],
+    ])
   // 以下只检查文件上传流，排除刚才的剪贴板流。
   uploads.length = 0
   await page.getByRole('button', { name: '文件管理', exact: true }).click()
@@ -228,6 +238,17 @@ test('RDP剪贴板及会话文件系统可读目录、下载与按ACK上传，�
     .toBe(3)
   await expect(page.getByLabel('上传会话文件', { exact: true })).toBeEnabled()
   expect(uploads).toEqual([])
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.keyboard.press('c')
+  await expect
+    .poll(() =>
+      requests.filter((item) => item[0] === 'key' && item[1] === '99'),
+    )
+    .toEqual([
+      ['key', '99', '1'],
+      ['key', '99', '0'],
+    ])
   expect(errors).toEqual([])
 })
 

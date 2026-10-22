@@ -301,11 +301,16 @@ export function DesktopSession({
         onOpenChange={(open) => {
           if (!open) {
             setTool(null)
-            sink.current?.focus()
           }
         }}
       >
-        <DialogContent className="max-h-[85vh] overflow-auto">
+        <DialogContent
+          className="max-h-[85vh] overflow-auto"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            if (!closed && state === 3) sink.current?.focus()
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               {tool === 'clipboard' ? '剪贴板' : '文件管理'}
@@ -323,7 +328,6 @@ export function DesktopSession({
                 transfers.current?.clipboard(text)
                 setClipboard(text)
                 setTool(null)
-                sink.current?.focus()
               }}
             />
           ) : null}

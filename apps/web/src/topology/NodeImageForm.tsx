@@ -172,9 +172,8 @@ export function NodeImageForm({
   function field(
     name: string,
     label: string,
-    options?: Array<{ value: string; label: string }>,
+    inputProps: React.ComponentProps<typeof Input> = {},
   ) {
-    const number = name.startsWith('config/') || name.endsWith('/port')
     return (
       <form.Field
         key={name}
@@ -182,49 +181,88 @@ export function NodeImageForm({
         children={(field) => {
           const isInvalid =
             field.state.meta.isTouched && !field.state.meta.isValid
-          const props = {
-            id: field.name,
-            name: field.name,
-            value: field.state.value ?? '',
-            onBlur: field.handleBlur,
-            'aria-invalid': isInvalid,
-            onChange: (
-              event: React.ChangeEvent<
-                HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-              >,
-            ) =>
-              field.handleChange(
-                name === 'file_path'
-                  ? event.target.value.replace(/[\u4e00-\u9fa5]/g, '')
-                  : event.target.value,
-              ),
-          }
           return (
             <Field data-invalid={isInvalid}>
               <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
-              {options ? (
-                <select {...props} className="rounded border p-2">
-                  <option value="">请选择</option>
-                  {options.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              ) : name === 'desc' || name === 'start_config' ? (
-                <Textarea {...props} />
-              ) : (
-                <Input
-                  {...props}
-                  type={number ? 'number' : 'text'}
-                  min={number ? 1 : undefined}
-                  max={name.endsWith('/port') ? 65535 : undefined}
-                  maxLength={
-                    name === 'name' || name === 'file_path' ? 100 : undefined
-                  }
-                  list={name.endsWith('/name') ? 'image-services' : undefined}
-                />
-              )}
+              <Input
+                {...inputProps}
+                id={field.name}
+                name={field.name}
+                value={field.state.value ?? ''}
+                onBlur={field.handleBlur}
+                aria-invalid={isInvalid}
+                onChange={(event) =>
+                  field.handleChange(
+                    name === 'file_path'
+                      ? event.target.value.replace(/[\u4e00-\u9fa5]/g, '')
+                      : event.target.value,
+                  )
+                }
+              />
+              {isInvalid && <FieldError errors={field.state.meta.errors} />}
+            </Field>
+          )
+        }}
+      />
+    )
+  }
+  function selectField(
+    name: string,
+    label: string,
+    options: Array<{ value: string; label: string }>,
+  ) {
+    return (
+      <form.Field
+        key={name}
+        name={name}
+        children={(field) => {
+          const isInvalid =
+            field.state.meta.isTouched && !field.state.meta.isValid
+          return (
+            <Field data-invalid={isInvalid}>
+              <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+              <select
+                id={field.name}
+                name={field.name}
+                value={field.state.value ?? ''}
+                onBlur={field.handleBlur}
+                aria-invalid={isInvalid}
+                onChange={(event) => field.handleChange(event.target.value)}
+                className="rounded border p-2"
+              >
+                <option value="">请选择</option>
+                {options.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+              {isInvalid && <FieldError errors={field.state.meta.errors} />}
+            </Field>
+          )
+        }}
+      />
+    )
+  }
+  function textAreaField(name: string, label: string) {
+    return (
+      <form.Field
+        key={name}
+        name={name}
+        children={(field) => {
+          const isInvalid =
+            field.state.meta.isTouched && !field.state.meta.isValid
+          return (
+            <Field data-invalid={isInvalid}>
+              <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+              <Textarea
+                id={field.name}
+                name={field.name}
+                value={field.state.value ?? ''}
+                onBlur={field.handleBlur}
+                aria-invalid={isInvalid}
+                onChange={(event) => field.handleChange(event.target.value)}
+              />
               {isInvalid && <FieldError errors={field.state.meta.errors} />}
             </Field>
           )
@@ -240,27 +278,27 @@ export function NodeImageForm({
       }}
     >
       <FieldGroup>
-        {field('name', '镜像名称')}
-        {field('file_path', '镜像文件名称')}
+        {field('name', '镜像名称', { maxLength: 100 })}
+        {field('file_path', '镜像文件名称', { maxLength: 100 })}
         <div className="grid grid-cols-3 gap-2">
-          {field('config/cpu', 'CPU(H)')}
-          {field('config/ram', '内存(MB)')}
-          {field('config/disk', '磁盘(GB)')}
+          {field('config/cpu', 'CPU(H)', { type: 'number', min: 1 })}
+          {field('config/ram', '内存(MB)', { type: 'number', min: 1 })}
+          {field('config/disk', '磁盘(GB)', { type: 'number', min: 1 })}
         </div>
-        {field('type', '镜像类型', [
+        {selectField('type', '镜像类型', [
           { value: '1', label: '基础镜像' },
           { value: '5', label: '靶标镜像' },
         ])}
-        {field('property', '镜像属性', [
+        {selectField('property', '镜像属性', [
           { value: '1', label: '公开' },
           { value: '2', label: '私有' },
         ])}
-        {field(
+        {selectField(
           'system_type',
           '操作系统',
           systems.map((label, index) => ({ label, value: String(index + 1) })),
         )}
-        {field('ip_type', 'IP类型', [
+        {selectField('ip_type', 'IP类型', [
           { value: '1', label: 'DHCP' },
           { value: '2', label: '静态IP' },
         ])}
@@ -271,12 +309,19 @@ export function NodeImageForm({
               <h3>{groups[key].title}</h3>
               {rows[key].map((index, order) => (
                 <div key={index} className="space-y-2">
-                  {Object.entries(groups[key].fields).map(([name, label]) =>
-                    field(
-                      `${key}/${index}/${name}`,
-                      `${groups[key].title}${order + 1} ${label}`,
-                    ),
-                  )}
+                  {Object.entries(groups[key].fields).map(([name, label]) => {
+                    const path = `${key}/${index}/${name}`
+                    const title = `${groups[key].title}${order + 1} ${label}`
+                    if (key === 'open_service' && name === 'port')
+                      return field(path, title, {
+                        type: 'number',
+                        min: 1,
+                        max: 65535,
+                      })
+                    if (key === 'open_service' && name === 'name')
+                      return field(path, title, { list: 'image-services' })
+                    return field(path, title)
+                  })}
                   {rows[key].length > 1 ? (
                     <Button
                       type="button"
@@ -311,8 +356,8 @@ export function NodeImageForm({
               </Button>
             </section>
           ))}
-        {field('desc', '镜像描述')}
-        {field('start_config', '启动配置')}
+        {textAreaField('desc', '镜像描述')}
+        {textAreaField('start_config', '启动配置')}
       </FieldGroup>
       <datalist id="image-services">
         {['Web服务', 'MySQL服务', 'SSH服务', '远程桌面'].map((name) => (

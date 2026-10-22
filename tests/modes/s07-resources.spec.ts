@@ -17,6 +17,7 @@ test('快照可搜索分页、创建、恢复及删除；失败保留输入且�
     })),
   )
   let fail = true
+  let failRestore = true
   const calls: Array<{ path: string; method: string; body: unknown }> = []
   await page.route('**/api/front/topo/topo-one/node/a/snapshot/**', (route) => {
     const req = route.request(),
@@ -50,6 +51,10 @@ test('快照可搜索分页、创建、恢复及删除；失败保留输入且�
         create_time: '2026-10-22',
       })
       return route.fulfill({ json: { id: 12 } })
+    }
+    if (req.method() === 'POST' && failRestore) {
+      failRestore = false
+      return route.fulfill({ json: { status: 2, message: '恢复被拒绝' } })
     }
     if (req.method() === 'DELETE')
       snapshots = snapshots.filter((item) => item.id !== 11)
@@ -101,6 +106,8 @@ test('快照可搜索分页、创建、恢复及删除；失败保留输入且�
   await expect(page.getByRole('alertdialog')).toContainText(
     '恢复快照将覆盖当前环境',
   )
+  await page.getByRole('button', { name: '确认', exact: true }).click()
+  await expect(page.getByText('恢复被拒绝', { exact: true })).toHaveCount(1)
   await page.getByRole('button', { name: '确认', exact: true }).click()
   await expect(
     page

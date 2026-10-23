@@ -67,6 +67,13 @@ import {
   type NodeAction,
 } from '../api/topology-runtime'
 import { CaptureDialog } from '../traffic/CaptureDialog'
+import { TrafficMirroring } from '../traffic/TrafficMirroring'
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@workspace/ui/components/tabs'
 import { useExperiment } from '../experiments/ExperimentContext'
 import { DeviceResources } from './DeviceResources'
 import { TrafficSniffingDialog } from './TrafficSniffingDialog'
@@ -260,11 +267,35 @@ export function ExperimentTopologyPage() {
       </section>
     )
   return (
-    <ExperimentTopologyEditor
+    <ExperimentSceneTabs
       key={`${experiment.id}:${id}`}
       id={id}
       initial={graph.data}
     />
+  )
+}
+
+function ExperimentSceneTabs({
+  id,
+  initial,
+}: {
+  id: string | number
+  initial: EditorGraph
+}) {
+  const [tab, setTab] = useState('scene')
+  return (
+    <Tabs value={tab} onValueChange={setTab}>
+      <TabsList>
+        <TabsTrigger value="scene">场景拓扑</TabsTrigger>
+        <TabsTrigger value="mirror">流量镜像</TabsTrigger>
+      </TabsList>
+      <TabsContent value="scene" forceMount hidden={tab !== 'scene'}>
+        <ExperimentTopologyEditor id={id} initial={initial} />
+      </TabsContent>
+      <TabsContent value="mirror">
+        {tab === 'mirror' ? <TrafficMirroring id={id} /> : null}
+      </TabsContent>
+    </Tabs>
   )
 }
 

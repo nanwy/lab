@@ -15,7 +15,7 @@ it('未设置品牌标识时允许原接口省略品牌字段，错误类型仍�
       Response.json({ email_certif: false, onlyoffice_url: '' }),
     ),
   )
-  await expect(getPlatformLogo()).resolves.toEqual({})
+  await expect(getPlatformLogo()).resolves.toEqual({ onlyoffice_url: '' })
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => Response.json({ platform_name: 123 })),

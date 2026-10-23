@@ -19,6 +19,7 @@ import { DataDiagnosticsPage } from './data-diagnostics'
 import { TopologyPage } from './topology/TopologyPage'
 import { ExperimentFlowPage } from './traffic/ExperimentFlowPage'
 import { ExperimentTopologyPage } from './topology/ExperimentTopologyPage'
+import { OfficeViewerPage, parseOfficeSearch } from './files/OfficeViewerPage'
 import { appConfig } from './config'
 import { queryClient } from './query-client'
 import { diagnosticQueryOptions } from './query-options'
@@ -405,6 +406,16 @@ const personalRoute = createRoute({
   },
 })
 
+const officeViewerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/office/viewer',
+  validateSearch: parseOfficeSearch,
+  component: () => {
+    const search = officeViewerRoute.useSearch()
+    return <OfficeViewerPage key={JSON.stringify(search)} {...search} />
+  },
+})
+
 const resourcesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/resources',
@@ -605,6 +616,7 @@ const routeTree = rootRoute.addChildren([
     ]),
     futureRoute,
   ]),
+  officeViewerRoute,
   resourcesRoute,
   resourceRoute,
   draftRoute,

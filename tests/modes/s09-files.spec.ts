@@ -396,7 +396,7 @@ for (const scope of ['public', 'personal'] as const) {
     mode = 'success'
     const download = page.waitForEvent('download')
     await button.click()
-    expect((await download).suggestedFilename()).toBe('archive.zip')
+    expect((await download).suggestedFilename()).toBe('download.zip')
     await expect(button).toBeEnabled()
     mode = 'pending'
     await button.click()
@@ -423,7 +423,7 @@ for (const scope of ['public', 'personal'] as const) {
         exact: true,
       }),
     ).toBeDisabled()
-    expect(downloads).toEqual(['archive.zip'])
+    expect(downloads).toEqual(['download.zip'])
     await page.setViewportSize({ width: 390, height: 844 })
     expect(
       await page.evaluate(
@@ -434,5 +434,48 @@ for (const scope of ['public', 'personal'] as const) {
       path: test.info().outputPath(`export-${scope}-mobile.png`),
       fullPage: true,
     })
+  })
+}
+
+for (const scope of ['public', 'personal'] as const) {
+  test(`${scope} 打包响应未指定文件名时使用原 download.zip 默认值`, async ({
+    page,
+  }) => {
+    const endpoint =
+      scope === 'public'
+        ? '/front/open/resource_network_disk/'
+        : '/front/learn/task/my_profile/files/'
+    await page.route(`**/api${endpoint}?*`, (route) =>
+      route.fulfill({
+        json: [{ ...file, is_shared_file: scope === 'public' ? false : 0 }],
+      }),
+    )
+    await page.route(`**/api${endpoint}export_zip/`, (route) =>
+      route.fulfill({
+        json: {
+          status: 1,
+          message: '完成',
+          download_url: '/fixture/server-generated-name.zip',
+        },
+      }),
+    )
+    await page.route('**/fixture/server-generated-name.zip', (route) =>
+      route.fulfill({
+        body: Buffer.from('PK\x03\x04sample'),
+        contentType: 'application/zip',
+      }),
+    )
+    await page.goto('/#/basic/user/file')
+    if (scope === 'personal')
+      await page.getByRole('tab', { name: '个人资料', exact: true }).click()
+    await page.getByLabel('选择 讲义.txt', { exact: true }).check()
+    const download = page.waitForEvent('download')
+    await page
+      .getByRole('button', {
+        name: scope === 'public' ? '打包下载' : '批量导出',
+        exact: true,
+      })
+      .click()
+    expect((await download).suggestedFilename()).toBe('download.zip')
   })
 }

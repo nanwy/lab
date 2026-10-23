@@ -19,10 +19,12 @@ import { DataDiagnosticsPage } from './data-diagnostics'
 import { TopologyPage } from './topology/TopologyPage'
 import { ExperimentFlowPage } from './traffic/ExperimentFlowPage'
 import { ExperimentTopologyPage } from './topology/ExperimentTopologyPage'
+import { OfficeViewerPage, parseOfficeSearch } from './files/OfficeViewerPage'
 import { appConfig } from './config'
 import { queryClient } from './query-client'
 import { diagnosticQueryOptions } from './query-options'
 import { LoginPage, type LoginReason } from './auth/LoginPage'
+import { FileWorkspacePage } from './files/FileWorkspacePage'
 import { PersonalPage } from './auth/PersonalPage'
 import { ActivatePage } from './auth/ActivatePage'
 import { ForbiddenPage } from './auth/access'
@@ -382,6 +384,12 @@ const sessionHomeRoute = createRoute({
   component: HomePage,
 })
 
+const filesRoute = createRoute({
+  getParentRoute: () => basicRoute,
+  path: 'user/file',
+  component: FileWorkspacePage,
+})
+
 const personalRoute = createRoute({
   getParentRoute: () => basicRoute,
   path: '/personal/$type',
@@ -395,6 +403,16 @@ const personalRoute = createRoute({
     )
       return <NotFoundPage />
     return <PersonalPage type={type} />
+  },
+})
+
+const officeViewerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/office/viewer',
+  validateSearch: parseOfficeSearch,
+  component: () => {
+    const search = officeViewerRoute.useSearch()
+    return <OfficeViewerPage key={JSON.stringify(search)} {...search} />
   },
 })
 
@@ -586,6 +604,7 @@ const routeTree = rootRoute.addChildren([
     basicIndexRoute,
     sessionHomeRoute,
     personalRoute,
+    filesRoute,
     experimentListRoute,
     experimentRoute.addChildren([
       experimentIndexRoute,
@@ -597,6 +616,7 @@ const routeTree = rootRoute.addChildren([
     ]),
     futureRoute,
   ]),
+  officeViewerRoute,
   resourcesRoute,
   resourceRoute,
   draftRoute,

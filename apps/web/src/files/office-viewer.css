@@ -1,0 +1,219 @@
+.office-viewer {
+  --office-paper: #f6f5ef;
+  --office-ink: #252b28;
+  min-height: 100svh;
+  color: var(--office-ink);
+  background: var(--office-paper);
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  padding: 0 clamp(24px, 6vw, 96px);
+  display: flex;
+  flex-direction: column;
+}
+.office-viewer-header,
+.office-viewer-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+}
+.office-viewer-header {
+  min-height: 96px;
+  border-bottom: 1px solid #d6d9d0;
+}
+.office-viewer-header > span,
+.office-viewer-footer,
+.office-viewer-label,
+.office-viewer-kicker {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+.office-viewer-brand {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.office-viewer-content {
+  width: min(100%, 920px);
+  margin: clamp(48px, 10vh, 108px) auto;
+  flex: 1;
+}
+.office-viewer-kicker {
+  color: #626b60;
+  margin: 0 0 20px;
+}
+.office-viewer-heading h1 {
+  font-family: 'Songti SC', 'STSong', serif;
+  font-size: clamp(38px, 5.2vw, 64px);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+}
+.office-viewer-heading h1 span {
+  font-family: serif;
+  color: var(--primary);
+  font-size: 0.8em;
+}
+.office-viewer-intro {
+  color: #626b60;
+  font-size: 15px;
+  line-height: 1.8;
+  margin: 20px 0 42px;
+}
+.office-viewer-document {
+  display: flex;
+  gap: 30px;
+  align-items: center;
+  padding: 32px 0;
+  border-top: 1px solid #b8bfb4;
+  border-bottom: 1px solid #d6d9d0;
+}
+.office-viewer-sheet {
+  flex: none;
+  width: 64px;
+  height: 84px;
+  padding: 12px;
+  border: 1px solid #a2ae9a;
+  background: #fcfcf8;
+  transform: rotate(-4deg);
+  transition: transform 0.2s ease;
+}
+.office-viewer-document:hover .office-viewer-sheet {
+  transform: rotate(0);
+}
+.office-viewer-sheet span {
+  display: block;
+  font-family: monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+.office-viewer-sheet i {
+  display: block;
+  width: 100%;
+  border-top: 1px solid #b4bcaf;
+  margin-top: 5px;
+}
+.office-viewer-sheet i:last-child {
+  width: 55%;
+}
+.office-viewer-file {
+  min-width: 0;
+}
+.office-viewer-label {
+  color: #626b60;
+}
+.office-viewer-file h2 {
+  font-size: clamp(18px, 2.5vw, 25px);
+  font-weight: 500;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  margin: 8px 0;
+}
+.office-viewer-file p {
+  color: #626b60;
+  font-size: 12px;
+  margin: 0;
+}
+.office-viewer-feedback {
+  padding-top: 28px;
+}
+.office-viewer-feedback [role] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.8;
+  font-size: 14px;
+  margin: 0;
+}
+.office-viewer-feedback [role] > span {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  background: var(--primary);
+  border-radius: 50%;
+}
+.office-viewer-hint {
+  color: #626b60;
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 8px 0 0 16px;
+}
+.office-viewer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px;
+  margin-top: 28px;
+}
+.office-viewer-actions [data-slot='button'] {
+  min-height: 44px;
+  border-radius: 2px;
+  padding-inline: 24px;
+  gap: 28px;
+}
+.office-viewer-back {
+  font-size: 13px;
+  padding-block: 12px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.office-viewer a {
+  text-decoration: none;
+}
+.office-viewer a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 6px;
+}
+.office-viewer-back:hover,
+.office-viewer-brand:hover {
+  color: var(--primary);
+}
+.office-viewer-footer {
+  min-height: 64px;
+  border-top: 1px solid #d6d9d0;
+  color: #626b60;
+}
+.office-viewer-pulse {
+  animation: office-pulse 1.2s ease-in-out infinite;
+}
+@keyframes office-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (max-width: 600px) {
+  .office-viewer-header {
+    min-height: 76px;
+  }
+  .office-viewer-header > span {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    max-width: 100px;
+    text-align: right;
+  }
+  .office-viewer-content {
+    margin-block: 48px;
+  }
+  .office-viewer-document {
+    gap: 22px;
+  }
+  .office-viewer-intro {
+    margin-bottom: 32px;
+  }
+  .office-viewer-sheet {
+    width: 52px;
+    height: 72px;
+    padding: 9px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .office-viewer *,
+  .office-viewer *::before {
+    animation: none;
+    transition: none;
+  }
+}

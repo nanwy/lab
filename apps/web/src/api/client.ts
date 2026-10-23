@@ -20,6 +20,7 @@ export type RequestOptions = Omit<RequestInit, 'body' | 'signal'> & {
   response?: ResponseKind
   signal?: AbortSignal
   timeoutMs?: number
+  onUploadProgress?: (progress: { loaded: number; total: number }) => void
   errorDisplay?: ErrorDisplayPolicy
   isBusinessFailure?: (value: unknown) => boolean
   allowExpiredSession?: boolean
@@ -202,6 +203,71 @@ function abortError(signal: AbortSignal | undefined) {
   )
 }
 
+// 上传使用浏览器原生字节事件；认证、解析和错误仍在同一请求管线。
+function uploadResponse(
+  url: URL,
+  method: string,
+  headers: Headers,
+  body: BodyInit | null | undefined,
+  request: RequestOptions,
+  signal: AbortSignal | undefined,
+): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    const cleanup = () => {
+      signal?.removeEventListener('abort', cancel)
+      xhr.onload = xhr.onerror = xhr.onabort = null
+      xhr.upload.onprogress = null
+    }
+    const fail = () => {
+      cleanup()
+      reject(abortError(signal) ?? new ApiError('network', '网络请求失败'))
+    }
+    const cancel = () => {
+      xhr.abort()
+      fail()
+    }
+    if (signal?.aborted) {
+      fail()
+      return
+    }
+    xhr.open(method, url.href)
+    xhr.withCredentials = request.credentials === 'include'
+    headers.forEach((value, key) => xhr.setRequestHeader(key, value))
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && !signal?.aborted)
+        request.onUploadProgress?.({ loaded: event.loaded, total: event.total })
+    }
+    xhr.onload = () => {
+      const responseHeaders = new Headers()
+      for (const line of xhr
+        .getAllResponseHeaders()
+        .trim()
+        .split(/[\r\n]+/)) {
+        const colon = line.indexOf(':')
+        if (colon > 0)
+          responseHeaders.append(
+            line.slice(0, colon),
+            line.slice(colon + 1).trim(),
+          )
+      }
+      const response = new Response(
+        [204, 205, 304].includes(xhr.status) ? null : xhr.responseText,
+        {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          headers: responseHeaders,
+        },
+      )
+      cleanup()
+      resolve(response)
+    }
+    xhr.onerror = xhr.onabort = fail
+    signal?.addEventListener('abort', cancel, { once: true })
+    xhr.send(body as XMLHttpRequestBodyInit | null | undefined)
+  })
+}
+
 export function createApiClient(options: ApiClientOptions) {
   async function request<T>(
     path: string,
@@ -222,13 +288,15 @@ export function createApiClient(options: ApiClientOptions) {
 
     let response: Response
     try {
-      response = await (options.fetch ?? globalThis.fetch)(url, {
-        ...request,
-        method,
-        headers,
-        body,
-        signal,
-      })
+      response = request.onUploadProgress
+        ? await uploadResponse(url, method, headers, body, request, signal)
+        : await (options.fetch ?? globalThis.fetch)(url, {
+            ...request,
+            method,
+            headers,
+            body,
+            signal,
+          })
     } catch {
       const normalizedAbort = abortError(signal)
       if (normalizedAbort) throw normalizedAbort
@@ -265,6 +333,8 @@ export function createApiClient(options: ApiClientOptions) {
             }))
       )
     }
+    const interrupted = abortError(signal)
+    if (interrupted) throw interrupted
     if (request.isBusinessFailure?.(result)) {
       throw new ApiError(
         'business',

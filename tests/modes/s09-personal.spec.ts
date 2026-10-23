@@ -10,7 +10,7 @@ const file = {
   type: 'text/plain',
   altertime: '2026-10-24',
   is_share: 0,
-  is_shared_file: false,
+  is_shared_file: 0,
 }
 test.beforeEach(async ({ page }) => {
   for (const [path, json] of Object.entries(portalFixtures))
@@ -89,7 +89,7 @@ test('重命名与分享读回；共享项单项禁用但批量可选，删除�
       id: 'shared',
       name: '共享资料.txt',
       path: '/共享资料.txt',
-      is_shared_file: true,
+      is_shared_file: 1,
     },
   ]
   let deletions = 0

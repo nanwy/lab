@@ -16,6 +16,12 @@ const entrySchema = z.object({
   is_shared_file: z.boolean().optional(),
   isLink: z.boolean().optional(),
 })
+const personalEntrySchema = entrySchema.extend({
+  is_shared_file: z
+    .union([z.literal(0), z.literal(1)])
+    .transform((value) => value === 1)
+    .optional(),
+})
 export type DriveFile = z.infer<typeof entrySchema>
 export const fileListKey = (
   account: string | number,
@@ -33,7 +39,7 @@ export async function getFiles(
       ? '/front/open/resource_network_disk/'
       : '/front/learn/task/my_profile/files/'
   const result = z
-    .array(entrySchema)
+    .array(scope === 'public' ? entrySchema : personalEntrySchema)
     .safeParse(
       await apiClient.request(
         `${endpoint}?parent_path=${encodeURIComponent(path)}&nopage=1`,
@@ -79,4 +85,37 @@ export function isOfficeFile(attached: string) {
     'pptx',
     'dps',
   ].includes(attached.split('.').at(-1)!.toLocaleLowerCase())
+}
+
+export async function exportFiles(
+  scope: FileScope,
+  ids: DriveFile['id'][],
+  signal?: AbortSignal,
+): Promise<string> {
+  if (!ids.length || ids.some((id) => id === '..'))
+    throw new Error('请选择有效文件')
+  const endpoint =
+    scope === 'public'
+      ? '/front/open/resource_network_disk/'
+      : '/front/learn/task/my_profile/files/'
+  const response = await apiClient.request(endpoint + 'export_zip/', {
+    method: 'POST',
+    json: scope === 'public' ? { resource_ids: ids } : { file_ids: ids },
+    signal,
+  })
+  const result = z
+    .object({
+      status: z.number(),
+      message: z.string(),
+      download_url: z.string().min(1),
+    })
+    .safeParse(response)
+  if (!result.success)
+    throw new ApiError('invalid-response', '打包响应不符合契约')
+  if (result.data.status !== 1)
+    throw new ApiError('business', result.data.message)
+  const address = result.data.download_url
+  if (!/^\/(?!\/)/.test(address) && !/^https?:\/\//.test(address))
+    throw new ApiError('invalid-response', '打包下载地址不符合契约')
+  return address
 }

@@ -55,7 +55,7 @@ test('公开目录导航、直接获取和个人域隔离', async ({ page }) => 
           ...file,
           attached: '/files/讲义_server.txt',
           is_share: 1,
-          is_shared_file: true,
+          is_shared_file: 1,
           source_info: '课程分享',
         },
       ],
@@ -294,7 +294,7 @@ test('公开与个人目录名称遵循原站 localeCompare 排序', async ({ pa
       json: entries.map((entry) => ({
         ...entry,
         is_share: 0,
-        is_shared_file: false,
+        is_shared_file: 0,
       })),
     }),
   )
@@ -309,3 +309,130 @@ test('公开与个人目录名称遵循原站 localeCompare 排序', async ({ pa
     await expect(names).toHaveText(['Beta.txt', 'alpha.txt'])
   }
 })
+
+for (const scope of ['public', 'personal'] as const) {
+  test(`${scope} 文件与目录打包、失败重试和切域，不触发迟到下载`, async ({
+    page,
+  }) => {
+    const endpoint =
+      scope === 'public'
+        ? '/front/open/resource_network_disk/'
+        : '/front/learn/task/my_profile/files/'
+    const entries = [
+      file,
+      {
+        ...file,
+        id: 'dir',
+        name: '资料夹',
+        path: '/资料夹',
+        is_file: 0,
+        attached: null,
+      },
+    ]
+    for (const path of [
+      '/front/open/resource_network_disk/',
+      '/front/learn/task/my_profile/files/',
+    ])
+      await page.route(`**/api${path}?*`, (r) =>
+        r.fulfill({
+          json: entries.map((entry) => ({
+            ...entry,
+            is_shared_file: path.includes('my_profile') ? 0 : false,
+          })),
+        }),
+      )
+    let mode: 'error' | 'success' | 'pending' = 'error'
+    let pending: import('@playwright/test').Route | undefined
+    await page.route(`**/api${endpoint}export_zip/`, (r) => {
+      expect(r.request().method()).toBe('POST')
+      expect(r.request().postDataJSON()).toEqual(
+        scope === 'public'
+          ? { resource_ids: ['f1', 'dir'] }
+          : { file_ids: ['f1', 'dir'] },
+      )
+      if (mode === 'pending') {
+        pending = r
+        return
+      }
+      return r.fulfill({
+        json:
+          mode === 'error'
+            ? { status: 1, message: '假成功' }
+            : {
+                status: 1,
+                message: '完成',
+                download_url: '/fixture/archive.zip',
+              },
+      })
+    })
+    await page.route('**/fixture/archive.zip', (r) =>
+      r.fulfill({
+        body: Buffer.from('PK\x03\x04sample'),
+        contentType: 'application/zip',
+        headers: {
+          'Content-Disposition': 'attachment; filename="archive.zip"',
+        },
+      }),
+    )
+    const downloads: string[] = []
+    page.on('download', (download) =>
+      downloads.push(download.suggestedFilename()),
+    )
+    await page.goto('/#/basic/user/file')
+    if (scope === 'personal')
+      await page.getByRole('tab', { name: '个人资料', exact: true }).click()
+    const button = page.getByRole('button', {
+      name: scope === 'public' ? '打包下载' : '批量导出',
+      exact: true,
+    })
+    await expect(button).toBeDisabled()
+    await page.getByLabel('选择全部文件', { exact: true }).check()
+    await expect(button).toBeEnabled()
+    await button.click()
+    await expect(
+      page.getByText('打包响应不符合契约', { exact: true }),
+    ).toBeVisible()
+    expect(downloads).toEqual([])
+    mode = 'success'
+    const download = page.waitForEvent('download')
+    await button.click()
+    expect((await download).suggestedFilename()).toBe('archive.zip')
+    await expect(button).toBeEnabled()
+    mode = 'pending'
+    await button.click()
+    await expect(button).toBeDisabled()
+    await expect.poll(() => Boolean(pending)).toBe(true)
+    await page
+      .getByRole('tab', {
+        name: scope === 'public' ? '个人资料' : '公开资料',
+        exact: true,
+      })
+      .click()
+    await pending!
+      .fulfill({
+        json: {
+          status: 1,
+          message: '迟到',
+          download_url: '/fixture/archive.zip',
+        },
+      })
+      .catch(() => {})
+    await expect(
+      page.getByRole('button', {
+        name: scope === 'public' ? '批量导出' : '打包下载',
+        exact: true,
+      }),
+    ).toBeDisabled()
+    expect(downloads).toEqual(['archive.zip'])
+    await page.setViewportSize({ width: 390, height: 844 })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await page.screenshot({
+      path: test.info().outputPath(`export-${scope}-mobile.png`),
+      fullPage: true,
+    })
+  })
+}

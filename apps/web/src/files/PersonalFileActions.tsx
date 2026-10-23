@@ -29,6 +29,7 @@ import {
 import type { DriveFile } from '../api/files'
 import { usePageSignal } from '../auth/use-page-signal'
 import type { FileActionsContext } from './FileDrivePage'
+import { FileExportButton } from './FileExportButton'
 import './personal-files.css'
 
 function report(error: unknown, signal: AbortSignal) {
@@ -48,9 +49,7 @@ export function PersonalFileActions({
       <Button variant="outline" onClick={() => setDialog('create')}>
         新建文件夹
       </Button>
-      <Button variant="outline" disabled title="打包下载暂不可用">
-        批量导出
-      </Button>
+      <FileExportButton scope="personal" context={context} />
       <Button
         variant="outline"
         className="personal-delete"

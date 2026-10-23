@@ -23,6 +23,7 @@ import { appConfig } from './config'
 import { queryClient } from './query-client'
 import { diagnosticQueryOptions } from './query-options'
 import { LoginPage, type LoginReason } from './auth/LoginPage'
+import { FileDrivePage } from './files/FileDrivePage'
 import { PersonalPage } from './auth/PersonalPage'
 import { ActivatePage } from './auth/ActivatePage'
 import { ForbiddenPage } from './auth/access'
@@ -382,6 +383,12 @@ const sessionHomeRoute = createRoute({
   component: HomePage,
 })
 
+const filesRoute = createRoute({
+  getParentRoute: () => basicRoute,
+  path: 'user/file',
+  component: FileDrivePage,
+})
+
 const personalRoute = createRoute({
   getParentRoute: () => basicRoute,
   path: '/personal/$type',
@@ -586,6 +593,7 @@ const routeTree = rootRoute.addChildren([
     basicIndexRoute,
     sessionHomeRoute,
     personalRoute,
+    filesRoute,
     experimentListRoute,
     experimentRoute.addChildren([
       experimentIndexRoute,

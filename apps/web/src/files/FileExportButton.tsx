@@ -28,7 +28,7 @@ export function FileExportButton({
       if (signal.aborted) return
       const link = document.createElement('a')
       link.href = address
-      link.download = ''
+      link.download = 'download.zip'
       document.body.append(link)
       link.click()
       link.remove()

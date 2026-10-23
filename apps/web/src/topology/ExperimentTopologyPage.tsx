@@ -66,6 +66,7 @@ import {
   runtimeActionLabels,
   type NodeAction,
 } from '../api/topology-runtime'
+import { CaptureDialog } from '../traffic/CaptureDialog'
 import { useExperiment } from '../experiments/ExperimentContext'
 import { DeviceResources } from './DeviceResources'
 import { NodeConfiguration } from './NodeConfiguration'
@@ -298,6 +299,7 @@ export function ExperimentTopologyEditor({
     node: FlowNode
     mode: NodeResourceMode
   } | null>(null)
+  const [captureEdge, setCaptureEdge] = useState<string | number | null>(null)
   const [entranceNode, setEntranceNode] = useState<FlowNode | null>(null)
   const uploadInput = useRef<HTMLInputElement>(null)
   const uploadTarget = useRef<string | null>(null)
@@ -1744,7 +1746,8 @@ export function ExperimentTopologyEditor({
                 setNodes((current) =>
                   current.map((node) => ({ ...node, selected: false })),
                 )
-                if (editable) setContext({ x: event.clientX, y: event.clientY })
+                if (!readOnly)
+                  setContext({ x: event.clientX, y: event.clientY })
               }}
               onConnect={connect}
               isValidConnection={(connection) => {
@@ -2050,6 +2053,41 @@ export function ExperimentTopologyEditor({
                 ) : null}
               </>
             ) : null}
+            {selectedEdge &&
+            [selectedEdge.source, selectedEdge.target].some((uuid) => {
+              const node = nodes.find((item) => item.id === uuid)
+              return [
+                'libvirt',
+                'docker',
+                'vpcs',
+                'libvirt_middle_intercept',
+                'docker_webide',
+              ].includes(
+                String(
+                  asObject(asObject(node?.data.raw.data?.nodeInfo).config_info)
+                    .type,
+                ),
+              )
+            }) ? (
+              <Button
+                role="menuitem"
+                variant="ghost"
+                onClick={() => {
+                  const edgeId = selectedEdge.data.raw.data?.data_id
+                  if (
+                    typeof edgeId !== 'string' &&
+                    typeof edgeId !== 'number'
+                  ) {
+                    toast.error('缺少有效的链路业务标识')
+                    return
+                  }
+                  setCaptureEdge(edgeId)
+                  setContext(null)
+                }}
+              >
+                流量标记
+              </Button>
+            ) : null}
             {editable &&
             selectedNode?.data.raw.shape !== 'custom-react-text' ? (
               <Button
@@ -2111,6 +2149,14 @@ export function ExperimentTopologyEditor({
               ).catch(() => {})
           }}
         />
+        {captureEdge !== null ? (
+          <CaptureDialog
+            key={`${id}:${captureEdge}`}
+            id={id}
+            edgeId={captureEdge}
+            close={() => setCaptureEdge(null)}
+          />
+        ) : null}
         {nodeResource ? (
           <NodeRuntimeResources
             key={`${nodeResource.node.id}:${nodeResource.mode}`}

@@ -17,6 +17,7 @@ import { can, mockIdentity } from './identity'
 import { DiagnosticsPage } from './diagnostics-page'
 import { DataDiagnosticsPage } from './data-diagnostics'
 import { TopologyPage } from './topology/TopologyPage'
+import { ExperimentFlowPage } from './traffic/ExperimentFlowPage'
 import { ExperimentTopologyPage } from './topology/ExperimentTopologyPage'
 import { appConfig } from './config'
 import { queryClient } from './query-client'
@@ -449,7 +450,6 @@ const experimentFutureRoute = createRoute({
     if (
       ![
         'simulate',
-        'flow',
         'notes',
         'detection/penetration',
         'detection/defense',
@@ -462,6 +462,12 @@ const experimentFutureRoute = createRoute({
       return <NotFoundPage />
     return <p role="note">此实验子页属于后续实施切片，尚未实现。</p>
   },
+})
+
+const experimentFlowRoute = createRoute({
+  getParentRoute: () => experimentRoute,
+  path: '/flow',
+  component: ExperimentFlowPage,
 })
 
 const experimentSceneRoute = createRoute({
@@ -586,6 +592,7 @@ const routeTree = rootRoute.addChildren([
       experimentOverviewRoute,
       experimentExplanationRoute,
       experimentSceneRoute,
+      experimentFlowRoute,
       experimentFutureRoute,
     ]),
     futureRoute,

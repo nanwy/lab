@@ -1,0 +1,64 @@
+.file-drive .personal-delete {
+  color: #a2513b;
+}
+.file-drive .personal-delete:disabled {
+  color: #a09b90;
+}
+.personal-file-dialog {
+  border: 1px solid #d8ddcf;
+  background: #fbfaf6;
+  color: #28352f;
+  border-radius: 8px;
+  gap: 24px;
+  max-width: min(92vw, 420px);
+}
+.personal-file-dialog [data-slot='dialog-title'] {
+  font-family: 'Songti SC', 'Noto Serif CJK SC', serif;
+  font-size: 24px;
+  letter-spacing: 0.04em;
+}
+.personal-file-dialog [data-slot='dialog-description'] {
+  line-height: 1.8;
+  font-size: 13px;
+  color: #737e6c;
+}
+.personal-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 28px;
+}
+.personal-file-dialog [data-slot='input'] {
+  background: #fff;
+  border-color: #bdc8b3;
+  box-shadow: none;
+}
+.personal-file-dialog
+  [data-slot='button']:not([data-variant='outline']):not(
+    [data-variant='destructive']
+  ) {
+  background: #426847;
+  color: white;
+}
+.personal-file-dialog :is(input, button):focus-visible {
+  outline: 2px solid #68865e;
+  outline-offset: 3px;
+}
+.dark .personal-file-dialog {
+  background: #212921;
+  color: #e4e9dd;
+  border-color: #424e3b;
+}
+.dark .personal-file-dialog [data-slot='input'] {
+  background: #2d3829;
+  color: #e4e9dd;
+}
+.dark .personal-file-dialog [data-slot='dialog-description'] {
+  color: #b2bfa7;
+}
+@media (prefers-reduced-motion: reduce) {
+  .personal-file-dialog {
+    animation: none !important;
+    transition: none !important;
+  }
+}

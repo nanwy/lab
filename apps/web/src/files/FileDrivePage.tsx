@@ -234,26 +234,6 @@ function DirectoryContents({
     {
       id: 'actions',
       header: '操作',
-      cell: ({ row }) => (
-        <div className="file-row-actions">
-          {row.original.is_file && row.original.attached ? (
-            <a
-              href={row.original.attached}
-              download={fileDownloadName(
-                scope,
-                row.original.attached,
-                row.original.name,
-              )}
-              aria-label={`下载 ${row.original.name}`}
-            >
-              下载 <span aria-hidden="true">↓</span>
-            </a>
-          ) : (
-            <span className="file-muted">—</span>
-          )}
-          {scope === 'personal' ? rowActions?.(row.original, context) : null}
-        </div>
-      ),
     },
   ]
   const table = useReactTable({
@@ -386,9 +366,18 @@ function DirectoryContents({
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
+                        {cell.column.id === 'actions' ? (
+                          <FileActionsCell
+                            file={row.original}
+                            scope={scope}
+                            context={context}
+                            rowActions={rowActions}
+                          />
+                        ) : (
+                          flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )
                         )}
                       </TableCell>
                     ))}
@@ -446,4 +435,33 @@ function formatBytes(size: number) {
   if (!size) return '0 B'
   const level = Math.min(Math.floor(Math.log(size) / Math.log(1024)), 4)
   return `${(size / 1024 ** level).toFixed(level ? 2 : 0)} ${['B', 'KB', 'MB', 'GB', 'TB'][level]}`
+}
+
+function FileActionsCell({
+  file,
+  scope,
+  context,
+  rowActions,
+}: {
+  file: DriveFile
+  scope: FileScope
+  context: FileActionsContext
+  rowActions: FileDrivePageProps['rowActions']
+}) {
+  return (
+    <div className="file-row-actions">
+      {file.is_file && file.attached ? (
+        <a
+          href={file.attached}
+          download={fileDownloadName(scope, file.attached, file.name)}
+          aria-label={`下载 ${file.name}`}
+        >
+          下载 <span aria-hidden="true">↓</span>
+        </a>
+      ) : (
+        <span className="file-muted">—</span>
+      )}
+      {scope === 'personal' ? rowActions?.(file, context) : null}
+    </div>
+  )
 }

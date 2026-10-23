@@ -159,3 +159,22 @@ test('目录契约失败可重试、加载与空目录反馈，播放器切域�
     fullPage: true,
   })
 })
+
+test('主导航使用已注册网盘路由，点击后无路由匹配警告', async ({ page }) => {
+  const warnings: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'warning') warnings.push(message.text())
+  })
+  await page.route('**/api/front/open/resource_network_disk/?*', (route) =>
+    route.fulfill({ json: [file] }),
+  )
+  await page.goto('/#/basic/user/file')
+  const nav = page.getByRole('navigation', { name: '学员主导航' })
+  await nav.getByText('我的导航', { exact: true }).click()
+  await nav.getByRole('link', { name: '资源网盘', exact: true }).click()
+  await expect(page).toHaveURL(/#\/basic\/user\/file$/)
+  await expect(
+    page.getByRole('heading', { name: '资源网盘', exact: true }),
+  ).toBeVisible()
+  expect(warnings.filter((message) => /route|match/i.test(message))).toEqual([])
+})

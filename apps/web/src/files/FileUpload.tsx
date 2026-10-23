@@ -134,7 +134,11 @@ export function FileUpload({ context }: { context: FileActionsContext }) {
             <span>
               {state.total
                 ? `${bytes(state.loaded)} / ${bytes(state.total)}`
-                : '等待传输字节信息'}
+                : state.phase === 'uploading'
+                  ? '等待传输字节信息'
+                  : state.phase === 'success'
+                    ? '传输已完成'
+                    : '字节信息不可用'}
             </span>
             <span>
               {state.phase === 'uploading'

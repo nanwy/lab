@@ -52,6 +52,7 @@ export function getPlatformLogo(signal?: AbortSignal) {
       platform_name: z.string().optional(),
       front_logo: z.string().optional(),
       icon: z.string().optional(),
+      onlyoffice_url: z.string().optional(),
     }),
     signal,
   )

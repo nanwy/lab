@@ -68,6 +68,7 @@ import {
 } from '../api/topology-runtime'
 import { useExperiment } from '../experiments/ExperimentContext'
 import { DeviceResources } from './DeviceResources'
+import { TrafficSniffingDialog } from './TrafficSniffingDialog'
 import { NodeConfiguration } from './NodeConfiguration'
 import { CanvasNode, CanvasNodeContext } from './CanvasNode'
 import { CanvasLabel } from './CanvasLabel'
@@ -279,6 +280,7 @@ export function ExperimentTopologyEditor({
   shared?: boolean
 }) {
   const queryClient = useQueryClient()
+  const [sniffingEdge, setSniffingEdge] = useState<string | number | null>(null)
   const [nodes, setNodes, changeNodes] = useNodesState<FlowNode>(initial.nodes)
   const [edges, setEdges, changeEdges] = useEdgesState<FlowEdge>(initial.edges)
   const [passthroughCells, setPassthroughCells] = useState(
@@ -1744,7 +1746,8 @@ export function ExperimentTopologyEditor({
                 setNodes((current) =>
                   current.map((node) => ({ ...node, selected: false })),
                 )
-                if (editable) setContext({ x: event.clientX, y: event.clientY })
+                if (!readOnly)
+                  setContext({ x: event.clientX, y: event.clientY })
               }}
               onConnect={connect}
               isValidConnection={(connection) => {
@@ -2050,6 +2053,42 @@ export function ExperimentTopologyEditor({
                 ) : null}
               </>
             ) : null}
+            {selectedEdge &&
+            [selectedEdge.source, selectedEdge.target].some((uuid) => {
+              const node = nodes.find((item) => item.id === uuid)
+              return [
+                'libvirt',
+                'docker',
+                'vpcs',
+                'libvirt_middle_intercept',
+                'docker_webide',
+              ].includes(
+                String(
+                  asObject(asObject(node?.data.raw.data?.nodeInfo).config_info)
+                    .type,
+                ),
+              )
+            }) ? (
+              <Button
+                role="menuitem"
+                variant="ghost"
+                disabled={busy || saving}
+                onClick={() => {
+                  const edgeId = selectedEdge.data.raw.data?.data_id
+                  if (
+                    typeof edgeId !== 'string' &&
+                    typeof edgeId !== 'number'
+                  ) {
+                    toast.error('缺少有效的链路业务标识')
+                    return
+                  }
+                  setSniffingEdge(edgeId)
+                  setContext(null)
+                }}
+              >
+                流量嗅探
+              </Button>
+            ) : null}
             {editable &&
             selectedNode?.data.raw.shape !== 'custom-react-text' ? (
               <Button
@@ -2095,6 +2134,14 @@ export function ExperimentTopologyEditor({
               </Button>
             ) : null}
           </div>
+        ) : null}
+        {sniffingEdge !== null ? (
+          <TrafficSniffingDialog
+            key={`${id}:${sniffingEdge}`}
+            id={id}
+            edgeId={sniffingEdge}
+            close={() => setSniffingEdge(null)}
+          />
         ) : null}
         <input
           type="file"

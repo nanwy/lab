@@ -94,6 +94,9 @@ test('运行中的拦截节点可配置、保存并启动流量拦截', async ({
     page.getByText('tcp from 192.0.2.1 to port 80', { exact: true }),
   ).toBeVisible()
   await editScript(page, 'print("drop")')
+  await page.mouse.click(8, 8)
+  await expect(dialog).toBeVisible()
+  await expect(page.getByLabel('协议', { exact: true })).toHaveValue('tcp')
   await dialog.getByRole('button', { name: '启动', exact: true }).click()
   await expect(
     page.getByText('存在未保存更改，请先保存修改', { exact: true }),
@@ -224,6 +227,9 @@ test('拦截模板支持另存、编辑、内置应用以及导入导出', async
   await saveAs.getByRole('button', { name: '确认', exact: true }).click()
   await expect(saveAs.getByText('请输入模板名称')).toBeVisible()
   await saveAs.getByLabel('模板名称').fill('我的模板')
+  await page.mouse.click(8, 8)
+  await expect(saveAs).toBeVisible()
+  await expect(saveAs.getByLabel('模板名称')).toHaveValue('我的模板')
   await saveAs.getByRole('button', { name: '确认', exact: true }).click()
   await expect(saveAs).toHaveCount(0)
   expect(writes[0]?.body).toMatchObject({
@@ -276,6 +282,15 @@ test('拦截模板支持另存、编辑、内置应用以及导入导出', async
     mimeType: 'application/json',
     buffer: Buffer.from('multipart-test'),
   })
+  await page.mouse.click(8, 8)
+  await expect(importing).toBeVisible()
+  await expect
+    .poll(() =>
+      importing
+        .getByLabel('上传文件')
+        .evaluate((element: HTMLInputElement) => element.files?.[0]?.name),
+    )
+    .toBe('templates.json')
   await importing.getByRole('button', { name: '确认', exact: true }).click()
   await expect.poll(() => imported).toBe(true)
   await expect(importing).toHaveCount(0)
@@ -393,5 +408,52 @@ test('普通节点无拦截动作，关闭后换节点取消旧读取且清理�
     .getByRole('button', { name: 'Close' })
     .click()
   await expect.poll(() => closed).toBe(true)
+  expect(state.errors).toEqual([])
+})
+
+test('协议响应损坏明确报错且保留手动输入，合法空列表正常显示', async ({
+  page,
+}) => {
+  const state = await mount(page)
+  state.stored.cells[0]!.data!.nodeInfo = {
+    id: 91,
+    config_info: { type: 'libvirt_middle_intercept', node_id: 'a' },
+  }
+  await page.route('**/api/front/topo/topo-one/status/?task_type=6', (route) =>
+    route.fulfill({ json: { nodes: { a: { status: 2 } }, edges: {} } }),
+  )
+  await page.route(
+    '**/api/front/topo/topo-one/node/a/blocking_info/',
+    (route) => route.fulfill({ json: { status: 1, data: {} } }),
+  )
+  await page.route('**/api/front/topo/blocking_template/?nopage=1', (route) =>
+    route.fulfill({ json: [] }),
+  )
+  let data: unknown = ['tcp', 42]
+  await page.route('**/api/front/topo/common_protocol/', (route) =>
+    route.fulfill({ json: { status: 1, data } }),
+  )
+  async function open() {
+    await page
+      .locator('.react-flow__node[data-id="a"]')
+      .click({ button: 'right' })
+    await page.getByRole('menuitem', { name: '流量拦截', exact: true }).click()
+  }
+  await page.reload()
+  await open()
+  const dialog = page.getByRole('dialog', { name: '拦截修改', exact: true })
+  await expect(dialog.getByRole('alert')).toContainText('协议列表读取失败：')
+  await dialog.getByLabel('协议', { exact: true }).fill('custom')
+  await expect(dialog.getByLabel('协议', { exact: true })).toHaveValue('custom')
+  await dialog.getByRole('button', { name: '拦截模板', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toContainText('协议列表读取失败：')
+  await dialog.getByRole('button', { name: '新建模板', exact: true }).click()
+  await dialog.getByLabel('协议', { exact: true }).fill('custom')
+  await expect(dialog.getByLabel('协议', { exact: true })).toHaveValue('custom')
+  data = []
+  await page.reload()
+  await open()
+  await expect(dialog.getByLabel('协议', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('alert')).toHaveCount(0)
   expect(state.errors).toEqual([])
 })

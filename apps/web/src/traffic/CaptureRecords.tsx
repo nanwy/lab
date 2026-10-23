@@ -77,19 +77,25 @@ export function CaptureConfirmation({
     </AlertDialog>
   )
 }
-export function CaptureRecords({
-  id,
-  edgeId,
-}: {
-  id: string | number
-  edgeId?: string | number
-}) {
+export function useCaptureRecordsState() {
   const [filter, setFilter] = useState<CaptureFilter & { search: string }>({
     page: 1,
     size: 5,
     search: '',
   })
   const [selected, setSelected] = useState<string[]>([])
+  return { filter, setFilter, selected, setSelected }
+}
+export function CaptureRecords({
+  id,
+  edgeId,
+  state,
+}: {
+  id: string | number
+  edgeId?: string | number
+  state: ReturnType<typeof useCaptureRecordsState>
+}) {
+  const { filter, setFilter, selected, setSelected } = state
   const [action, setAction] = useState<'delete' | 'clear' | null>(null)
   const signal = usePageSignal()
   const records = useQuery({
@@ -107,7 +113,7 @@ export function CaptureRecords({
               records.data?.results.some((record) => record.name === name),
             ),
       )
-  }, [records.data, records.dataUpdatedAt, edgeId])
+  }, [records.data, records.dataUpdatedAt, edgeId, setSelected])
   const data = (records.data?.results ?? []).map((row) => ({
     ...row,
     id: row.name,

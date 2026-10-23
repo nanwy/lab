@@ -17,7 +17,11 @@ import {
 import { Input } from '@workspace/ui/components/input'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
 import { toast } from '@workspace/ui/components/sonner'
-import { CaptureRecords, captureError } from './CaptureRecords'
+import {
+  CaptureRecords,
+  captureError,
+  useCaptureRecordsState,
+} from './CaptureRecords'
 import { Button } from '@workspace/ui/components/button'
 import { useState } from 'react'
 import {
@@ -37,6 +41,7 @@ export function CaptureDialog({
   edgeId: string | number
   close: () => void
 }) {
+  const recordsState = useCaptureRecordsState()
   const [tab, setTab] = useState<'config' | 'records'>('config')
   const config = useQuery({
     queryKey: ['capture', id, edgeId],
@@ -50,7 +55,10 @@ export function CaptureDialog({
         if (!open) close()
       }}
     >
-      <DialogContent className="max-h-[85vh] overflow-auto sm:max-w-4xl">
+      <DialogContent
+        className="max-h-[85vh] overflow-auto sm:max-w-4xl"
+        onPointerDownOutside={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>流量标记</DialogTitle>
           <DialogDescription>
@@ -77,7 +85,12 @@ export function CaptureDialog({
           </Button>
         </div>
         {tab === 'records' ? (
-          <CaptureRecords key={`${id}:${edgeId}`} id={id} edgeId={edgeId} />
+          <CaptureRecords
+            key={`${id}:${edgeId}`}
+            id={id}
+            edgeId={edgeId}
+            state={recordsState}
+          />
         ) : config.isPending ? (
           <p role="status">正在加载标记配置…</p>
         ) : config.isError ? (

@@ -12,7 +12,11 @@ import {
   type CaptureMark,
 } from '../api/traffic-capture'
 import { usePageSignal } from '../auth/use-page-signal'
-import { CaptureConfirmation, CaptureRecords } from './CaptureRecords'
+import {
+  CaptureConfirmation,
+  CaptureRecords,
+  useCaptureRecordsState,
+} from './CaptureRecords'
 
 export function ExperimentFlowPage() {
   const experiment = useExperiment()
@@ -21,6 +25,7 @@ export function ExperimentFlowPage() {
   return <ExperimentFlow key={experiment.topo_id} id={experiment.topo_id} />
 }
 function ExperimentFlow({ id }: { id: string | number }) {
+  const recordsState = useCaptureRecordsState()
   const [page, setPage] = useState(1)
   const [target, setTarget] = useState<CaptureMark | null>(null)
   const signal = usePageSignal()
@@ -119,7 +124,7 @@ function ExperimentFlow({ id }: { id: string | number }) {
         />
       </section>
       <h2 className="text-lg font-semibold">流量记录</h2>
-      <CaptureRecords id={id} />
+      <CaptureRecords id={id} state={recordsState} />
       {target && (
         <CaptureConfirmation
           title={`确认${target.status === 2 ? '停止' : '开启'}流量标记？`}

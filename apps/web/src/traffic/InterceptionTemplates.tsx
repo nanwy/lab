@@ -185,7 +185,7 @@ function ImportTemplates({
         if (!open) close()
       }}
     >
-      <DialogContent>
+      <DialogContent onPointerDownOutside={(event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>导入拦截模板</DialogTitle>
           <DialogDescription>上传模板文件</DialogDescription>
@@ -256,7 +256,7 @@ export function SaveInterceptionAs({
         if (!open) close()
       }}
     >
-      <DialogContent>
+      <DialogContent onPointerDownOutside={(event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>另存为模板</DialogTitle>
           <DialogDescription>保存当前拦截策略及代码</DialogDescription>

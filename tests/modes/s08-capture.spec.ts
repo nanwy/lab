@@ -58,6 +58,9 @@ test('链路流量标记读取业务链路 ID 并允许锁图运行', async ({ p
   await page.getByLabel('每个包大小').fill('8')
   await page.getByLabel('IP地址', { exact: true }).fill('192.0.2.1')
   await page.getByLabel('端口', { exact: true }).fill('80')
+  await page.mouse.click(8, 8)
+  await expect(dialog).toBeVisible()
+  await expect(page.getByLabel('每个包大小')).toHaveValue('8')
   await dialog.getByRole('button', { name: '开启', exact: true }).click()
   await expect(page.getByText('捕获资源不足', { exact: true })).toBeVisible()
   await expect(dialog.getByText('标记状态：未启动')).toBeVisible()
@@ -250,5 +253,82 @@ test('切换实验取消旧记录读取，错误和空记录各自展示', async
   await page.reload()
   await expect(page.getByText('暂无流量记录', { exact: true })).toBeVisible()
   await expect(page.getByText('暂无流量标记', { exact: true })).toBeVisible()
+  expect(state.errors).toEqual([])
+})
+
+test('链路记录切页签保留查询和选择，关闭弹窗后重置', async ({ page }) => {
+  const state = await mount(page, true)
+  await page.route(
+    '**/api/front/topo/topo-one/edge/501/capture_pcap_status/',
+    (route) =>
+      route.fulfill({
+        json: {
+          status: 1,
+          pcap_size: 5,
+          pcap_filter: { proto: '', host: '', port: '' },
+        },
+      }),
+  )
+  const queries: string[] = []
+  await page.route(
+    '**/api/front/topo/topo-one/edge/501/capture_pcap_list/?*',
+    (route) => {
+      queries.push(new URL(route.request().url()).search)
+      return route.fulfill({
+        json: {
+          count: 6,
+          results: [
+            { name: 'keep.pcap', size: '1M', created_time: '2026-10-24' },
+          ],
+        },
+      })
+    },
+  )
+  async function open() {
+    await page.locator('.react-flow__edge-interaction').scrollIntoViewIfNeeded()
+    const point = await page
+      .locator('.react-flow__edge-interaction')
+      .evaluate((element) => {
+        const rect = element.getBoundingClientRect()
+        return { x: rect.x + rect.width / 2, y: rect.y }
+      })
+    await page.mouse.click(point.x, point.y, { button: 'right' })
+    await page.getByRole('menuitem', { name: '流量标记', exact: true }).click()
+  }
+  await open()
+  const dialog = page.getByRole('dialog', { name: '流量标记' })
+  await dialog.getByRole('button', { name: '流量记录', exact: true }).click()
+  await dialog.getByLabel('搜索流量记录').fill('keep')
+  await dialog.getByRole('button', { name: '文件大小', exact: true }).click()
+  await dialog.getByRole('button', { name: '下一页', exact: true }).click()
+  await expect
+    .poll(() => queries.at(-1))
+    .toBe('?page=2&size=5&search=keep&ordering=size')
+  await dialog.getByLabel('选择 keep.pcap', { exact: true }).check()
+  await dialog.getByRole('button', { name: '标记配置', exact: true }).click()
+  await dialog.getByRole('button', { name: '流量记录', exact: true }).click()
+  await expect(dialog.getByLabel('搜索流量记录')).toHaveValue('keep')
+  await expect(
+    dialog.getByRole('navigation', { name: '列表分页' }),
+  ).toContainText('第 2 / 2 页')
+  await expect(
+    dialog.getByRole('button', { name: '文件大小 ↑', exact: true }),
+  ).toBeVisible()
+  await expect(
+    dialog.getByLabel('选择 keep.pcap', { exact: true }),
+  ).toBeChecked()
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  await open()
+  await dialog.getByRole('button', { name: '流量记录', exact: true }).click()
+  await expect(dialog.getByLabel('搜索流量记录')).toHaveValue('')
+  await expect(
+    dialog.getByRole('navigation', { name: '列表分页' }),
+  ).toContainText('第 1 / 2 页')
+  await expect(
+    dialog.getByRole('button', { name: '文件大小', exact: true }),
+  ).toBeVisible()
+  await expect(
+    dialog.getByLabel('选择 keep.pcap', { exact: true }),
+  ).not.toBeChecked()
   expect(state.errors).toEqual([])
 })

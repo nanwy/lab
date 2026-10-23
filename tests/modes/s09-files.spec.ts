@@ -280,3 +280,32 @@ test('正式网盘多文件上传成功后刷新，取消与切域清理，完�
   await expect(page.getByText('迟到响应', { exact: true })).toHaveCount(0)
   await expect(page.getByText('此目录暂无文件', { exact: true })).toBeVisible()
 })
+
+test('公开与个人目录名称遵循原站 localeCompare 排序', async ({ page }) => {
+  const entries = [
+    { ...file, id: 'beta', name: 'Beta.txt', path: '/Beta.txt' },
+    { ...file, id: 'alpha', name: 'alpha.txt', path: '/alpha.txt' },
+  ]
+  await page.route('**/api/front/open/resource_network_disk/?*', (route) =>
+    route.fulfill({ json: entries }),
+  )
+  await page.route('**/api/front/learn/task/my_profile/files/?*', (route) =>
+    route.fulfill({
+      json: entries.map((entry) => ({
+        ...entry,
+        is_share: 0,
+        is_shared_file: false,
+      })),
+    }),
+  )
+  await page.goto('/#/basic/user/file')
+  const names = page.locator('tbody .file-name a')
+  for (const scope of ['公开资料', '个人资料']) {
+    await page.getByRole('tab', { name: scope, exact: true }).click()
+    await expect(names).toHaveText(['Beta.txt', 'alpha.txt'])
+    await page.getByRole('button', { name: '名称', exact: true }).click()
+    await expect(names).toHaveText(['alpha.txt', 'Beta.txt'])
+    await page.getByRole('button', { name: '名称', exact: true }).click()
+    await expect(names).toHaveText(['Beta.txt', 'alpha.txt'])
+  }
+})

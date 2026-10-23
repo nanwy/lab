@@ -169,6 +169,7 @@ function DirectoryContents({
     {
       accessorKey: 'name',
       header: '名称',
+      sortingFn: (a, b) => a.original.name.localeCompare(b.original.name),
       cell: ({ row }) => {
         const file = row.original
         return (
@@ -226,7 +227,12 @@ function DirectoryContents({
           } as ColumnDef<DriveFile>,
         ]
       : []),
-    { accessorKey: 'altertime', header: '修改时间' },
+    {
+      accessorKey: 'altertime',
+      header: '修改时间',
+      sortingFn: (a, b) =>
+        a.original.altertime.localeCompare(b.original.altertime),
+    },
     ...(scope === 'personal'
       ? [
           {

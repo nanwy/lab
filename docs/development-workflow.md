@@ -56,3 +56,7 @@
 特别注意：[运行模式测试配置](../playwright.modes.config.ts) 使用多服务 `webServer` 数组，**仅用 `--project` 过滤测试，并不会减少启动服务**，其中包含生产构建。S03 新增 [专项配置](../playwright.focused.config.ts)，可用 `pnpm exec playwright test s03.spec.ts --config=playwright.focused.config.ts` 只启动关闭 MSW 的隔离服务；项目、地址与代理隔离策略复用正式配置，不重复维护。执行时换成本轮受影响的测试文件或用例；其他模式按本轮影响选择。
 
 S02 当时的原 bundle 补证与双轴审查发现并修复课程请求竞态、岗位表单方案不符规范、待办年视图缺月份聚合三项问题。历史全量门禁记录不作为后续每轮必须全量执行的要求，当前验证范围以根 AGENTS 为准。
+
+## 上传真实传输专项
+
+S09 的上传字节进度、取消和响应正文生命周期使用真实本地 HTTP 服务，依赖 Vite 源码模块及测试组件入口，独立于正式网盘用户路径测试。运行 `pnpm exec playwright test --config=playwright.upload.config.ts`，仅启动隔离开发服务，不构建生产包。默认开发端口 4193、临时 HTTP 服务端口 4293；端口被占用时可通过 `PLAYWRIGHT_UPLOAD_PORT` 和 `PLAYWRIGHT_UPLOAD_API_PORT` 同时指定一组空闲端口。测试按实际 baseURL 设置 CORS 和 Cookie；开发服务只在此配置中代理到临时 HTTP 服务，退出后关闭连接，不复用未知实例。正式页面上传集成仍由两种业务模式中的 `s09-files.spec.ts` 覆盖。

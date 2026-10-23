@@ -128,3 +128,22 @@ it('记录查询按原范围传递分页/搜索/排序，删除与清空使用�
     getCaptureRecords('topo', undefined, { page: 1, size: 5 }),
   ).rejects.toMatchObject({ kind: 'invalid-response' })
 })
+
+it('PCAP下载使用配置的API基址，保留后端文件名称', async () => {
+  try {
+    for (const base of [
+      '/custom-api',
+      'https://capture.example.test/gateway/api',
+    ]) {
+      vi.resetModules()
+      vi.stubEnv('VITE_API_BASE_URL', base)
+      const { captureDownloadHref } = await import('./traffic-capture')
+      expect(captureDownloadHref('packet one.pcap')).toBe(
+        `${base}/front/topo/capture_pcap_download/packet one.pcap`,
+      )
+    }
+  } finally {
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  }
+})

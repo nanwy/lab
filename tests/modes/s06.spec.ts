@@ -241,6 +241,7 @@ test('设备新增配置失败恢复、NIC零连线、线路编辑删除与保�
   ).toEqual([7, 7])
   await page.reload()
   await expect(page.getByText('配置后的路由器', { exact: true })).toBeVisible()
+  await page.locator('.react-flow__edge').scrollIntoViewIfNeeded()
   const edgePoint = await page
     .locator('.react-flow__edge-path')
     .evaluate((element) => {

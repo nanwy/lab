@@ -17,6 +17,7 @@ import { toast } from '@workspace/ui/components/sonner'
 import { ActivityTable, ListPagination } from '../activity/ActivityTable'
 import {
   getCaptureRecords,
+  captureDownloadHref,
   deleteCaptureRecords,
   clearCaptureRecords,
   type CaptureRecord,
@@ -98,8 +99,15 @@ export function CaptureRecords({
   })
   // 原实验入口在请求成功后清空选择；链路入口只保留当前页选择。
   useEffect(() => {
-    if (records.dataUpdatedAt > 0) setSelected([])
-  }, [records.dataUpdatedAt])
+    if (records.dataUpdatedAt > 0)
+      setSelected((current) =>
+        edgeId === undefined
+          ? []
+          : current.filter((name) =>
+              records.data?.results.some((record) => record.name === name),
+            ),
+      )
+  }, [records.data, records.dataUpdatedAt, edgeId])
   const data = (records.data?.results ?? []).map((row) => ({
     ...row,
     id: row.name,
@@ -219,10 +227,7 @@ export function CaptureRecords({
             详情
           </Button>
           <Button variant="link" asChild>
-            <a
-              href={`/api/front/topo/capture_pcap_download/${row.original.name}`}
-              download
-            >
+            <a href={captureDownloadHref(row.original.name)} download>
               下载
             </a>
           </Button>

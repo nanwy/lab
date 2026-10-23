@@ -101,8 +101,12 @@ test('链路流量标记读取业务链路 ID 并允许锁图运行', async ({ p
   await expect
     .poll(() => queries.at(-1))
     .toBe('?page=1&size=5&search=link&ordering=size')
+  await dialog.getByLabel('选择 link.pcap', { exact: true }).check()
   await dialog.getByRole('button', { name: '刷新', exact: true }).click()
   await expect(page.getByText('刷新成功', { exact: true })).toBeVisible()
+  await expect(
+    dialog.getByLabel('选择 link.pcap', { exact: true }),
+  ).toBeChecked()
   expect(state.errors).toEqual([])
 })
 

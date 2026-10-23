@@ -88,6 +88,13 @@ export function ExperimentLayout({ id }: { id: string }) {
               场景拓扑
             </Link>
             <Link
+              to="/basic/user/bench/experiment/$id/$"
+              params={{ id, _splat: 'simulate' }}
+              activeProps={{ 'aria-current': 'page' }}
+            >
+              模拟蓝军
+            </Link>
+            <Link
               to="/basic/user/bench/experiment/$id/flow"
               params={{ id }}
               activeProps={{
@@ -98,7 +105,6 @@ export function ExperimentLayout({ id }: { id: string }) {
               流量监控
             </Link>
             {[
-              ['simulate', '模拟蓝军'],
               ['notes', '场景笔记'],
               ['detection/penetration', '检测手段'],
               ['attackteaching', '攻击教学'],

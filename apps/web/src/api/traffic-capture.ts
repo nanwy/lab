@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { appConfig } from '../config'
 import { apiClient, ApiError } from './index'
 
 const filterSchema = z.object({
@@ -130,3 +131,6 @@ export async function clearCaptureRecords(
       !v || typeof v !== 'object' || Reflect.get(v, 'status') !== 1,
   })
 }
+
+export const captureDownloadHref = (name: string) =>
+  `${appConfig.apiBaseUrl}/front/topo/capture_pcap_download/${name}`

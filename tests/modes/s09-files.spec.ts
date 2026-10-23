@@ -178,3 +178,105 @@ test('主导航使用已注册网盘路由，点击后无路由匹配警告', as
   ).toBeVisible()
   expect(warnings.filter((message) => /route|match/i.test(message))).toEqual([])
 })
+
+test('正式网盘多文件上传成功后刷新，取消与切域清理，完整工具栏适配窄屏', async ({
+  page,
+}) => {
+  let items: (typeof file)[] = []
+  let uploads = 0
+  let lists = 0
+  let releaseInitial!: () => void
+  const initial = new Promise<void>((resolve) => {
+    releaseInitial = resolve
+  })
+  let aborted = 0
+  const pending: import('@playwright/test').Route[] = []
+  page.on('requestfailed', (request) => {
+    if (request.url().endsWith('/files/upload/')) aborted++
+  })
+  await page.route('**/api/front/open/resource_network_disk/?*', (route) =>
+    route.fulfill({ json: [] }),
+  )
+  await page.route(
+    '**/api/front/learn/task/my_profile/files/?*',
+    async (route) => {
+      if (++lists === 1) {
+        await initial
+        return route.fulfill({ json: [] }).catch(() => {})
+      }
+      return route.fulfill({ json: items })
+    },
+  )
+  await page.route(
+    '**/api/front/learn/task/my_profile/files/upload/',
+    async (route) => {
+      uploads++
+      const body = route.request().postData() ?? ''
+      expect(body).toContain('filename="first.txt"')
+      expect(body).toContain('filename="second.txt"')
+      expect(body).toContain('name="parent_path"')
+      if (uploads === 1) {
+        items = [
+          { ...file, name: 'first.txt' },
+          { ...file, id: 'f2', name: 'second.txt' },
+        ]
+        return route.fulfill({ json: { message: '上传成功' } })
+      }
+      pending.push(route)
+    },
+  )
+  const files = [
+    { name: 'first.txt', mimeType: 'text/plain', buffer: Buffer.from('first') },
+    {
+      name: 'second.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('second'),
+    },
+  ]
+  await page.goto('/#/basic/user/file')
+  await page.getByRole('tab', { name: '个人资料', exact: true }).click()
+  const picker = page.getByLabel('选择上传文件', { exact: true })
+  await expect(picker).toBeAttached()
+  await picker.setInputFiles(files)
+  await expect(
+    page.getByRole('progressbar', { name: '上传进度' }),
+  ).toHaveAttribute('aria-valuenow', '100')
+  await expect(
+    page.getByRole('link', { name: 'first.txt', exact: true }),
+  ).toBeVisible()
+  releaseInitial()
+  await expect.poll(() => lists).toBe(2)
+  await page.screenshot({
+    path: test.info().outputPath('workspace-desktop.png'),
+    fullPage: true,
+    animations: 'disabled',
+  })
+  await page.getByRole('button', { name: '收起', exact: true }).click()
+  for (const width of [700, 390]) {
+    await page.setViewportSize({ width, height: 844 })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true)
+    await page.screenshot({
+      path: test.info().outputPath(`workspace-${width}.png`),
+      fullPage: true,
+      animations: 'disabled',
+    })
+  }
+  await picker.setInputFiles(files)
+  await expect.poll(() => pending.length).toBe(1)
+  await page.getByRole('button', { name: '取消上传', exact: true }).click()
+  await expect(page.getByText('已取消上传', { exact: true })).toBeVisible()
+  await expect.poll(() => aborted).toBe(1)
+  await picker.setInputFiles(files)
+  await expect.poll(() => pending.length).toBe(2)
+  await page.getByRole('tab', { name: '公开资料', exact: true }).click()
+  await expect.poll(() => aborted).toBe(2)
+  for (const route of pending)
+    await route.fulfill({ json: { message: '迟到响应' } }).catch(() => {})
+  await expect(page.getByRole('progressbar')).toHaveCount(0)
+  await expect(page.getByText('迟到响应', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('此目录暂无文件', { exact: true })).toBeVisible()
+})

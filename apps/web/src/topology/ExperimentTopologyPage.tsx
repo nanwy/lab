@@ -66,6 +66,7 @@ import {
   runtimeActionLabels,
   type NodeAction,
 } from '../api/topology-runtime'
+import { InterceptionDialog } from '../traffic/InterceptionDialog'
 import { CaptureDialog } from '../traffic/CaptureDialog'
 import { useExperiment } from '../experiments/ExperimentContext'
 import { DeviceResources } from './DeviceResources'
@@ -301,6 +302,7 @@ export function ExperimentTopologyEditor({
     node: FlowNode
     mode: NodeResourceMode
   } | null>(null)
+  const [interceptionNode, setInterceptionNode] = useState<string | null>(null)
   const [captureEdge, setCaptureEdge] = useState<string | number | null>(null)
   const [entranceNode, setEntranceNode] = useState<FlowNode | null>(null)
   const uploadInput = useRef<HTMLInputElement>(null)
@@ -1883,6 +1885,20 @@ export function ExperimentTopologyEditor({
             {selectedNode && !graphical ? (
               <>
                 {resourceState === 2 &&
+                resourceConfig.type === 'libvirt_middle_intercept' ? (
+                  <Button
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={busy || saving}
+                    onClick={() => {
+                      setInterceptionNode(selectedNode.id)
+                      setContext(null)
+                    }}
+                  >
+                    流量拦截
+                  </Button>
+                ) : null}
+                {resourceState === 2 &&
                 textConsoleType(
                   resourceConfig.type,
                   asObject(resourceConfig.base_info).console_type,
@@ -2170,6 +2186,14 @@ export function ExperimentTopologyEditor({
               ).catch(() => {})
           }}
         />
+        {interceptionNode && (
+          <InterceptionDialog
+            key={`${id}:${interceptionNode}`}
+            id={id}
+            uuid={interceptionNode}
+            close={() => setInterceptionNode(null)}
+          />
+        )}
         {captureEdge !== null ? (
           <CaptureDialog
             key={`${id}:${captureEdge}`}

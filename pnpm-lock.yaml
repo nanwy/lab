@@ -76,6 +76,9 @@ importers:
       '@xyflow/react':
         specifier: 12.10.1
         version: 12.10.1(@types/react@19.3.0)(immer@11.1.21)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      ace-builds:
+        specifier: 1.45.2
+        version: 1.45.2
       guacamole-common-js:
         specifier: 1.5.0
         version: 1.5.0(patch_hash=11e5d751158c2dca0e28746006dc2c4ee041cb09fa1e4c084e8ae575772628ff)
@@ -1857,6 +1860,9 @@ packages:
 
   '@xyflow/system@0.0.75':
     resolution: {integrity: sha512-iXs+AGFLi8w/VlAoc/iSxk+CxfT6o64Uw/k0CKASOPqjqz6E0rb5jFZgJtXGZCpfQI6OQpu5EnumP5fGxQheaQ==}
+
+  ace-builds@1.45.2:
+    resolution: {integrity: sha512-a0IADaETGBnBW5CIkniUJn7F+NyTuHWKqlv1A8FXaMmFflJsMGnU3TzkiyslInqIZ3odfcVKOdXBGIKBefzFDA==}
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -4783,6 +4789,8 @@ snapshots:
       d3-interpolate: 3.0.1
       d3-selection: 3.0.0
       d3-zoom: 3.0.0
+
+  ace-builds@1.45.2: {}
 
   acorn-jsx@5.3.2(acorn@8.19.0):
     dependencies:

@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
                 })
               },
             },
-            '^/ws/(dockerssh|vpcssh|kvmvnc|kvmrdp)/': {
+            '^/ws/(dockerssh|vpcssh|kvmvnc|kvmrdp|traffic_block_log)/': {
               target,
               changeOrigin: true,
               ws: true,

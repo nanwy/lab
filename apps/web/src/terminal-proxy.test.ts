@@ -49,6 +49,7 @@ it('文本和图形WS升级请求转发到同一上游，保留路径和Cookie�
       ['vpcssh/node%20two/', 'Token isolated-application'],
       ['kvmvnc/run-vnc/', undefined],
       ['kvmrdp/run-rdp/', undefined],
+      ['traffic_block_log/77/', undefined],
     ] as const) {
       await new Promise<void>((resolve, reject) => {
         const req = request(
@@ -94,6 +95,11 @@ it('文本和图形WS升级请求转发到同一上游，保留路径和Cookie�
       },
       {
         url: '/ws/kvmrdp/run-rdp/',
+        cookie: 'sessionid=isolated-test',
+        authorization: 'Basic isolated-test',
+      },
+      {
+        url: '/ws/traffic_block_log/77/',
         cookie: 'sessionid=isolated-test',
         authorization: 'Basic isolated-test',
       },

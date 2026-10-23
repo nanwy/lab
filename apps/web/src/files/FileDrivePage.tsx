@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   flexRender,
   getCoreRowModel,
@@ -119,8 +119,10 @@ function DirectoryContents({
   path: string
   navigate: (path: string) => void
 }) {
+  const client = useQueryClient()
+  const queryKey = fileListKey(accountId, scope, path)
   const query = useQuery({
-    queryKey: fileListKey(accountId, scope, path),
+    queryKey,
     queryFn: ({ signal }) => getFiles(scope, path, signal),
     retry: false,
   })
@@ -132,7 +134,14 @@ function DirectoryContents({
     path,
     selected: files.filter((file) => selection[String(file.id)]),
     clearSelection: () => setSelection({}),
-    refresh: () => query.refetch(),
+    refresh: async () => {
+      await client.cancelQueries({ queryKey, exact: true })
+      await client.invalidateQueries({
+        queryKey,
+        exact: true,
+        refetchType: 'active',
+      })
+    },
   }
   const columns: ColumnDef<DriveFile>[] = [
     {

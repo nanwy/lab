@@ -304,6 +304,8 @@ test('公开与个人目录名称遵循原站 localeCompare 排序', async ({ pa
     await page.getByRole('tab', { name: scope, exact: true }).click()
     await expect(names).toHaveText(['Beta.txt', 'alpha.txt'])
     await page.getByRole('button', { name: '名称', exact: true }).click()
+    await expect(names).toHaveText(['Beta.txt', 'alpha.txt'])
+    await page.getByRole('button', { name: '名称', exact: true }).click()
     await expect(names).toHaveText(['alpha.txt', 'Beta.txt'])
     await page.getByRole('button', { name: '名称', exact: true }).click()
     await expect(names).toHaveText(['Beta.txt', 'alpha.txt'])
@@ -479,3 +481,147 @@ for (const scope of ['public', 'personal'] as const) {
     expect((await download).suggestedFilename()).toBe('download.zip')
   })
 }
+
+test('目录导航保留修改时间排序，名称与时间按降序升序取消循环', async ({
+  page,
+}) => {
+  const entries = [
+    {
+      ...file,
+      id: 'middle',
+      name: 'Middle.txt',
+      altertime: '2026-10-20',
+      size: 20,
+    },
+    {
+      ...file,
+      id: 'alpha',
+      name: 'Alpha.txt',
+      altertime: '2026-10-10',
+      size: 10,
+    },
+    {
+      ...file,
+      id: 'zulu',
+      name: 'Zulu.txt',
+      altertime: '2026-10-30',
+      size: 30,
+    },
+    {
+      ...file,
+      id: 'folder',
+      name: '目录',
+      path: '/目录',
+      is_file: 0,
+      attached: null,
+    },
+  ]
+  for (const endpoint of [
+    'open/resource_network_disk',
+    'learn/task/my_profile/files',
+  ])
+    await page.route(`**/api/front/${endpoint}/?*`, (route) =>
+      route.fulfill({
+        json: entries.map((entry) => ({
+          ...entry,
+          is_shared_file: endpoint.startsWith('open') ? false : 0,
+        })),
+      }),
+    )
+  await page.goto('/#/basic/user/file')
+  const names = page.locator('tbody .file-name a')
+  for (const scope of ['公开资料', '个人资料']) {
+    await page.getByRole('tab', { name: scope, exact: true }).click()
+    for (const column of ['名称', '修改时间']) {
+      const sort = page.getByRole('button', { name: column, exact: true })
+      await sort.click()
+      await expect(names).toHaveText(['Zulu.txt', 'Middle.txt', 'Alpha.txt'])
+      await sort.click()
+      await expect(names).toHaveText(['Alpha.txt', 'Middle.txt', 'Zulu.txt'])
+      await sort.click()
+      await expect(names).toHaveText(['Middle.txt', 'Alpha.txt', 'Zulu.txt'])
+    }
+    const sizeSort = page.getByRole('button', { name: '大小', exact: true })
+    await sizeSort.click()
+    await expect(names).toHaveText(['Alpha.txt', 'Middle.txt', 'Zulu.txt'])
+    await sizeSort.click()
+    await expect(names).toHaveText(['Zulu.txt', 'Middle.txt', 'Alpha.txt'])
+    await sizeSort.click()
+    await expect(names).toHaveText(['Middle.txt', 'Alpha.txt', 'Zulu.txt'])
+    await page.getByRole('button', { name: '修改时间', exact: true }).click()
+    await page.getByLabel('选择 Middle.txt', { exact: true }).check()
+    await page.getByRole('button', { name: '目录', exact: true }).click()
+    await expect(
+      page.getByRole('button', { name: '返回上级', exact: true }),
+    ).toBeVisible()
+    await expect(names).toHaveText(['Zulu.txt', 'Middle.txt', 'Alpha.txt'])
+    await expect(
+      page.getByLabel('选择 Middle.txt', { exact: true }),
+    ).not.toBeChecked()
+    await page.getByRole('button', { name: '返回上级', exact: true }).click()
+    await expect(names).toHaveText(['Zulu.txt', 'Middle.txt', 'Alpha.txt'])
+  }
+})
+
+test('文件类型可辨识，个人来源列不增加排序入口', async ({ page }) => {
+  const cases = [
+    ['目录', '文件夹'],
+    ['跳转.pdf', '链接'],
+    ['报告.docx', 'Word 文档'],
+    ['数据.xlsx', '电子表格'],
+    ['设计.psd', '图片'],
+    ['说明.md', 'Markdown 文档'],
+    ['手册.pdf', 'PDF 文档'],
+    ['记录.txt', '文本文件'],
+    ['归档.tgz', '压缩包'],
+    ['程序.constructor', '文件'],
+  ]
+  const entries = cases.map(([name], index) => ({
+    ...file,
+    id: String(index),
+    name,
+    is_file: index === 0 ? 0 : 1,
+    isLink: index === 1,
+    attached: index === 0 ? null : `/files/${name}`,
+  }))
+  for (const endpoint of [
+    'open/resource_network_disk',
+    'learn/task/my_profile/files',
+  ])
+    await page.route(`**/api/front/${endpoint}/?*`, (route) =>
+      route.fulfill({
+        json: entries.map((entry) => ({
+          ...entry,
+          is_shared_file: endpoint.startsWith('open') ? false : 0,
+        })),
+      }),
+    )
+  await page.goto('/#/basic/user/file')
+  for (const scope of ['公开资料', '个人资料']) {
+    await page.getByRole('tab', { name: scope, exact: true }).click()
+    for (const [, label] of cases)
+      await expect(
+        page.getByRole('img', { name: `文件类型：${label}`, exact: true }),
+      ).toBeVisible()
+  }
+  await expect(
+    page.getByRole('columnheader', { name: '文件来源', exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: '文件来源', exact: true }),
+  ).toHaveCount(0)
+  await page.screenshot({
+    path: test.info().outputPath('file-types-desktop.png'),
+    fullPage: true,
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true)
+  await page.screenshot({
+    path: test.info().outputPath('file-types-mobile.png'),
+    fullPage: true,
+  })
+})

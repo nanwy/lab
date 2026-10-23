@@ -247,3 +247,44 @@ test('重命名提交期间后台刷新不卸载操作弹窗', async ({ page }) 
   release()
   await expect(dialog).toHaveCount(0)
 })
+
+test('个人列表成功读回清空勾选，失败保留，公开刷新保持勾选', async ({
+  page,
+}) => {
+  let fail = false
+  await page.route('**/api/front/learn/task/my_profile/files/?*', (route) =>
+    route.fulfill(
+      fail ? { status: 500, json: { error: '读取失败' } } : { json: [file] },
+    ),
+  )
+  await page.route('**/api/front/open/resource_network_disk/?*', (route) =>
+    route.fulfill({ json: [{ ...file, is_shared_file: false }] }),
+  )
+  await page.route(
+    '**/api/front/learn/task/my_profile/files/file-1/share/',
+    (route) => route.fulfill({ json: {} }),
+  )
+  await page.goto('/#/basic/user/file')
+  await page.getByLabel('选择 资料.txt', { exact: true }).check()
+  await page.getByRole('button', { name: '刷新', exact: true }).click()
+  await expect(
+    page.getByRole('button', { name: '刷新', exact: true }),
+  ).toBeEnabled()
+  await expect(page.getByLabel('选择 资料.txt', { exact: true })).toBeChecked()
+  await page.getByRole('tab', { name: '个人资料', exact: true }).click()
+  await page.getByLabel('选择 资料.txt', { exact: true }).check()
+  fail = true
+  await page.getByRole('button', { name: '刷新', exact: true }).click()
+  await expect(page.getByText('目录读取失败', { exact: true })).toBeVisible()
+  await expect(page.getByText('已选择 1 项', { exact: true })).toBeVisible()
+  fail = false
+  await page.getByRole('button', { name: '重试目录', exact: true }).click()
+  await expect(
+    page.getByLabel('选择 资料.txt', { exact: true }),
+  ).not.toBeChecked()
+  await page.getByLabel('选择 资料.txt', { exact: true }).check()
+  await page.getByRole('switch', { name: '共享 资料.txt', exact: true }).click()
+  await expect(
+    page.getByLabel('选择 资料.txt', { exact: true }),
+  ).not.toBeChecked()
+})

@@ -69,6 +69,7 @@ import {
 import { CaptureDialog } from '../traffic/CaptureDialog'
 import { useExperiment } from '../experiments/ExperimentContext'
 import { DeviceResources } from './DeviceResources'
+import { TrafficSniffingDialog } from './TrafficSniffingDialog'
 import { NodeConfiguration } from './NodeConfiguration'
 import { CanvasNode, CanvasNodeContext } from './CanvasNode'
 import { CanvasLabel } from './CanvasLabel'
@@ -280,6 +281,7 @@ export function ExperimentTopologyEditor({
   shared?: boolean
 }) {
   const queryClient = useQueryClient()
+  const [sniffingEdge, setSniffingEdge] = useState<string | number | null>(null)
   const [nodes, setNodes, changeNodes] = useNodesState<FlowNode>(initial.nodes)
   const [edges, setEdges, changeEdges] = useEdgesState<FlowEdge>(initial.edges)
   const [passthroughCells, setPassthroughCells] = useState(
@@ -2069,24 +2071,35 @@ export function ExperimentTopologyEditor({
                 ),
               )
             }) ? (
-              <Button
-                role="menuitem"
-                variant="ghost"
-                onClick={() => {
-                  const edgeId = selectedEdge.data.raw.data?.data_id
-                  if (
-                    typeof edgeId !== 'string' &&
-                    typeof edgeId !== 'number'
-                  ) {
-                    toast.error('缺少有效的链路业务标识')
-                    return
-                  }
-                  setCaptureEdge(edgeId)
-                  setContext(null)
-                }}
-              >
-                流量标记
-              </Button>
+              <>
+                {(
+                  [
+                    ['流量标记', setCaptureEdge],
+                    ['流量嗅探', setSniffingEdge],
+                  ] as const
+                ).map(([label, open]) => (
+                  <Button
+                    key={label}
+                    role="menuitem"
+                    variant="ghost"
+                    disabled={busy || saving}
+                    onClick={() => {
+                      const edgeId = selectedEdge.data.raw.data?.data_id
+                      if (
+                        typeof edgeId !== 'string' &&
+                        typeof edgeId !== 'number'
+                      ) {
+                        toast.error('缺少有效的链路业务标识')
+                        return
+                      }
+                      open(edgeId)
+                      setContext(null)
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </>
             ) : null}
             {editable &&
             selectedNode?.data.raw.shape !== 'custom-react-text' ? (
@@ -2133,6 +2146,14 @@ export function ExperimentTopologyEditor({
               </Button>
             ) : null}
           </div>
+        ) : null}
+        {sniffingEdge !== null ? (
+          <TrafficSniffingDialog
+            key={`${id}:${sniffingEdge}`}
+            id={id}
+            edgeId={sniffingEdge}
+            close={() => setSniffingEdge(null)}
+          />
         ) : null}
         <input
           type="file"

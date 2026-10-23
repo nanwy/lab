@@ -34,6 +34,7 @@ import {
 } from '../api/files'
 import { ApiError } from '../api'
 import { currentUserQueryOptions } from '../auth/session'
+import { FileExportButton } from './FileExportButton'
 import './files.css'
 
 export type FileActionsContext = {
@@ -294,9 +295,7 @@ function DirectoryContents({
           {scope === 'personal' ? (
             personalActions?.(context)
           ) : (
-            <Button variant="outline" disabled title="打包下载暂不可用">
-              打包下载
-            </Button>
+            <FileExportButton scope="public" context={context} />
           )}
           <Button
             variant="ghost"
@@ -426,7 +425,6 @@ function DirectoryContents({
       ) : null}
       <footer className="file-footer">
         <span>文件归档 / {scope === 'public' ? '公开资料' : '个人资料'}</span>
-        {scope === 'public' ? <span>打包下载暂不可用</span> : null}
       </footer>
       <Dialog
         open={Boolean(video)}

@@ -1,11 +1,14 @@
 import { expect, test } from '@playwright/test'
 import { resolve } from 'node:path'
 import { createServer, type ServerResponse } from 'node:http'
+const apiPort = Number(process.env.PLAYWRIGHT_UPLOAD_API_PORT ?? 4293)
+const apiOrigin = `http://127.0.0.1:${apiPort}`
+let browserOrigin = ''
 let pending: ServerResponse | undefined
 let received = ''
 let receivedHeaders: import('node:http').IncomingHttpHeaders = {}
 const server = createServer((request, response) => {
-  response.setHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:4193')
+  response.setHeader('Access-Control-Allow-Origin', browserOrigin)
   response.setHeader(
     'Access-Control-Allow-Headers',
     'authorization,x-csrftoken',
@@ -41,9 +44,11 @@ const server = createServer((request, response) => {
     else pending = response
   })
 })
-test.beforeAll(async () => {
+test.beforeAll(async ({ baseURL }) => {
+  if (!baseURL) throw new Error('上传传输测试需要 playwright.upload.config.ts')
+  browserOrigin = new URL(baseURL).origin
   await new Promise<void>((resolve) =>
-    server.listen(4293, '127.0.0.1', resolve),
+    server.listen(apiPort, '127.0.0.1', resolve),
   )
 })
 test.afterAll(async () => {
@@ -53,7 +58,7 @@ test.afterAll(async () => {
 
 test('真实传输报告字节进度并保留统一请求策略及多文件表单', async ({ page }) => {
   await page.goto('/')
-  const result = await page.evaluate(async () => {
+  const result = await page.evaluate(async (apiOrigin) => {
     const modulePath = '/src/api/client.ts'
     const { createApiClient } = await import(/* @vite-ignore */ modulePath)
     const progress: { loaded: number; total: number }[] = []
@@ -62,7 +67,7 @@ test('真实传输报告字节进度并保留统一请求策略及多文件表�
     form.append('attached', new File(['a'.repeat(100000)], 'a.txt'))
     form.append('attached', new File(['bb'], 'b.txt'))
     const client = createApiClient({
-      baseUrl: 'http://127.0.0.1:4293',
+      baseUrl: apiOrigin,
       requestPolicy: {
         apply({ headers }: { headers: Headers }) {
           headers.set('x-csrftoken', 'csrf-fixture')
@@ -77,7 +82,7 @@ test('真实传输报告字节进度并保留统一请求策略及多文件表�
         progress.push(event),
     })
     return { value, progress }
-  })
+  }, apiOrigin)
   expect(receivedHeaders['x-csrftoken']).toBe('csrf-fixture')
   expect(receivedHeaders.authorization).toBe('Token encoded-fixture')
   expect(received).toContain('/资料 & #')
@@ -102,15 +107,13 @@ async function mountUpload(page: import('@playwright/test').Page) {
 test('多个文件上传等待响应最多99%，成功100%并刷新提交目录', async ({
   page,
 }) => {
-  await page
-    .context()
-    .addCookies([
-      {
-        name: 'csrftoken',
-        value: 'csrf-upload-fixture',
-        url: 'http://127.0.0.1:4193',
-      },
-    ])
+  await page.context().addCookies([
+    {
+      name: 'csrftoken',
+      value: 'csrf-upload-fixture',
+      url: browserOrigin,
+    },
+  ])
   await page.addInitScript(() => localStorage.setItem('token', '上传 & #'))
   await mountUpload(page)
   await page.getByLabel('选择上传文件').setInputFiles([
@@ -265,13 +268,13 @@ test('取消与失败后可重新选择，服务失败不刷新目录', async ({
 
 test('响应头已到达但正文未完成时取消，不能产生迟到成功', async ({ page }) => {
   await page.goto('/')
-  const result = await page.evaluate(async () => {
+  const result = await page.evaluate(async (apiOrigin) => {
     const path = '/src/api/client.ts'
     const { createApiClient } = await import(/* @vite-ignore */ path)
     const abort = new AbortController()
     const errors: string[] = []
     const client = createApiClient({
-      baseUrl: 'http://127.0.0.1:4293',
+      baseUrl: apiOrigin,
       onError(error: { kind: string }) {
         errors.push(error.kind)
       },
@@ -285,6 +288,6 @@ test('响应头已到达但正文未完成时取消，不能产生迟到成功',
     setTimeout(() => abort.abort(), 50)
     const result = await request.catch((error: { kind: string }) => error.kind)
     return { result, errors }
-  })
+  }, apiOrigin)
   expect(result).toEqual({ result: 'cancelled', errors: ['cancelled'] })
 })

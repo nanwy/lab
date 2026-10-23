@@ -9,6 +9,7 @@ export function subscribeInterceptionLog(
     throw new ApiError('invalid-response', '缺少有效的拦截日志cid')
   let socket: WebSocket
   let disposed = false
+  let finished = false
   let received = false
   let attempts = 0
   let heartbeat: ReturnType<typeof setInterval> | undefined
@@ -20,6 +21,14 @@ export function subscribeInterceptionLog(
       socket.onopen = socket.onmessage = socket.onerror = socket.onclose = null
       socket.close()
     }
+  }
+  function fail(message: string) {
+    if (disposed || finished) return
+    finished = true
+    clearTimeout(retry)
+    retry = undefined
+    cleanupSocket()
+    error(new ApiError('network', message))
   }
   function connect() {
     cleanupSocket()
@@ -41,16 +50,24 @@ export function subscribeInterceptionLog(
       }
     }
     socket.onerror = () => {
-      if (disposed || received || attempts >= 4 || retry) return
+      if (disposed || finished || retry) return
+      clearInterval(heartbeat)
+      if (received || attempts >= 4) {
+        fail('拦截日志连接失败')
+        return
+      }
       retry = setTimeout(() => {
         retry = undefined
-        if (!disposed) {
+        if (!disposed && !finished) {
           attempts += 1
           connect()
         }
       }, 4_000)
     }
-    socket.onclose = () => clearInterval(heartbeat)
+    socket.onclose = () => {
+      clearInterval(heartbeat)
+      if (!retry) fail('拦截日志连接已关闭')
+    }
   }
   connect()
   return () => {

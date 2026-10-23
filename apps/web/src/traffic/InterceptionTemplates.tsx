@@ -59,15 +59,15 @@ export function InterceptionTemplates({
     <div className="space-y-4">
       <div className="flex gap-2">
         <Button onClick={() => setImporting(true)}>导入模板</Button>
-        <Button asChild disabled={!templates.data?.length}>
-          <a
-            href={interceptionExportHref()}
-            download
-            aria-disabled={!templates.data?.length}
-          >
-            导出模板
-          </a>
-        </Button>
+        {templates.data?.length ? (
+          <Button asChild>
+            <a href={interceptionExportHref()} download>
+              导出模板
+            </a>
+          </Button>
+        ) : (
+          <Button disabled>导出模板</Button>
+        )}
       </div>
       {templates.isPending ? (
         <p role="status">正在加载拦截模板…</p>

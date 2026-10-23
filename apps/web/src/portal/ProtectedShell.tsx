@@ -139,10 +139,14 @@ function LearnerShell({ user }: { user: CurrentUser }) {
                   <Link
                     key={item.path}
                     to={
-                      item.path === '/basic/user/bench' ? item.path : '/basic/$'
+                      item.path === '/basic/user/bench' ||
+                      item.path === '/basic/user/file'
+                        ? item.path
+                        : '/basic/$'
                     }
                     params={
-                      item.path === '/basic/user/bench'
+                      item.path === '/basic/user/bench' ||
+                      item.path === '/basic/user/file'
                         ? {}
                         : { _splat: item.path.slice(7) }
                     }

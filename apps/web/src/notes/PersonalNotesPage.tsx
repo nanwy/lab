@@ -1,3 +1,10 @@
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@workspace/ui/components/tabs'
+import { SharedNotes } from './SharedNotes'
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@workspace/ui/components/button'
@@ -246,7 +253,22 @@ export function NoteWorkspace({
   account: NoteId
   context: NoteContext
 }) {
-  return <PersonalNoteList account={account} context={context} />
+  if (context.type > 4)
+    return <PersonalNoteList account={account} context={context} />
+  return (
+    <Tabs defaultValue="personal">
+      <TabsList>
+        <TabsTrigger value="personal">我的笔记</TabsTrigger>
+        <TabsTrigger value="shared">共享笔记</TabsTrigger>
+      </TabsList>
+      <TabsContent value="personal">
+        <PersonalNoteList account={account} context={context} />
+      </TabsContent>
+      <TabsContent value="shared">
+        <SharedNotes accountId={account} scope={context} />
+      </TabsContent>
+    </Tabs>
+  )
 }
 export function PersonalNoteList({
   account,

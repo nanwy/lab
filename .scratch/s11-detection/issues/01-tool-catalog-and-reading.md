@@ -2,7 +2,7 @@
 
 **Type:** AFK
 
-**Status:** completed
+**Status:** complete（静态契约与隔离验收；真实服务仍未验证）
 
 **User stories:** US034；F040 的目录、基本信息及手册子能力。
 

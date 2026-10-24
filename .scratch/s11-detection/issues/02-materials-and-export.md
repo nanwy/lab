@@ -2,7 +2,7 @@
 
 **Type:** AFK
 
-**Status:** resolved（代码及隔离验收；真实服务契约与产物仍未验证）
+**Status:** complete（静态契约与隔离验收；真实服务仍未验证）
 
 **User stories:** US034；F040 的相关资料子能力。
 

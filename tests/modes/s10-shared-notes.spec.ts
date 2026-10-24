@@ -215,3 +215,72 @@ test('共享驻点沿原课程与章节上下文检查进入权限，仍保持�
   ).toBeVisible()
   await expect(page).toHaveURL(/#\/basic\/user\/note$/)
 })
+test('分享失败保留草稿和确认状态，成功保存正文，取消后重进共享不泄露缓存', async ({
+  page,
+}) => {
+  let share = true
+  let content = '<p>已共享正文</p>'
+  let attempts = 0
+  let releaseShare = () => {}
+  await page.route('**/api/front/user/note/2/', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      const body = route.request().postDataJSON()
+      expect(Object.keys(body).sort()).toEqual(['content', 'share'])
+      if (++attempts === 1)
+        return route.fulfill({ json: { status: 2, message: '合成分享拒绝' } })
+      if (attempts === 2)
+        await new Promise<void>((resolve) => {
+          releaseShare = resolve
+        })
+      share = body.share
+      content = body.content
+      return route.fulfill({ json: { id: 2 } })
+    }
+    return route.fulfill({
+      json: { id: 2, name: '我的研究', share, content, extend: null },
+    })
+  })
+  await page.route(
+    '**/api/front/learn/task/my_notes/folders/1/courses/10/shared_notes/?*',
+    (route) =>
+      route.fulfill({ json: share ? [{ id: 7, name: '共享研究' }] : [] }),
+  )
+  await page.route('**/api/front/share/note/7/', (route) =>
+    route.fulfill({
+      json: { id: 7, content, synthesis_score: 4, extend: null },
+    }),
+  )
+  await page.route('**/api/front/share/note/7/score/', (route) =>
+    route.fulfill({ json: { data: { note_score: 2 } } }),
+  )
+  await page.goto('/#/basic/user/note')
+  await page.getByRole('tab', { name: '共享笔记', exact: true }).click()
+  await expect(page.getByText('已共享正文', { exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: '我的笔记', exact: true }).click()
+  const editor = page.getByRole('textbox', { name: '富文本正文', exact: true })
+  const toggle = page.getByRole('switch', { name: '分享笔记', exact: true })
+  await editor.fill('分享也保存草稿')
+  await toggle.click()
+  await expect(page.getByText('合成分享拒绝', { exact: true })).toBeVisible()
+  await expect(toggle).toBeChecked()
+  await expect(editor).toContainText('分享也保存草稿')
+  await toggle.click()
+  await expect(
+    page.getByRole('button', { name: '保存笔记', exact: true }),
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('button', { name: '导出 Word', exact: true }),
+  ).toBeDisabled()
+  releaseShare()
+  await expect(toggle).not.toBeChecked()
+  expect(content).toContain('分享也保存草稿')
+  await page.getByRole('tab', { name: '共享笔记', exact: true }).click()
+  await expect(page.getByText('暂无共享笔记', { exact: true })).toBeVisible()
+  await expect(page.getByText('已共享正文', { exact: true })).toHaveCount(0)
+  await page.getByRole('tab', { name: '我的笔记', exact: true }).click()
+  await expect(editor).toContainText('分享也保存草稿')
+  await toggle.click()
+  await expect(toggle).toBeChecked()
+  await page.getByRole('tab', { name: '共享笔记', exact: true }).click()
+  await expect(page.getByText('分享也保存草稿', { exact: true })).toBeVisible()
+})

@@ -27,7 +27,7 @@ const material = (id, name, options = {}) => ({
   path: `/${name}`,
   is_file: 1,
   attached: `/media/s11-preview/${name}`,
-  size: 19,
+  size: 18,
   type: 'text/plain',
   isLink: false,
   create_time: '2026-10-24 12:00:00',
@@ -123,6 +123,18 @@ const api = createServer(async (request, response) => {
     }
   }
   if (url.pathname.startsWith('/media/s11-preview/')) {
+    if (url.pathname.endsWith('.docx')) {
+      response.writeHead(200, {
+        'content-type':
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'content-disposition': 'attachment; filename="manual.docx"',
+      })
+      return response.end(
+        readFileSync(
+          new URL('../tests/fixtures/s11-preview.docx', import.meta.url),
+        ),
+      )
+    }
     if (url.pathname.endsWith('.mp4')) {
       response.writeHead(200, { 'content-type': 'video/mp4' })
       return response.end(

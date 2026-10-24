@@ -1,6 +1,6 @@
-# S10 分析与工单草案
+# S10 分析与本地工单
 
-日期：2026-10-24。用户已确认四票拆分并调用 implement-spec，进入实施。切片状态以[实施计划](../../docs/planning/page-rebuild-implementation.md)为准。未创建外部 issue，未执行真实后端操作。
+日期：2026-10-24。用户已确认四票拆分并调用 implement-spec，四票已交付，证据见[实施记录](../../docs/planning/s10-implementation.md)。切片状态以[实施计划](../../docs/planning/page-rebuild-implementation.md)为准。未创建外部 issue，未执行真实后端操作。
 
 ## 已确认的决策
 
@@ -10,13 +10,13 @@
 
 ## 拆票前的事实修正
 
-F032 功能目录及 features JSON/CSV 误植网盘操作和接口，需同步修正为已确认的笔记操作。页面对照表已有笔记范围，但遗留“平台资料是否第三入口”应删除；该问题属于旧误植，不是 S10 未决需求。场景笔记实际请求使用 `/api/admin/simulation/experiment/`，不能因学员端页面而改成 front。
+F032 功能目录及 features JSON/CSV 误植网盘操作和接口，已同步修正为已确认的笔记操作。页面对照表已有笔记范围，但遗留“平台资料是否第三入口”已删除；该问题属于旧误植，不是 S10 未决需求。场景笔记实际请求使用 `/api/admin/simulation/experiment/`，不能因学员端页面而改成 front。
 
 原 Quill / React Quill 保存 HTML，三类消费者复用 Ys，分别保留个人笔记、实验笔记和实验 overview 的持久化归属。实现选型在首票核对当前 React 兼容性与历史 HTML 往返；不把新编辑器品牌交给用户拍板。不能仅证明字符串保存成功，必须覆盖格式和图片重开。
 
 详细静态事实见[编辑器及实验契约](editor-contracts.md)和[个人/共享笔记契约](personal-contracts.md)。原始 bundle 为唯一事实源，摘要不替代原件。静态消费者字段访问不等于真实后端响应类型和权限实测。
 
-## 建议的四张纵向工单
+## 已确认的四张纵向工单
 
 用户已确认以下四票、依赖及 AFK 分类，按本地文件 tracker 发布为 ready-for-agent；不表示业务完成。契约缺口须在票内明确阻塞对应流程，不能用模拟成功关闭整票。
 
@@ -42,3 +42,7 @@ F032 功能目录及 features JSON/CSV 误植网盘操作和接口，需同步�
 ## 实施约定
 
 四票粒度与依赖已确认，正式进入 implement-spec。实施使用 integration/s10-content 集成分支，每票独立 worktree，经 TDD、合入和最终双轴审查收口。不继承 S09 对特定文件的真实操作授权。若补证出现真正无法从原件或现有代码解决的产品决策，再作为 grilling 的下一轮问题提出。
+
+## 收口
+
+四票均在集成分支交付；双轴发现及增量发现已修复并复查关闭。首次空正文以有效 ID 加空字符串的真实只读响应确认，不再阻塞。真实写入、Word 实物、全部权限和非 Chromium 未验证。完整范围及实际命令见实施记录，不以fixture宣称真实操作完成。

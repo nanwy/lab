@@ -448,7 +448,7 @@ flowchart TD
 - **接口定位线索**：/api/front/learn/task/my_notes/; /api/front/user/note/; /api/front/share/note/; /api/front/upload_image/。
   - 词法候选示例（非调用链）：`/api/front/learn/task/my_notes/folders/?${Vt(e)}` @ `1811521`；`/api/front/learn/task/my_notes/folders/create/` @ `1811605`。
 - **验收**：默认/自定义目录门控正确；笔记保存重开及图片格式一致；分享、评分与Word产物分别验收。
-- **仍需补证**：服务端字段类型/空详情、分享可见范围与权限、目录级联删除、上传限制及Word真实正文/图片未实测；静态调用链见 S10 分析。
+- **仍需补证**：个人详情字段/空详情、分享可见范围与权限、目录级联删除、上传限制及Word真实正文/图片未实测；目录/共享读取类型已取样。
 - **需求/阶段**：US 42, 84, 85, 86；P5。
 - **补证**：[S10 静态契约与范围](../../.scratch/s10-content/analysis.md)。
 
@@ -533,7 +533,7 @@ flowchart TD
 - **接口定位线索**：/api/admin/simulation/experiment/*/user/note/; /api/front/upload_image/。
   - 词法候选示例（非调用链）：`${e.url||"/api/front/user/note/"}` @ `1811931`；`${e.url||"/api/front/user/note/"}${e.id}/` @ `1812028`。
 - **验收**：保存重开一致；导出内容与图片有效。
-- **仍需补证**：返回字段、外链图片与导出实际产物。
+- **仍需补证**：有效id与空字符串content已真实只读确认；真实保存、图片上传权限与Word实际产物未验证。
 - **需求/阶段**：US 32, 33；P2。
 
 ### F040 实验台 / 检测手段

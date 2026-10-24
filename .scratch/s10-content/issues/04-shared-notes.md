@@ -2,7 +2,7 @@
 
 **Type:** AFK
 
-**Status:** ready-for-agent
+**Status:** complete
 
 **User stories:** US086；F032。
 
@@ -12,14 +12,14 @@
 
 ## Acceptance criteria
 
-- [ ] 仅 type<=4 默认归档显示共享页签及个人详情分享开关；type>4 自定义目录均不显示。目录切换时重建合法页签状态，不保留旧共享筛选、详情或选择。
-- [ ] 分享开关固定 PATCH user/note/{id}/，body 为 share；当前编辑 HTML truthy 时原同时发送 content，保留此“分享也可能保存草稿”的副作用。执行原共享前图片检查并修正整篇 host 文本绕过问题，不把该门控扩展为个人正文保存的新限制。
-- [ ] 分享失败回到服务端确认的开关状态，保留草稿，错误提示一次；成功刷新相关个人/共享数据，取消分享后不继续展示旧缓存为可访问正文。不得猜测服务端分享对象或可见范围。
-- [ ] 共享列表按独立 shared_notes URL，保留 nopage/search、course_id、section_id、type、share=true 的原分支；200ms 搜索、直接数组、选首项与合法空列表，不套用个人列表查询参数。
-- [ ] 选择笔记独立读取 share/note/{id}/ 详情与其 score/，只读显示 content、synthesis_score 及适用驻点；没有新建、改名、删除、正文保存、上传或 Word 导出入口。
-- [ ] 个人评分从响应体 data.note_score 读取，POST 同一 score/，body 仅 note_score；allowClear=false，原 Rate 底层默认 count=5、allowHalf=false，用户提交1–5整数评分，不新增取消/任意小数或角色规则。成功刷新推荐度并更新个人分值，失败不报告成功。
-- [ ] 详情与评分的加载、空/错误、403、交错返回、重复快速选项与账号/目录切换均不串写；只读编辑器不得触发图片上传或残留可编辑插件。
-- [ ] 定向契约及隔离浏览器验证分享正文副作用、默认/自定义门控、只读页面、评分成功/失败及跨对象隔离，按[共同验收](../analysis.md#工程选择与验收)记录真实权限和分享可见范围未实测的边界。
+- [x] 仅 type<=4 默认归档显示共享页签及个人详情分享开关；type>4 自定义目录均不显示。目录切换时重建合法页签状态，不保留旧共享筛选、详情或选择。
+- [x] 分享开关固定 PATCH user/note/{id}/，body 为 share；当前编辑 HTML truthy 时原同时发送 content，保留此“分享也可能保存草稿”的副作用。执行原共享前图片检查并修正整篇 host 文本绕过问题，不把该门控扩展为个人正文保存的新限制。
+- [x] 分享失败回到服务端确认的开关状态，保留草稿，错误提示一次；成功刷新相关个人/共享数据，取消分享后不继续展示旧缓存为可访问正文。不得猜测服务端分享对象或可见范围。
+- [x] 共享列表按独立 shared_notes URL，保留 nopage/search、course_id、section_id、type、share=true 的原分支；200ms 搜索、直接数组、选首项与合法空列表，不套用个人列表查询参数。
+- [x] 选择笔记独立读取 share/note/{id}/ 详情与其 score/，只读显示 content、synthesis_score 及适用驻点；没有新建、改名、删除、正文保存、上传或 Word 导出入口。
+- [x] 个人评分从响应体 data.note_score 读取，POST 同一 score/，body 仅 note_score；allowClear=false，原 Rate 底层默认 count=5、allowHalf=false，用户提交1–5整数评分，不新增取消/任意小数或角色规则。成功刷新推荐度并更新个人分值，失败不报告成功。
+- [x] 详情与评分的加载、空/错误、403、交错返回、重复快速选项与账号/目录切换均不串写；只读编辑器不得触发图片上传或残留可编辑插件。
+- [x] 定向契约及隔离浏览器验证分享正文副作用、默认/自定义门控、只读页面、评分成功/失败及跨对象隔离，按[共同验收](../analysis.md#工程选择与验收)记录真实权限和分享可见范围未实测的边界。
 
 ## Blocked by
 
@@ -28,3 +28,5 @@
 ## Evidence
 
 具体调用链、请求体和原实现差异见[个人/共享笔记静态契约](../personal-contracts.md)。实现不得把缺少真实权限取样当作自行设计分享规则的理由。
+
+实施及验收：本票已合入 `integration/s10-content`，范围、定向检查、审查修正和真实联调边界统一见[实施记录](../../../docs/planning/s10-implementation.md)。真实 Word/权限等未实测不冒充通过。

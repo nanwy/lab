@@ -5,6 +5,7 @@ import { fileURLToPath, URL } from 'node:url'
 import process from 'node:process'
 import console from 'node:console'
 import { Buffer } from 'node:buffer'
+import { readFileSync } from 'node:fs'
 import { portalFixtures } from '../apps/web/src/mocks/portal-fixtures.ts'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
@@ -108,6 +109,7 @@ const api = createServer(async (request, response) => {
                 material('office', 'manual.docx', {
                   type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 }),
+                material('video', 'sample.mp4', { type: 'video/mp4' }),
               ],
       })
     }
@@ -121,6 +123,14 @@ const api = createServer(async (request, response) => {
     }
   }
   if (url.pathname.startsWith('/media/s11-preview/')) {
+    if (url.pathname.endsWith('.mp4')) {
+      response.writeHead(200, { 'content-type': 'video/mp4' })
+      return response.end(
+        readFileSync(
+          new URL('../tests/fixtures/s11-preview.mp4', import.meta.url),
+        ),
+      )
+    }
     const zipped = url.pathname.endsWith('.zip')
     response.writeHead(200, {
       'content-type': zipped ? 'application/zip' : 'text/plain; charset=utf-8',

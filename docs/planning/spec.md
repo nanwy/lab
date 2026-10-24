@@ -59,7 +59,7 @@
 31. As a learner, I want to read the experiment overview and scene instructions, so that I understand the training context.
 32. As an authorized note editor, I want to read, edit and save experiment notes, so that I can retain my observations.
 33. As an authorized note editor, I want to upload supported images and export experiment notes to Word, so that I can produce usable experiment documentation.
-34. As an authorized experiment participant, I want to use each available detection category and inspect its actual results, so that I can complete the supported detection workflow.
+34. As an experiment participant, I want to browse the five detection tool categories and read tool information, manuals and related materials, so that I can understand and obtain the available detection resources.
 35. As an authorized experiment participant, I want to follow attack-teaching activities and configure permitted simulated-blue-team resources, so that I can complete the scene-specific training workflow.
 
 ### Courses, tasks and learning routes

@@ -80,6 +80,7 @@ function NoteSession({
         content,
         operation.current.signal,
       )
+      await client.cancelQueries({ queryKey: key, exact: true })
       if (operation.current.signal.aborted) return
       client.setQueryData(key, saved)
       setDraft((current) => ({

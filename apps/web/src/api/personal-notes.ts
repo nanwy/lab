@@ -160,7 +160,13 @@ export async function savePersonalNote(
       isBusinessFailure: businessFailure,
     },
   )
-  return getPersonalNote(id, signal)
+  const saved = await getPersonalNote(id, signal)
+  if (saved.content !== content)
+    throw new ApiError(
+      'invalid-response',
+      '保存后读取的笔记正文与提交内容不一致，草稿已保留',
+    )
+  return saved
 }
 export async function deletePersonalNote(id: NoteId, signal?: AbortSignal) {
   await apiClient.request('/front/user/note/delete/', {

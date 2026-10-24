@@ -22,7 +22,7 @@ export async function getExperimentNote(
   if (!result.success)
     throw new ApiError(
       'invalid-response',
-      '笔记响应不符合 id/content 契约；空笔记协议尚未确认',
+      '笔记响应不符合 id/content 契约；需要有效笔记 ID 与字符串正文',
     )
   return result.data
 }

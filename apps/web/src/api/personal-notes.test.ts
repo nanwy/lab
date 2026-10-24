@@ -101,8 +101,14 @@ it('个人笔记新增和改名走目录，正文和删除走个人端点且不�
     share: true,
     extend: { breakpoint_time: 12, opaque: '保留' },
   }
-  const fetch = vi.fn<typeof globalThis.fetch>(async (url) =>
-    Response.json(String(url).includes('delete') ? { status: 1 } : note),
+  const fetch = vi.fn<typeof globalThis.fetch>(async (url, init) =>
+    Response.json(
+      String(url).includes('delete')
+        ? { status: 1 }
+        : init?.method === 'GET'
+          ? { ...note, content: '<p>更新</p>' }
+          : note,
+    ),
   )
   vi.stubGlobal('fetch', fetch)
   const context = { folderId: 2, courseId: 20, type: 2 }

@@ -164,13 +164,11 @@ test('图片选择、拖入和base64粘贴均上传后插入，支持预览和�
   })
   await expect(page.getByText('图片上传失败', { exact: true })).toHaveCount(1)
   await expect(page.getByRole('button', { name: '保存笔记' })).toBeEnabled()
-  await page
-    .locator('input[type=file]')
-    .setInputFiles({
-      name: 'selected.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from('image'),
-    })
+  await page.locator('input[type=file]').setInputFiles({
+    name: 'selected.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('image'),
+  })
   await expect(editor.locator('img')).toHaveCount(1)
   await editor.evaluate((element) => {
     const transfer = new DataTransfer()
@@ -339,7 +337,7 @@ test('离开编辑会话取消旧上传，切换实验后迟到响应不插入�
   await expect(page.locator('.ql-editor img')).toHaveCount(0)
 })
 
-test('未知空协议显示契约阻塞，可重试读取合法空正文，拒绝访问不伪装成功', async ({
+test('无效详情明确报错，可重试读取有效ID的空正文，拒绝访问不伪装成功', async ({
   page,
   errors,
 }) => {
@@ -349,7 +347,9 @@ test('未知空协议显示契约阻塞，可重试读取合法空正文，拒�
     (route) => route.fulfill({ json: response }),
   )
   await page.goto('/#/basic/user/bench/experiment/one/notes')
-  await expect(page.getByRole('alert')).toContainText('空笔记协议尚未确认')
+  await expect(page.getByRole('alert')).toContainText(
+    '需要有效笔记 ID 与字符串正文',
+  )
   await expect(page.getByRole('button', { name: '保存笔记' })).toHaveCount(0)
   response = { id: 9, content: '' }
   await page.getByRole('button', { name: '重试笔记' }).click()
@@ -379,4 +379,66 @@ test('工具栏可按名称操作行内格式和清格式', async ({ page }) => 
   await expect(editor.locator('strong')).toHaveText('可编辑文字')
   await page.getByRole('button', { name: '清除格式', exact: true }).click()
   await expect(editor.locator('strong')).toHaveCount(0)
+})
+
+test('场景保存后迟到旧读取不污染重开的正文', async ({ page }) => {
+  let saved = '<p>场景原正文</p>'
+  let reads = 0
+  let releaseOld!: () => void
+  let oldStarted!: () => void
+  let releaseReopen!: () => void
+  let reopenStarted!: () => void
+  const oldPending = new Promise<void>((r) => {
+    releaseOld = r
+  })
+  const oldStart = new Promise<void>((r) => {
+    oldStarted = r
+  })
+  const reopenPending = new Promise<void>((r) => {
+    releaseReopen = r
+  })
+  const reopenStart = new Promise<void>((r) => {
+    reopenStarted = r
+  })
+  await page.route(
+    '**/api/admin/simulation/experiment/one/user/note/',
+    async (r) => {
+      if (r.request().method() === 'POST') {
+        saved = r.request().postDataJSON().content
+        return r.fulfill({ json: { status: 1 } })
+      }
+      const snapshot = saved
+      reads++
+      if (reads === 3) {
+        oldStarted()
+        await oldPending
+      }
+      if (reads >= 5) {
+        reopenStarted()
+        await reopenPending
+      }
+      await r.fulfill({ json: { id: 7, content: snapshot } }).catch(() => {})
+    },
+  )
+  await page.goto('/#/basic/user/bench/experiment/one/notes')
+  const editor = page.getByRole('textbox', { name: '富文本正文', exact: true })
+  await expect(editor).toContainText('场景原正文')
+  await page.getByRole('link', { name: '场景说明', exact: true }).click()
+  await page.getByRole('link', { name: '场景笔记', exact: true }).click()
+  await oldStart
+  await editor.fill('场景已保存的新正文')
+  await page.getByRole('button', { name: '保存笔记', exact: true }).click()
+  await expect(page.getByText('笔记已保存', { exact: true })).toBeVisible()
+  releaseOld()
+  await page.waitForTimeout(200)
+  await page.getByRole('link', { name: '场景说明', exact: true }).click()
+  await page.getByRole('link', { name: '场景笔记', exact: true }).click()
+  await reopenStart
+  try {
+    await expect(editor).toContainText('场景已保存的新正文')
+  } finally {
+    releaseReopen()
+  }
+  await page.reload()
+  await expect(editor).toContainText('场景已保存的新正文')
 })

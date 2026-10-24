@@ -339,3 +339,152 @@ test('未保存内容切目录可取消，路由离开需确认；接受后新�
   await expect(editor).toContainText('原始正文')
   await expect(editor).not.toContainText('私有草稿')
 })
+
+test('保存回读旧正文时保留提交草稿且允许重试', async ({ page }) => {
+  let saved = note.content
+  let stale = true
+  await page.route('**/api/front/user/note/n1/', (r) => {
+    if (r.request().method() === 'PATCH') {
+      if (!stale) saved = r.request().postDataJSON().content
+      return r.fulfill({ json: { id: 'n1' } })
+    }
+    return r.fulfill({ json: { ...note, content: saved } })
+  })
+  await page.goto('/#/basic/user/note')
+  const editor = page.getByRole('textbox', { name: '富文本正文', exact: true })
+  await editor.fill('需要保存的草稿')
+  await page.getByRole('button', { name: '保存笔记', exact: true }).click()
+  await expect(
+    page.getByText('保存后读取的笔记正文与提交内容不一致，草稿已保留', {
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(editor).toContainText('需要保存的草稿')
+  await expect(page.getByText('笔记已保存', { exact: true })).toHaveCount(0)
+  stale = false
+  await page.getByRole('button', { name: '保存笔记', exact: true }).click()
+  await expect(page.getByText('笔记已保存', { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(editor).toContainText('需要保存的草稿')
+})
+
+test('新建刷新重排和活动笔记移出列表均保留当前草稿', async ({ page }) => {
+  let items = [{ id: 'n1', name: note.name }]
+  let created = 0
+  await page.route(
+    '**/api/front/learn/task/my_notes/folders/9/courses/0/notes/?*',
+    (r) => r.fulfill({ json: items }),
+  )
+  await page.route(
+    '**/api/front/learn/task/my_notes/folders/9/courses/0/notes/',
+    (r) => {
+      created++
+      items =
+        created === 1
+          ? [{ id: 'n2', name: '新记录' }, ...items]
+          : [{ id: 'n3', name: '另一记录' }]
+      return r.fulfill({ json: { id: created === 1 ? 'n2' : 'n3' } })
+    },
+  )
+  await page.route('**/api/front/user/note/n2/', (r) =>
+    r.fulfill({
+      json: { ...note, id: 'n2', name: '新记录', content: '<p>另一本正文</p>' },
+    }),
+  )
+  await page.goto('/#/basic/user/note')
+  await page.getByRole('button', { name: '研究', exact: true }).click()
+  const editor = page.getByRole('textbox', { name: '富文本正文', exact: true })
+  await editor.fill('不能被刷新丢掉的草稿')
+  for (const name of ['新记录', '另一记录']) {
+    await page.getByRole('button', { name: '新建笔记', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('名称', { exact: true }).fill(name)
+    await dialog.getByRole('button', { name: '保存名称', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(editor).toContainText('不能被刷新丢掉的草稿')
+    await expect(
+      page.getByRole('heading', { name: note.name, exact: true }),
+    ).toBeVisible()
+  }
+  await expect(
+    page.getByText(
+      '当前笔记已不在列表中，草稿仍保留；选择其他笔记前会确认离开。',
+      { exact: true },
+    ),
+  ).toBeVisible()
+  page.once('dialog', (d) => d.dismiss())
+  await page.getByRole('button', { name: '另一记录', exact: true }).click()
+  await expect(editor).toContainText('不能被刷新丢掉的草稿')
+})
+
+for (const action of ['保存', '分享'] as const) {
+  test(`${action}结果不会被迟到的旧详情覆盖`, async ({ page }) => {
+    let saved = { ...note }
+    let reads = 0
+    let release!: () => void
+    let started!: () => void
+    const pending = new Promise<void>((r) => {
+      release = r
+    })
+    const start = new Promise<void>((r) => {
+      started = r
+    })
+    await page.route(
+      '**/api/front/learn/task/my_notes/folders/*/courses/*/notes/?*',
+      (r) =>
+        r.fulfill({
+          json: [
+            { id: 'n1', name: note.name },
+            { id: 'n2', name: '备用记录' },
+          ],
+        }),
+    )
+    await page.route('**/api/front/user/note/n2/', (r) =>
+      r.fulfill({ json: { ...note, id: 'n2' } }),
+    )
+    await page.route('**/api/front/user/note/n1/', async (r) => {
+      if (r.request().method() === 'PATCH') {
+        saved = { ...saved, ...r.request().postDataJSON() }
+        return r.fulfill({ json: { id: 'n1' } })
+      }
+      const snapshot = { ...saved }
+      if (++reads === 2) {
+        started()
+        await pending
+      }
+      await r.fulfill({ json: snapshot }).catch(() => {})
+    })
+    await page.goto('/#/basic/user/note')
+    const editor = page.getByRole('textbox', {
+      name: '富文本正文',
+      exact: true,
+    })
+    await expect(editor).toContainText('原始正文')
+    await page.getByRole('button', { name: '备用记录', exact: true }).click()
+    await expect(
+      page.getByRole('heading', { name: '观察记录', exact: true }),
+    ).toBeVisible()
+    await page.getByRole('button', { name: note.name, exact: true }).click()
+    await start
+    await editor.fill('刚刚持久化的新正文')
+    if (action === '保存')
+      await page.getByRole('button', { name: '保存笔记', exact: true }).click()
+    else
+      await page.getByRole('switch', { name: '分享笔记', exact: true }).click()
+    await expect(
+      page.getByText(action === '保存' ? '笔记已保存' : '已分享笔记', {
+        exact: true,
+      }),
+    ).toBeVisible()
+    release()
+    // 让已经返回的旧网络响应获得消费机会，再通过页面检查当前内容。
+    await page.waitForTimeout(200)
+    await expect(editor).toContainText('刚刚持久化的新正文')
+    if (action === '分享')
+      await expect(
+        page.getByRole('switch', { name: '分享笔记', exact: true }),
+      ).toBeChecked()
+    await page.reload()
+    await expect(editor).toContainText('刚刚持久化的新正文')
+  })
+}

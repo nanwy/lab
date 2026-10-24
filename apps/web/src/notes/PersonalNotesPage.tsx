@@ -334,9 +334,12 @@ export function PersonalNoteList({
     retry: false,
   })
   const [selected, setSelected] = useState<NoteId>()
-  const id = list.data?.some((n) => String(n.id) === String(selected))
-    ? selected
-    : list.data?.[0]?.id
+  const id = selected ?? list.data?.[0]?.id
+  if (selected === undefined && id !== undefined) setSelected(id)
+  const selectedMissing =
+    selected !== undefined &&
+    list.isSuccess &&
+    !list.data.some((note) => String(note.id) === String(selected))
   return (
     <div className="grid gap-4 xl:grid-cols-[13rem_minmax(0,1fr)]">
       {dialog && dialog.kind !== 'delete' && (
@@ -372,8 +375,8 @@ export function PersonalNoteList({
             client.removeQueries({
               queryKey: personalNoteKeys.detail(account, dialog.id!),
             })
-            setSelected(undefined)
             await refreshList()
+            if (String(id) === String(dialog.id)) setSelected(undefined)
           }}
         />
       )}
@@ -440,6 +443,11 @@ export function PersonalNoteList({
         )}
       </aside>
       <div className="min-w-0">
+        {selectedMissing && (
+          <p role="status">
+            当前笔记已不在列表中，草稿仍保留；选择其他笔记前会确认离开。
+          </p>
+        )}
         {id !== undefined ? (
           <PersonalNoteEditor
             key={String(id)}
@@ -501,6 +509,7 @@ export function PersonalNoteEditor({
     setBusy(true)
     try {
       const saved = await savePersonalNote(noteId, submitted, signal)
+      await client.cancelQueries({ queryKey: key, exact: true })
       if (signal.aborted) return
       client.setQueryData(key, saved)
       setDraft((current) =>

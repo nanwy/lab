@@ -140,13 +140,15 @@ function LearnerShell({ user }: { user: CurrentUser }) {
                     key={item.path}
                     to={
                       item.path === '/basic/user/bench' ||
-                      item.path === '/basic/user/file'
+                      item.path === '/basic/user/file' ||
+                      item.path === '/basic/user/note'
                         ? item.path
                         : '/basic/$'
                     }
                     params={
                       item.path === '/basic/user/bench' ||
-                      item.path === '/basic/user/file'
+                      item.path === '/basic/user/file' ||
+                      item.path === '/basic/user/note'
                         ? {}
                         : { _splat: item.path.slice(7) }
                     }

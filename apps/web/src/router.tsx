@@ -1,3 +1,4 @@
+import { PersonalNotesPage } from './notes/PersonalNotesPage'
 import { ExperimentNotes } from './experiments/ExperimentNotes'
 import {
   Link,
@@ -385,6 +386,12 @@ const sessionHomeRoute = createRoute({
   component: HomePage,
 })
 
+const personalNotesRoute = createRoute({
+  getParentRoute: () => basicRoute,
+  path: 'user/note',
+  component: PersonalNotesPage,
+})
+
 const filesRoute = createRoute({
   getParentRoute: () => basicRoute,
   path: 'user/file',
@@ -610,6 +617,7 @@ const routeTree = rootRoute.addChildren([
     sessionHomeRoute,
     personalRoute,
     filesRoute,
+    personalNotesRoute,
     experimentListRoute,
     experimentRoute.addChildren([
       experimentIndexRoute,

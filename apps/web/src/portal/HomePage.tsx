@@ -130,10 +130,14 @@ export function HomePage() {
                     className="rounded-md border px-4 py-3 hover:bg-accent"
                     key={item.path}
                     to={
-                      item.path === '/basic/user/bench' ? item.path : '/basic/$'
+                      item.path === '/basic/user/bench' ||
+                      item.path === '/basic/user/note'
+                        ? item.path
+                        : '/basic/$'
                     }
                     params={
-                      item.path === '/basic/user/bench'
+                      item.path === '/basic/user/bench' ||
+                      item.path === '/basic/user/note'
                         ? {}
                         : { _splat: item.path.slice(7) }
                     }

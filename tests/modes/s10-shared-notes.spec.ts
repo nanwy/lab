@@ -1,4 +1,15 @@
-import { expect, test } from '@playwright/test'
+import { expect, test as base } from '@playwright/test'
+const test = base.extend<{ runtimeErrors: string[] }>({
+  runtimeErrors: [
+    async ({ page }, use) => {
+      const errors: string[] = []
+      page.on('pageerror', (error) => errors.push(error.message))
+      await use(errors)
+      expect(errors).toEqual([])
+    },
+    { auto: true },
+  ],
+})
 import { portalFixtures } from '../../apps/web/src/mocks/portal-fixtures'
 test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/(front|admin|captcha)\//, (route) =>
@@ -91,6 +102,20 @@ test('共享笔记只读，独立评分成功后更新推荐度且不暴露编�
     page.getByRole('button', { name: '评4星', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByLabel('推荐度')).toHaveText('4 / 5')
+  await page.screenshot({
+    path: '/tmp/s10-04-results/shared-desktop.png',
+    fullPage: true,
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true)
+  await page.screenshot({
+    path: '/tmp/s10-04-results/shared-mobile.png',
+    fullPage: true,
+  })
 })
 test('评分失败保持已确认分值，独立读取失败可恢复，快速换笔记不串正文及评分', async ({
   page,
@@ -155,4 +180,38 @@ test('评分失败保持已确认分值，独立读取失败可恢复，快速�
   await expect(
     page.getByRole('button', { name: '评3星', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
+})
+test('共享驻点沿原课程与章节上下文检查进入权限，仍保持只读', async ({
+  page,
+}) => {
+  await page.route('**/api/front/share/note/7/', (route) =>
+    route.fulfill({
+      json: {
+        id: 7,
+        content: '<p>驻点共享正文</p>',
+        synthesis_score: 4,
+        extend: { breakpoint_time: 62 },
+        section_id: 20,
+      },
+    }),
+  )
+  await page.route('**/api/front/share/note/7/score/', (route) =>
+    route.fulfill({ json: { data: { note_score: 2 } } }),
+  )
+  await page.route(
+    '**/api/front/learn/task/self_study/open_courses/10/can_enter/',
+    (route) => route.fulfill({ json: { can_enter: false } }),
+  )
+  await page.goto('/#/basic/user/note')
+  await page.getByRole('tab', { name: '共享笔记', exact: true }).click()
+  await expect(
+    page.getByRole('button', { name: '跳转到驻点 01:02', exact: true }),
+  ).toBeVisible({ timeout: 2000 })
+  await page
+    .getByRole('button', { name: '跳转到驻点 01:02', exact: true })
+    .click()
+  await expect(
+    page.getByText('该专题已下线，无法查看！', { exact: true }),
+  ).toBeVisible()
+  await expect(page).toHaveURL(/#\/basic\/user\/note$/)
 })

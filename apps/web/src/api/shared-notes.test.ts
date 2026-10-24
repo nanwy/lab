@@ -89,3 +89,28 @@ it('评分仅提交1–5整数；分享使用个人端点并同时保存非空�
     kind: 'business',
   })
 })
+it('类型2–4附带type，自定义目录拒绝共享读取；成功形态与合法空数组不混淆', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>(async () => Response.json([]))
+  vi.stubGlobal('fetch', fetch)
+  expect(
+    await getSharedNotes({ folderId: 40, courseId: 99, type: 4 }, ''),
+  ).toEqual([])
+  const url = new URL(String(fetch.mock.calls[0]?.[0]))
+  expect(url.pathname).toBe(
+    '/api/front/learn/task/my_notes/folders/4/courses/99/shared_notes/',
+  )
+  expect(Object.fromEntries(url.searchParams)).toEqual({
+    course_id: '99',
+    nopage: '1',
+    search: '',
+    type: '4',
+    share: 'true',
+  })
+  expect(() =>
+    getSharedNotes({ folderId: 40, courseId: 0, type: 5 }, ''),
+  ).toThrow('自定义目录不支持共享笔记')
+  fetch.mockResolvedValueOnce(Response.json({ results: [] }))
+  await expect(
+    getSharedNotes({ folderId: 1, courseId: 10, type: 1 }, ''),
+  ).rejects.toMatchObject({ kind: 'invalid-response' })
+})

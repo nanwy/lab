@@ -11,6 +11,7 @@ export function ShareToggle({
   share,
   content,
   onShared,
+  onBusyChange,
   disabled = false,
 }: {
   disabled?: boolean
@@ -18,20 +19,29 @@ export function ShareToggle({
   share: boolean
   content: string
   onShared: (share: boolean) => void
+  onBusyChange?: (busy: boolean) => void
 }) {
   const client = useQueryClient()
   const [busy, setBusy] = useState(false)
   const operation = useRef(new AbortController())
+  const notifyBusy = useRef(onBusyChange)
+  useEffect(() => {
+    notifyBusy.current = onBusyChange
+  }, [onBusyChange])
   useEffect(() => {
     const controller = new AbortController()
     operation.current = controller
-    return () => controller.abort()
+    return () => {
+      controller.abort()
+      notifyBusy.current?.(false)
+    }
   }, [])
   const change = async (next: boolean) => {
     if (busy || disabled) return
     try {
       validateImageSources(content)
       setBusy(true)
+      notifyBusy.current?.(true)
       await sharePersonalNote(noteId, next, content, operation.current.signal)
       if (operation.current.signal.aborted) return
       await client.cancelQueries({ queryKey: ['shared-notes'] })
@@ -47,7 +57,10 @@ export function ShareToggle({
       ))
         toast.error(error instanceof Error ? error.message : '分享失败')
     } finally {
-      if (!operation.current.signal.aborted) setBusy(false)
+      if (!operation.current.signal.aborted) {
+        setBusy(false)
+        notifyBusy.current?.(false)
+      }
     }
   }
   return (

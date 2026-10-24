@@ -12,6 +12,7 @@ import {
   sharedNoteKeys,
 } from '../api/shared-notes'
 import type { NoteContext, NoteId } from '../api/personal-notes'
+import { NoteBreakpoint } from './NoteBreakpoint'
 import { RichContentEditor } from '../content/RichContentEditor'
 function showError(error: unknown) {
   if (
@@ -94,6 +95,7 @@ function SharedSession({
             <SharedDetail
               key={String(current.id)}
               accountId={accountId}
+              scope={scope}
               noteId={current.id}
             />
           )}
@@ -126,9 +128,11 @@ function ReadError({
 function SharedDetail({
   accountId,
   noteId,
+  scope,
 }: {
   accountId: NoteId
   noteId: NoteId
+  scope: NoteContext
 }) {
   const client = useQueryClient()
   const detail = useQuery({
@@ -184,6 +188,7 @@ function SharedDetail({
             推荐度：
             <span aria-label="推荐度">{detail.data.synthesis_score} / 5</span>
           </div>
+          <NoteBreakpoint context={scope} note={detail.data} />
           <RichContentEditor
             value={detail.data.content}
             scopeKey={`${accountId}:shared:${noteId}`}

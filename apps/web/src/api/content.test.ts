@@ -25,3 +25,21 @@ it('图片按 Ys 协议上传，携带 CSRF 但不携带 Ae Token，只消费 da
     ),
   ).resolves.toBe('/uploads/diagram.png')
 })
+it('调用者提供 uuid 时保留归属，猜测的url字段与危险地址不构成上传成功', async () => {
+  vi.stubGlobal('fetch', async (_url: URL, options: RequestInit) => {
+    expect((options.body as FormData).get('uuid')).toBe('note-9')
+    return Response.json({ url: '/wrong.png' })
+  })
+  await expect(
+    uploadContentImage(new File(['image'], 'a.png'), {
+      mode: 'note',
+      uuid: 'note-9',
+    }),
+  ).rejects.toMatchObject({ kind: 'invalid-response' })
+  vi.stubGlobal('fetch', async () =>
+    Response.json({ data: { url: 'javascript:alert(1)' } }),
+  )
+  await expect(
+    uploadContentImage(new File(['image'], 'a.png'), { mode: 'scene' }),
+  ).rejects.toMatchObject({ kind: 'invalid-response' })
+})

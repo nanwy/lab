@@ -222,3 +222,85 @@ test('自定义目录新建笔记、改名和删除，失败保留弹窗且不�
     page.getByRole('button', { name: '改后记录', exact: true }),
   ).toHaveCount(0)
 })
+test('正文失败保留草稿，保存后重开格式一致；Word导出已有版本不偷偷保存草稿', async ({
+  page,
+}) => {
+  let content = note.content
+  let patches = 0
+  await page.route('**/api/front/user/note/n1/', (r) => {
+    if (r.request().method() === 'PATCH') {
+      expect(Object.keys(r.request().postDataJSON())).toEqual(['content'])
+      if (++patches === 1)
+        return r.fulfill({ status: 500, json: { error: '合成正文保存失败' } })
+      content = r.request().postDataJSON().content
+      return r.fulfill({ json: { id: 'n1' } })
+    }
+    return r.fulfill({ json: { ...note, content } })
+  })
+  await page.route('**/api/front/user/note/n1/export/', (r) => {
+    expect(r.request().method()).toBe('POST')
+    expect(r.request().postData()).toBeNull()
+    return r.fulfill({
+      json: { status: 1, data: { file_path: '/files/n.docx' } },
+    })
+  })
+  await page.route('**/files/n.docx?*', (r) =>
+    r.fulfill({
+      headers: {
+        'content-type':
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'content-disposition': 'attachment; filename=n.docx',
+      },
+      body: 'isolated-word-fixture',
+    }),
+  )
+  await page.goto('/#/basic/user/note')
+  const editor = page.getByRole('textbox', { name: '富文本正文', exact: true })
+  await editor.fill('保存的新正文')
+  await page.getByRole('button', { name: '保存笔记', exact: true }).click()
+  await expect(
+    page.getByText('合成正文保存失败', { exact: true }),
+  ).toBeVisible()
+  await expect(editor).toContainText('保存的新正文')
+  await page.getByRole('button', { name: '保存笔记', exact: true }).click()
+  await expect(page.getByText('笔记已保存', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '研究', exact: true }).click()
+  await expect(editor).toContainText('保存的新正文')
+  await editor.fill('尚未保存的草稿')
+  const downloaded = page.waitForEvent('download')
+  await page.getByRole('button', { name: '导出 Word', exact: true }).click()
+  expect((await downloaded).suggestedFilename()).toBe('n.docx')
+  expect(patches).toBe(2)
+  await expect(editor).toContainText('尚未保存的草稿')
+})
+test('已有驻点按原can_enter门控并携带课程章节和时间导航', async ({ page }) => {
+  await page.route('**/api/front/user/note/n1/', (r) =>
+    r.fulfill({
+      json: { ...note, section_id: 30, extend: { breakpoint_time: 75 } },
+    }),
+  )
+  let permitted = false
+  await page.route(
+    '**/api/front/learn/task/self_study/open_courses/10/can_enter/',
+    (r) => r.fulfill({ json: { can_enter: permitted } }),
+  )
+  await page.goto('/#/basic/user/note')
+  const checkpoint = page.getByRole('button', {
+    name: '跳转到驻点 01:15',
+    exact: true,
+  })
+  await expect(checkpoint).toBeVisible()
+  await checkpoint.click()
+  await expect(
+    page.getByText('该专题已下线，无法查看！', { exact: true }),
+  ).toBeVisible()
+  permitted = true
+  await checkpoint.click()
+  await expect(page).toHaveURL(/#\/basic\/training\/course\/10/)
+  expect(
+    await page.evaluate(() => ({
+      section_id: history.state.section_id,
+      breakpoint_time: history.state.breakpoint_time,
+    })),
+  ).toEqual({ section_id: 30, breakpoint_time: 75 })
+})

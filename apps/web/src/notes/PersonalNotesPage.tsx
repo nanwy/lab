@@ -1,10 +1,18 @@
+import { NoteBreakpoint } from './NoteBreakpoint'
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
 import { ApiError } from '../api'
+import { toast } from '@workspace/ui/components/sonner'
+import { usePageSignal } from '../auth/use-page-signal'
+import { savePersonalNote, exportPersonalNote } from '../api/personal-notes'
 import { currentUserQueryOptions } from '../auth/session'
-import { NoteNameDialog, NoteDeleteDialog } from './NoteDialogs'
+import {
+  NoteNameDialog,
+  NoteDeleteDialog,
+  reportNoteError,
+} from './NoteDialogs'
 import {
   saveNoteFolder,
   deleteNoteFolder,
@@ -400,25 +408,96 @@ export function PersonalNoteEditor({
   context: NoteContext
   noteId: NoteId
 }) {
+  const client = useQueryClient()
+  const signalForNote = usePageSignal()
+  const key = personalNoteKeys.detail(account, noteId)
   const note = useQuery({
-    queryKey: personalNoteKeys.detail(account, noteId),
+    queryKey: key,
     queryFn: ({ signal }) => getPersonalNote(noteId, signal),
     retry: false,
   })
-  const [draft, setDraft] = useState<string | null>(null)
+  const [draft, setDraft] = useState<{
+    content: string
+    baseline: string
+  } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const content = draft?.content ?? note.data?.content ?? ''
+  const dirty = draft !== null && draft.content !== draft.baseline
+  async function save() {
+    if (busy || uploading) return
+    const signal = signalForNote()
+    const submitted = content
+    setBusy(true)
+    try {
+      const saved = await savePersonalNote(noteId, submitted, signal)
+      if (signal.aborted) return
+      client.setQueryData(key, saved)
+      setDraft((current) =>
+        current && current.content !== submitted
+          ? { content: current.content, baseline: saved.content }
+          : null,
+      )
+      toast.success('笔记已保存')
+    } catch (error) {
+      reportNoteError(error, signal)
+    } finally {
+      if (!signal.aborted) setBusy(false)
+    }
+  }
+  async function download() {
+    if (busy || uploading) return
+    const signal = signalForNote()
+    setBusy(true)
+    try {
+      const path = await exportPersonalNote(noteId, signal)
+      if (!signal.aborted) window.location.href = `${path}?${Date.now()}`
+    } catch (error) {
+      reportNoteError(error, signal)
+    } finally {
+      if (!signal.aborted) setBusy(false)
+    }
+  }
   if (note.isPending) return <p role="status">正在加载笔记详情…</p>
-  if (note.isError)
+  if (note.isError && !draft)
     return (
       <NoteReadError error={note.error} retry={() => void note.refetch()} />
     )
+  if (!note.data) return null
   return (
     <section className="space-y-3 rounded-lg border p-4">
-      <h2 className="font-semibold">{note.data.name}</h2>
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">{note.data.name}</h2>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => void download()}
+            disabled={busy || uploading}
+          >
+            导出 Word
+          </Button>
+          <Button onClick={() => void save()} disabled={busy || uploading}>
+            保存笔记
+          </Button>
+        </div>
+      </header>
+      <NoteBreakpoint context={context} note={note.data} />
+      <p className="text-sm text-muted-foreground">
+        {dirty
+          ? '有未保存的修改。Word 导出使用已保存的版本。'
+          : 'Word 导出使用已保存的正文。'}
+      </p>
       <RichContentEditor
-        value={draft ?? note.data.content}
-        onChange={setDraft}
+        value={content}
+        onChange={(html) =>
+          setDraft((current) => ({
+            content: html,
+            baseline: current?.baseline ?? note.data.content,
+          }))
+        }
         scopeKey={`${account}:${JSON.stringify(context)}:${noteId}`}
         upload={{ mode: 'notes' }}
+        onUploadingChange={setUploading}
       />
     </section>
   )

@@ -146,9 +146,7 @@ test('深链概述编辑失败保留输入，保存重开一致，说明不执�
   ).toBeVisible()
   await page.getByRole('link', { name: '场景说明', exact: true }).click()
   await expect(
-    page
-      .frameLocator('iframe[title="场景说明正文"]')
-      .getByRole('heading', { name: '场景说明正文' }),
+    page.getByRole('heading', { name: '场景说明正文' }),
   ).toBeVisible()
   await expect(page).not.toHaveTitle('恶意修改')
 })

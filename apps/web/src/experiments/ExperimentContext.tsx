@@ -10,6 +10,7 @@ import {
   type ExperimentDetail,
 } from '../api/experiments'
 import { ExperimentForm } from './ExperimentForm'
+import { ExperimentExplanationSession } from './ExperimentExplanation'
 
 const ExperimentContext = createContext<ExperimentDetail | null>(null)
 
@@ -26,7 +27,7 @@ export function ExperimentLayout({ id }: { id: string }) {
     retry: false,
   })
   if (detail.isPending) return <p role="status">正在加载实验…</p>
-  if (detail.isError)
+  if (detail.isError && !detail.data)
     return (
       <section className="space-y-4" role="alert">
         <h1 className="text-xl font-semibold">
@@ -183,21 +184,6 @@ export function ExperimentOverview() {
 export function ExperimentExplanation() {
   const experiment = useExperiment()
   return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold">场景说明</h2>
-      {experiment.overview ? (
-        <iframe
-          className="min-h-[28rem] w-full rounded-md border bg-white"
-          title="场景说明正文"
-          sandbox=""
-          srcDoc={`<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><style>body{font-family:system-ui;line-height:1.7;padding:16px;overflow-wrap:anywhere}img{max-width:100%}</style></head><body>${experiment.overview}</body></html>`}
-        />
-      ) : (
-        <p className="text-muted-foreground">暂无场景说明</p>
-      )}
-      <p className="text-sm text-muted-foreground">
-        富文本编辑与图片上传统一在 S10 接入。
-      </p>
-    </section>
+    <ExperimentExplanationSession key={experiment.id} experiment={experiment} />
   )
 }

@@ -118,6 +118,22 @@ export async function saveExperiment(
     )
   return parsed.data
 }
+/** 说明与基本信息使用独立命令，避免提交过期的其他字段。 */
+export async function saveExperimentOverview(
+  experimentId: string | number,
+  overview: string,
+  signal?: AbortSignal,
+) {
+  const path = `${base}${encoded(experimentId)}/?more=1`
+  const result = await apiClient.request(path, {
+    method: 'PATCH',
+    json: { overview },
+    signal,
+  })
+  const parsed = z.object({ id }).safeParse(result)
+  if (!parsed.success) throw invalidResponse(path, parsed.error)
+  return parsed.data
+}
 export async function deleteExperiment(
   value: string | number,
   signal?: AbortSignal,

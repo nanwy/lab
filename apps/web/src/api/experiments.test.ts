@@ -3,6 +3,7 @@ import {
   getExperiments,
   getExperiment,
   saveExperiment,
+  saveExperimentOverview,
   deleteExperiment,
   getExperimentScenes,
   importExperiment,
@@ -141,6 +142,39 @@ it('标签只从 tag 名称来源读取，校验最多五个与单项二十字�
     vi.fn(async () => Response.json([{ label: '错误字段' }])),
   )
   await expect(getExperimentTags()).rejects.toMatchObject({
+    kind: 'invalid-response',
+  })
+})
+
+it('说明独立保存仅提交 overview，并拒绝缺少 id 的响应', async () => {
+  const controller = new AbortController()
+  const requests: unknown[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: URL, options: RequestInit) => {
+      requests.push([
+        url.pathname + url.search,
+        options.method,
+        JSON.parse(String(options.body)),
+      ])
+      return Response.json({ id: 'a/b' })
+    }),
+  )
+  await expect(
+    saveExperimentOverview('a/b', '<h2>说明</h2>', controller.signal),
+  ).resolves.toEqual({ id: 'a/b' })
+  expect(requests).toEqual([
+    [
+      '/api/front/simulation/experiment/a%2Fb/?more=1',
+      'PATCH',
+      { overview: '<h2>说明</h2>' },
+    ],
+  ])
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => Response.json({ status: 1 })),
+  )
+  await expect(saveExperimentOverview('a/b', '')).rejects.toMatchObject({
     kind: 'invalid-response',
   })
 })

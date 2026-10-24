@@ -67,10 +67,25 @@ test('默认归档只展开，选课读取首个笔记；自定义目录才允�
   await expect(
     page.getByRole('button', { name: '新建笔记', exact: true }),
   ).toHaveCount(0)
+  await expect(
+    page.getByRole('switch', { name: '分享笔记', exact: true }),
+  ).toBeVisible()
+  await page.screenshot({
+    path: '/tmp/s10-notes/screenshots/03-personal-desktop.png',
+    fullPage: true,
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.screenshot({
+    path: '/tmp/s10-notes/screenshots/03-personal-mobile.png',
+    fullPage: true,
+  })
   await page.getByRole('button', { name: '研究', exact: true }).click()
   await expect(
     page.getByRole('button', { name: '新建笔记', exact: true }),
   ).toBeVisible()
+  await expect(
+    page.getByRole('switch', { name: '分享笔记', exact: true }),
+  ).toHaveCount(0)
 })
 test('目录新建校验、保留原名称，改名及删除需明确级联确认', async ({ page }) => {
   let directories = [...folders]
@@ -303,4 +318,24 @@ test('已有驻点按原can_enter门控并携带课程章节和时间导航', as
       breakpoint_time: history.state.breakpoint_time,
     })),
   ).toEqual({ section_id: 30, breakpoint_time: 75 })
+})
+test('未保存内容切目录可取消，路由离开需确认；接受后新目录不继承草稿', async ({
+  page,
+}) => {
+  await page.goto('/#/basic/user/note')
+  const editor = page.getByRole('textbox', { name: '富文本正文', exact: true })
+  await editor.fill('私有草稿')
+  page.once('dialog', (dialog) => dialog.dismiss())
+  await page.getByRole('button', { name: '研究', exact: true }).click()
+  await expect(editor).toContainText('私有草稿')
+  await page.getByRole('link', { name: '首页', exact: true }).click()
+  await expect(
+    page.getByRole('button', { name: '继续编辑', exact: true }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: '继续编辑', exact: true }).click()
+  await expect(editor).toContainText('私有草稿')
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: '研究', exact: true }).click()
+  await expect(editor).toContainText('原始正文')
+  await expect(editor).not.toContainText('私有草稿')
 })

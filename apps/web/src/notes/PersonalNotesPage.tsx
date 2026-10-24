@@ -6,7 +6,9 @@ import {
   TabsContent,
 } from '@workspace/ui/components/tabs'
 import { SharedNotes } from './SharedNotes'
-import { useEffect, useState } from 'react'
+import { ShareToggle } from './ShareToggle'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { useBlocker } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
@@ -36,6 +38,16 @@ import {
   type NoteId,
   type NoteFolder,
 } from '../api/personal-notes'
+const NoteLeaveContext = createContext<{ current: boolean } | null>(null)
+function allowNoteLeave(guard: { current: boolean } | null) {
+  if (!guard?.current) return true
+  if (
+    !window.confirm('有未保存的内容或正在进行的请求，确认离开并丢弃当前编辑？')
+  )
+    return false
+  guard.current = false
+  return true
+}
 export function useNoteSearch(value: string) {
   const [search, setSearch] = useState(value)
   useEffect(() => {
@@ -85,6 +97,10 @@ function defaultContext(folders: NoteFolder[]): NoteContext | null {
 }
 export function PersonalNotesSession({ account }: { account: NoteId }) {
   const client = useQueryClient()
+  const leave = useRef(false)
+  function chooseSelection(value: NoteContext) {
+    if (allowNoteLeave(leave)) setSelection(value)
+  }
   const [dialog, setDialog] = useState<{
     kind: 'create' | 'rename' | 'delete'
     folder?: NoteFolder
@@ -106,152 +122,157 @@ export function PersonalNotesSession({ account }: { account: NoteId }) {
   const context =
     selection === undefined ? defaultContext(folders.data ?? []) : selection
   return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">我的笔记</h1>
-      {dialog && dialog.kind !== 'delete' && (
-        <NoteNameDialog
-          title={dialog.kind === 'create' ? '新建文件夹' : '重命名文件夹'}
-          initial={dialog.folder?.name}
-          close={() => setDialog(null)}
-          save={async (name, signal) => {
-            await saveNoteFolder(name, dialog.folder?.id, signal)
-            if (!signal.aborted) await refreshFolders()
-          }}
-        />
-      )}
-      {dialog?.kind === 'delete' && dialog.folder && (
-        <NoteDeleteDialog
-          description={`是否删除文件夹“${dialog.folder.name}”及其下笔记，删除之后不可恢复！`}
-          close={() => setDialog(null)}
-          remove={async (signal) => {
-            await deleteNoteFolder(dialog.folder!.id, signal)
-            if (signal.aborted) return
-            if (String(context?.folderId) === String(dialog.folder!.id))
-              setSelection(null)
-            await refreshFolders()
-          }}
-        />
-      )}
-      <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)]">
-        <aside
-          className="space-y-3 rounded-lg border p-3"
-          aria-label="笔记目录"
-        >
-          <Button onClick={() => setDialog({ kind: 'create' })}>
-            新建文件夹
-          </Button>
-          <Input
-            aria-label="搜索目录"
-            maxLength={300}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+    <NoteLeaveContext.Provider value={leave}>
+      <section className="space-y-4">
+        <h1 className="text-2xl font-semibold">我的笔记</h1>
+        {dialog && dialog.kind !== 'delete' && (
+          <NoteNameDialog
+            title={dialog.kind === 'create' ? '新建文件夹' : '重命名文件夹'}
+            initial={dialog.folder?.name}
+            close={() => setDialog(null)}
+            save={async (name, signal) => {
+              await saveNoteFolder(name, dialog.folder?.id, signal)
+              if (!signal.aborted) await refreshFolders()
+            }}
           />
-          {folders.isPending ? (
-            <p role="status">正在加载目录…</p>
-          ) : folders.isError ? (
-            <NoteReadError
-              error={folders.error}
-              retry={() => void folders.refetch()}
+        )}
+        {dialog?.kind === 'delete' && dialog.folder && (
+          <NoteDeleteDialog
+            description={`是否删除文件夹“${dialog.folder.name}”及其下笔记，删除之后不可恢复！`}
+            close={() => setDialog(null)}
+            remove={async (signal) => {
+              await deleteNoteFolder(dialog.folder!.id, signal)
+              if (signal.aborted) return
+              if (String(context?.folderId) === String(dialog.folder!.id))
+                setSelection(null)
+              await refreshFolders()
+            }}
+          />
+        )}
+        <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)]">
+          <aside
+            className="space-y-3 rounded-lg border p-3"
+            aria-label="笔记目录"
+          >
+            <Button onClick={() => setDialog({ kind: 'create' })}>
+              新建文件夹
+            </Button>
+            <Input
+              aria-label="搜索目录"
+              maxLength={300}
+              value={search}
+              onChange={(e) => {
+                if (selection === undefined && context) setSelection(context)
+                setSearch(e.target.value)
+              }}
             />
-          ) : !folders.data.length ? (
-            <p>暂无目录</p>
-          ) : (
-            folders.data.map((folder) => (
-              <div key={String(folder.id)}>
-                {folder.type <= 4 ? (
-                  <details open>
-                    <summary>{folder.name}</summary>
-                    {folder.courses.length ? (
-                      folder.courses.map((course) => (
-                        <Button
-                          key={String(course.id)}
-                          className="w-full justify-start"
-                          variant="ghost"
-                          onClick={() =>
-                            setSelection({
-                              folderId: folder.id,
-                              courseId: course.id,
-                              type: folder.type,
-                            })
-                          }
-                        >
-                          {course.name}
-                        </Button>
-                      ))
-                    ) : (
-                      <p className="p-2 text-sm text-muted-foreground">
-                        暂无归档课程
-                      </p>
-                    )}
-                  </details>
-                ) : (
-                  <>
-                    <Button
-                      className="w-full justify-start"
-                      variant="ghost"
-                      onClick={() =>
-                        setSelection({
-                          folderId: folder.id,
-                          courseId: 0,
-                          type: folder.type,
-                        })
-                      }
-                    >
-                      {folder.name}
-                    </Button>
-                    <div className="flex gap-1">
+            {folders.isPending ? (
+              <p role="status">正在加载目录…</p>
+            ) : folders.isError ? (
+              <NoteReadError
+                error={folders.error}
+                retry={() => void folders.refetch()}
+              />
+            ) : !folders.data.length ? (
+              <p>暂无目录</p>
+            ) : (
+              folders.data.map((folder) => (
+                <div key={String(folder.id)}>
+                  {folder.type <= 4 ? (
+                    <details open>
+                      <summary>{folder.name}</summary>
+                      {folder.courses.length ? (
+                        folder.courses.map((course) => (
+                          <Button
+                            key={String(course.id)}
+                            className="w-full justify-start"
+                            variant="ghost"
+                            onClick={() =>
+                              chooseSelection({
+                                folderId: folder.id,
+                                courseId: course.id,
+                                type: folder.type,
+                              })
+                            }
+                          >
+                            {course.name}
+                          </Button>
+                        ))
+                      ) : (
+                        <p className="p-2 text-sm text-muted-foreground">
+                          暂无归档课程
+                        </p>
+                      )}
+                    </details>
+                  ) : (
+                    <>
                       <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`重命名文件夹 ${folder.name}`}
-                        onClick={() => setDialog({ kind: 'rename', folder })}
-                      >
-                        改名
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`删除文件夹 ${folder.name}`}
-                        onClick={() => setDialog({ kind: 'delete', folder })}
-                      >
-                        删除
-                      </Button>
-                    </div>
-                    {folder.courses.map((section) => (
-                      <Button
-                        key={String(section.id)}
+                        className="w-full justify-start"
                         variant="ghost"
                         onClick={() =>
-                          setSelection({
+                          chooseSelection({
                             folderId: folder.id,
                             courseId: 0,
                             type: folder.type,
-                            sectionId: section.id,
                           })
                         }
                       >
-                        {section.name}
+                        {folder.name}
                       </Button>
-                    ))}
-                  </>
-                )}
-              </div>
-            ))
-          )}
-        </aside>
-        <div className="min-w-0">
-          {context ? (
-            <NoteWorkspace
-              key={JSON.stringify(context)}
-              account={account}
-              context={context}
-            />
-          ) : (
-            <p>点击目录查看笔记</p>
-          )}
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`重命名文件夹 ${folder.name}`}
+                          onClick={() => setDialog({ kind: 'rename', folder })}
+                        >
+                          改名
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`删除文件夹 ${folder.name}`}
+                          onClick={() => setDialog({ kind: 'delete', folder })}
+                        >
+                          删除
+                        </Button>
+                      </div>
+                      {folder.courses.map((section) => (
+                        <Button
+                          key={String(section.id)}
+                          variant="ghost"
+                          onClick={() =>
+                            chooseSelection({
+                              folderId: folder.id,
+                              courseId: 0,
+                              type: folder.type,
+                              sectionId: section.id,
+                            })
+                          }
+                        >
+                          {section.name}
+                        </Button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              ))
+            )}
+          </aside>
+          <div className="min-w-0">
+            {context ? (
+              <NoteWorkspace
+                key={JSON.stringify(context)}
+                account={account}
+                context={context}
+              />
+            ) : (
+              <p>点击目录查看笔记</p>
+            )}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </NoteLeaveContext.Provider>
   )
 }
 export function NoteWorkspace({
@@ -261,10 +282,17 @@ export function NoteWorkspace({
   account: NoteId
   context: NoteContext
 }) {
+  const leave = useContext(NoteLeaveContext)
+  const [tab, setTab] = useState('personal')
   if (context.type > 4)
     return <PersonalNoteList account={account} context={context} />
   return (
-    <Tabs defaultValue="personal">
+    <Tabs
+      value={tab}
+      onValueChange={(value) => {
+        if (allowNoteLeave(leave)) setTab(value)
+      }}
+    >
       <TabsList>
         <TabsTrigger value="personal">我的笔记</TabsTrigger>
         <TabsTrigger value="shared">共享笔记</TabsTrigger>
@@ -286,6 +314,7 @@ export function PersonalNoteList({
   context: NoteContext
 }) {
   const client = useQueryClient()
+  const leave = useContext(NoteLeaveContext)
   const [dialog, setDialog] = useState<{
     kind: 'create' | 'rename' | 'delete'
     id?: NoteId
@@ -357,7 +386,9 @@ export function PersonalNoteList({
           aria-label="搜索笔记"
           maxLength={300}
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            if (allowNoteLeave(leave)) setSearch(e.target.value)
+          }}
         />
         {context.type > 4 && (
           <Button onClick={() => setDialog({ kind: 'create' })}>
@@ -374,7 +405,9 @@ export function PersonalNoteList({
               <Button
                 className="w-full justify-start"
                 variant={String(id) === String(note.id) ? 'secondary' : 'ghost'}
-                onClick={() => setSelected(note.id)}
+                onClick={() => {
+                  if (allowNoteLeave(leave)) setSelected(note.id)
+                }}
               >
                 {note.name}
               </Button>
@@ -431,6 +464,7 @@ export function PersonalNoteEditor({
   noteId: NoteId
 }) {
   const client = useQueryClient()
+  const leave = useContext(NoteLeaveContext)
   const signalForNote = usePageSignal()
   const key = personalNoteKeys.detail(account, noteId)
   const note = useQuery({
@@ -444,10 +478,24 @@ export function PersonalNoteEditor({
   } | null>(null)
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const content = draft?.content ?? note.data?.content ?? ''
   const dirty = draft !== null && draft.content !== draft.baseline
+  useEffect(() => {
+    if (!leave) return
+    leave.current = dirty || busy || uploading || sharing
+    return () => {
+      leave.current = false
+    }
+  }, [leave, dirty, busy, uploading, sharing])
+  const blocker = useBlocker({
+    shouldBlockFn: () => dirty || busy || uploading || sharing,
+    enableBeforeUnload: dirty || busy || uploading || sharing,
+    withResolver: true,
+  })
+
   async function save() {
-    if (busy || uploading) return
+    if (busy || uploading || sharing) return
     const signal = signalForNote()
     const submitted = content
     setBusy(true)
@@ -468,7 +516,7 @@ export function PersonalNoteEditor({
     }
   }
   async function download() {
-    if (busy || uploading) return
+    if (busy || uploading || sharing) return
     const signal = signalForNote()
     setBusy(true)
     try {
@@ -488,39 +536,79 @@ export function PersonalNoteEditor({
   if (!note.data) return null
   return (
     <section className="space-y-3 rounded-lg border p-4">
+      {blocker.status === 'blocked' && (
+        <div role="alert" className="rounded border p-3">
+          <p>当前笔记尚未保存或正在处理，确认离开？</p>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={blocker.reset}>
+              继续编辑
+            </Button>
+            <Button variant="destructive" onClick={blocker.proceed}>
+              丢弃并离开
+            </Button>
+          </div>
+        </div>
+      )}
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">{note.data.name}</h2>
         <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={() => void download()}
-            disabled={busy || uploading}
+            disabled={busy || uploading || sharing}
           >
             导出 Word
           </Button>
-          <Button onClick={() => void save()} disabled={busy || uploading}>
+          <Button
+            onClick={() => void save()}
+            disabled={busy || uploading || sharing}
+          >
             保存笔记
           </Button>
         </div>
       </header>
+      {context.type <= 4 && (
+        <ShareToggle
+          noteId={noteId}
+          share={note.data.share}
+          content={content}
+          disabled={busy || uploading}
+          onBusyChange={setSharing}
+          onShared={(share) => {
+            client.setQueryData(key, {
+              ...note.data,
+              share,
+              ...(content ? { content } : {}),
+            })
+            if (content)
+              setDraft((current) =>
+                current && current.content !== content
+                  ? { ...current, baseline: content }
+                  : null,
+              )
+          }}
+        />
+      )}
       <NoteBreakpoint context={context} note={note.data} />
       <p className="text-sm text-muted-foreground">
         {dirty
           ? '有未保存的修改。Word 导出使用已保存的版本。'
           : 'Word 导出使用已保存的正文。'}
       </p>
-      <RichContentEditor
-        value={content}
-        onChange={(html) =>
-          setDraft((current) => ({
-            content: html,
-            baseline: current?.baseline ?? note.data.content,
-          }))
-        }
-        scopeKey={`${account}:${JSON.stringify(context)}:${noteId}`}
-        upload={{ mode: 'notes' }}
-        onUploadingChange={setUploading}
-      />
+      <div inert={sharing}>
+        <RichContentEditor
+          value={content}
+          onChange={(html) =>
+            setDraft((current) => ({
+              content: html,
+              baseline: current?.baseline ?? note.data.content,
+            }))
+          }
+          scopeKey={`${account}:${JSON.stringify(context)}:${noteId}`}
+          upload={{ mode: 'notes' }}
+          onUploadingChange={setUploading}
+        />
+      </div>
     </section>
   )
 }

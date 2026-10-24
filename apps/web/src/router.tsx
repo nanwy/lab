@@ -1,3 +1,5 @@
+import { DetectionToolsPage } from './detection/DetectionToolsPage'
+import { detectionCategories } from './api/detection-tools'
 import { PersonalNotesPage } from './notes/PersonalNotesPage'
 import { ExperimentNotes } from './experiments/ExperimentNotes'
 import {
@@ -473,22 +475,30 @@ const experimentNotesRoute = createRoute({
   path: '/notes',
   component: ExperimentNotes,
 })
+const experimentDetectionIndexRoute = createRoute({
+  getParentRoute: () => experimentRoute,
+  path: '/detection',
+  component: () => <DetectionToolsPage />,
+})
+const experimentDetectionRoute = createRoute({
+  getParentRoute: () => experimentRoute,
+  path: '/detection/$type',
+  component: () => {
+    const { type } = experimentDetectionRoute.useParams()
+    const category = detectionCategories.find((entry) => entry.type === type)
+    return category ? (
+      <DetectionToolsPage category={category} />
+    ) : (
+      <NotFoundPage />
+    )
+  },
+})
 const experimentFutureRoute = createRoute({
   getParentRoute: () => experimentRoute,
   path: '$',
   component: () => {
     const { _splat } = experimentFutureRoute.useParams()
-    if (
-      ![
-        'simulate',
-        'detection/penetration',
-        'detection/defense',
-        'detection/baseline',
-        'detection/vulnerability',
-        'detection/riskAssessment',
-        'attackteaching',
-      ].includes(_splat ?? '')
-    )
+    if (!['simulate', 'attackteaching'].includes(_splat ?? ''))
       return <NotFoundPage />
     return <p role="note">此实验子页属于后续实施切片，尚未实现。</p>
   },
@@ -626,6 +636,8 @@ const routeTree = rootRoute.addChildren([
       experimentSceneRoute,
       experimentFlowRoute,
       experimentNotesRoute,
+      experimentDetectionIndexRoute,
+      experimentDetectionRoute,
       experimentFutureRoute,
     ]),
     futureRoute,

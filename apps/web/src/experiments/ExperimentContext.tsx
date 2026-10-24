@@ -112,10 +112,14 @@ export function ExperimentLayout({ id }: { id: string }) {
             >
               场景笔记
             </Link>
-            {[
-              ['detection/penetration', '检测手段'],
-              ['attackteaching', '攻击教学'],
-            ].map(([path, label]) => (
+            <Link
+              to="/basic/user/bench/experiment/$id/detection/$type"
+              params={{ id, type: 'penetration' }}
+              activeProps={{ 'aria-current': 'page' }}
+            >
+              检测手段
+            </Link>
+            {[['attackteaching', '攻击教学']].map(([path, label]) => (
               <Link
                 key={path}
                 to="/basic/user/bench/experiment/$id/$"

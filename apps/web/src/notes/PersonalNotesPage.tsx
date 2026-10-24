@@ -89,7 +89,12 @@ function defaultContext(folders: NoteFolder[]): NoteContext | null {
   const folder = folders[0]
   if (!folder) return null
   if (folder.type > 4)
-    return { folderId: folder.id, courseId: 0, type: folder.type }
+    return {
+      folderId: folder.id,
+      courseId: 0,
+      type: folder.type,
+      ...(folder.courses[0] ? { sectionId: folder.courses[0].id } : {}),
+    }
   const course = folder.courses[0]
   return course
     ? { folderId: folder.id, courseId: course.id, type: folder.type }
@@ -494,6 +499,8 @@ export function PersonalNoteEditor({
     content: string
     baseline: string
   } | null>(null)
+  const [refreshFailed, setRefreshFailed] = useState(false)
+  const savedContent = useRef<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [sharing, setSharing] = useState(false)
@@ -514,13 +521,9 @@ export function PersonalNoteEditor({
     withResolver: true,
   })
 
-  async function save() {
-    if (busy || uploading || sharing) return
-    const signal = signalForNote()
-    const submitted = content
-    setBusy(true)
+  async function refreshSaved(submitted: string, signal: AbortSignal) {
     try {
-      const saved = await savePersonalNote(noteId, submitted, signal)
+      const saved = await getPersonalNote(noteId, signal)
       await client.cancelQueries({ queryKey: key, exact: true })
       if (signal.aborted) return
       client.setQueryData(key, saved)
@@ -529,7 +532,40 @@ export function PersonalNoteEditor({
           ? { content: current.content, baseline: saved.content }
           : null,
       )
+      setRefreshFailed(false)
       toast.success('笔记已保存')
+    } catch (error) {
+      if (signal.aborted) return
+      setRefreshFailed(true)
+      reportNoteError(error, signal)
+    }
+  }
+  async function retryRefresh() {
+    if (busy || uploading || sharing || savedContent.current === null) return
+    const signal = signalForNote()
+    setBusy(true)
+    try {
+      await refreshSaved(savedContent.current, signal)
+    } finally {
+      if (!signal.aborted) setBusy(false)
+    }
+  }
+  async function save() {
+    if (busy || uploading || sharing || !note.data) return
+    const signal = signalForNote()
+    const submitted = content
+    setBusy(true)
+    try {
+      await savePersonalNote(noteId, submitted, signal)
+      await client.cancelQueries({ queryKey: key, exact: true })
+      if (signal.aborted) return
+      savedContent.current = submitted
+      client.setQueryData(key, { ...note.data, content: submitted })
+      setDraft((current) => ({
+        content: current?.content ?? submitted,
+        baseline: submitted,
+      }))
+      await refreshSaved(submitted, signal)
     } catch (error) {
       reportNoteError(error, signal)
     } finally {
@@ -588,6 +624,18 @@ export function PersonalNoteEditor({
           </Button>
         </div>
       </header>
+      {refreshFailed && (
+        <div role="status" className="space-y-2">
+          <p>已保存，内容刷新失败</p>
+          <Button
+            variant="outline"
+            disabled={busy || uploading || sharing}
+            onClick={() => void retryRefresh()}
+          >
+            重新读取已保存内容
+          </Button>
+        </div>
+      )}
       {context.type <= 4 && (
         <ShareToggle
           noteId={noteId}
@@ -601,12 +649,15 @@ export function PersonalNoteEditor({
               share,
               ...(content ? { content } : {}),
             })
-            if (content)
+            if (content) {
+              savedContent.current = content
+              setRefreshFailed(false)
               setDraft((current) =>
                 current && current.content !== content
                   ? { ...current, baseline: content }
                   : null,
               )
+            }
           }}
         />
       )}

@@ -73,7 +73,8 @@ test('共享笔记只读，独立评分成功后更新推荐度且不暴露编�
     route.fulfill({
       json: {
         id: 7,
-        content: '<p><strong>共享正文</strong></p>',
+        content:
+          '<p><strong>共享正文</strong><img src="/uploads/shared.svg"></p>',
         synthesis_score: score,
         extend: null,
       },
@@ -87,6 +88,12 @@ test('共享笔记只读，独立评分成功后更新推荐度且不暴露编�
     }
     return route.fulfill({ json: { data: { note_score: score } } })
   })
+  await page.route('**/uploads/shared.svg', (r) =>
+    r.fulfill({
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><rect width="160" height="100" fill="blue"/></svg>',
+      contentType: 'image/svg+xml',
+    }),
+  )
   await page.goto('/#/basic/user/note')
   await page.getByRole('tab', { name: '共享笔记', exact: true }).click()
   await expect(page.getByText('共享正文', { exact: true })).toBeVisible()
@@ -97,6 +104,20 @@ test('共享笔记只读，独立评分成功后更新推荐度且不暴露编�
     'contenteditable',
     'false',
   )
+  const reader = page.getByRole('textbox', { name: '富文本阅读' })
+  await reader.locator('img').click()
+  const preview = page.getByRole('dialog', { name: '图片预览' })
+  await expect(preview).toBeVisible()
+  await preview.getByRole('button', { name: '水平翻转', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await expect(reader).toBeFocused()
+  await reader.locator('img').click()
+  await page
+    .getByRole('tab', { name: '我的笔记', exact: true })
+    .click({ force: true })
+  await expect(preview).toHaveCount(0)
+  await page.getByRole('tab', { name: '共享笔记', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: '富文本阅读' })).toBeVisible()
   await page.getByRole('button', { name: '评4星', exact: true }).click()
   await expect(
     page.getByRole('button', { name: '评4星', exact: true }),
@@ -283,4 +304,12 @@ test('分享失败保留草稿和确认状态，成功保存正文，取消后�
   await expect(toggle).toBeChecked()
   await page.getByRole('tab', { name: '共享笔记', exact: true }).click()
   await expect(page.getByText('分享也保存草稿', { exact: true })).toBeVisible()
+})
+
+test('共享搜索最多输入300字符并仅提交截断后的搜索词', async ({ page }) => {
+  await page.goto('/#/basic/user/note')
+  await page.getByRole('tab', { name: '共享笔记', exact: true }).click()
+  const input = page.getByRole('textbox', { name: '搜索共享笔记', exact: true })
+  await input.fill('测'.repeat(301))
+  await expect(input).toHaveValue('测'.repeat(300))
 })

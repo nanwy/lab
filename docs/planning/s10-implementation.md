@@ -51,3 +51,19 @@ S10 对 S09 的依赖按用户确认细化到已交付的客户端基础，不�
 浏览器配置为 `playwright.s10.config.ts`，显式传入本票测试文件；用 `PLAYWRIGHT_S10_PORT` 与 `PLAYWRIGHT_S10_OUTPUT` 隔离服务/产物。报告保留 `/tmp/s10-notes/01.md` 至 `04.md`、`review-fixes.md`，截图在 `/tmp/s10-notes/screenshots/` 与各票产物目录；这些临时文件不替代仓库中的本记录。
 
 未运行全量测试或生产构建；本轮未修改构建配置或生产模式。未验证非 Chromium、真实上传/保存/评分/分享、Word正文和图片实物、服务器隐藏字段及全部权限。课程正式运行属于后续切片，仅交付驻点入口与上下文。没有创建外部issue/PR、推送远端；用户原有五处未提交改动保持。
+
+## 原 bundle 对照专项修复（2026-10-24）
+
+本轮起点 `c5cfded5db3917f0a6b3991dda3c3c1a7abcb222`，在当前分支 `integration/s10-content` 实施。依据[对照审计](s10-bundle-parity-review.md)，将已确认方案落为[三张本地工单](s10-remediation-tickets.md)；无外部 tracker，不发布外部 issue。
+
+- R1：接入 Viewer.js 1.15.2（MIT、零运行依赖、无 React wrapper），恢复预览缩放、移动、左右旋转、水平/垂直翻转、重置、关闭/重开及焦点恢复；只读和卸载清理验证通过。保留现有 Quill/formatter/DOMPurify。粘贴使用 IMG matcher 逐图过滤，文字格式、同源图片及异步上传的 base64 图片保留；相邻 base64 图片使用 DOM 集合快照遍历，避免删除节点后跳项。编辑全屏改为原生 Fullscreen API，监听实际状态并处理 Escape、退出及权限拒绝。
+- R2：个人 PATCH id、场景 POST status=1 确认写成功；独立回读接受服务端规范化，不再比较 HTML 字符串。写失败保稿；写成功但回读失败显示“已保存，内容刷新失败”，允许单独重读，不重复写入；回读期间的新输入保留。场景回读取得有效 noteId 前禁止导出。保存/分享均同步成功基线，避免旧重读入口覆盖分享后的编辑。
+- R3：上传端点显式声明 HTTP 文案来源 image，统一客户端处理一次；共享搜索 maxLength=300；首个自定义目录有子项时默认选首子项并携带 section_id。
+
+测试沿已确认 HTTP 和浏览器边界逐行为 red → green。确认红灯包括上传错误字段、混合粘贴、相邻 base64、预览操作缺失、原生全屏缺失、保存刷新状态、共享搜索/首子级以及分享后旧重读入口。一次实现中的语法错误和服务依赖预优化失效属于修复过程，未当作行为红灯或验收通过。
+
+验收：全量单测37文件158项通过（`pnpm test`）；web类型检查、显式修改文件lint/Prettier、`git diff --check`及`pnpm install --frozen-lockfile`通过。S10四文件共35项不同浏览器用例分批通过：首轮33项中31项通过，修正原生全屏退出/旧CSS断言后对应2项及预览/只读/权限拒绝5项通过，新增分享后旧重读状态及相邻图片回归通过；直接受影响S05概述/说明与详情切换另2项通过。不重复累计红绿/复测数量。
+
+命令均加 `fnm exec --using 24.14.0`：`pnpm exec playwright test --config=playwright.s10.config.ts s10-content.spec.ts s10-personal.spec.ts s10-shared-notes.spec.ts s10-explanation.spec.ts`，后续用 `--grep` 定向复测改动行为；S05使用 `playwright.focused.config.ts` 与 `--grep '深链概述|实验详情切换'`。日志在 `/tmp/s10-remediation-*.log`，预览截图 `/tmp/s10-remediation-preview.png` 已查看。没有生产构建或全站浏览器回归。
+
+[双轴审查](s10-remediation-review.md)以本轮起点对选定暂存差异进行：Standards 无发现；Spec 检出1项P2（保存回读失败后分享成功未清旧重读状态，可能覆盖后来编辑），已先复现红灯、修正成功基线与刷新状态、补回归并由两轴增量复查关闭，最终无未决发现。未引入CRUD框架或编辑器迁移。真实上传、保存、分享、评分、Word 实物及非 Chromium 仍未验证；本轮全部写入为隔离响应，未操作真实后端。

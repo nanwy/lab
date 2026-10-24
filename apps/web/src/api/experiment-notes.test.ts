@@ -5,17 +5,15 @@ import {
   exportExperimentNote,
 } from './experiment-notes'
 afterEach(() => vi.unstubAllGlobals())
-it('场景笔记保存后重读持久化正文；未确认的正文不能冒充保存成功', async () => {
-  vi.stubGlobal('fetch', async (_url: URL, options: RequestInit) =>
-    Response.json(
-      options.method === 'POST'
-        ? { status: 1 }
-        : { id: 8, content: '<p>旧正文</p>' },
-    ),
-  )
+it('场景保存以POST status=1确认，不把后续读取升级为写成功条件', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>(async (_url, options) => {
+    expect(options?.method).toBe('POST')
+    return Response.json({ status: 1 })
+  })
+  vi.stubGlobal('fetch', fetch)
   await expect(
-    saveExperimentNote('a/b', '<p>新正文</p>'),
-  ).rejects.toMatchObject({ kind: 'invalid-response' })
+    saveExperimentNote('a/b', '<p>A &amp; B</p>'),
+  ).resolves.toBeUndefined()
 })
 it.each([
   {},

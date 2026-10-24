@@ -13,6 +13,7 @@ export type ResponseKind = 'json' | 'empty' | 'text' | 'blob' | 'stream'
 
 export type ErrorDisplayPolicy = {
   serviceErrors?: Readonly<Record<string, string>>
+  httpMessageField?: 'error' | 'image'
 }
 
 export type RequestOptions = Omit<RequestInit, 'body' | 'signal'> & {
@@ -92,7 +93,7 @@ function serviceErrorValue(value: unknown, policy?: ErrorDisplayPolicy) {
 
 function messageFrom(
   value: unknown,
-  field: 'error' | 'message',
+  field: 'error' | 'message' | 'image',
   fallback: string,
 ) {
   if (!value || typeof value !== 'object') return fallback
@@ -314,7 +315,11 @@ export function createApiClient(options: ApiClientOptions) {
       const errorBody = await readErrorBody(response, signal)
       throw new ApiError(
         'http',
-        messageFrom(errorBody, 'error', `请求失败（${response.status}）`),
+        messageFrom(
+          errorBody,
+          request.errorDisplay?.httpMessageField ?? 'error',
+          `请求失败（${response.status}）`,
+        ),
         {
           serviceError: serviceErrorValue(errorBody, request.errorDisplay),
           status: response.status,

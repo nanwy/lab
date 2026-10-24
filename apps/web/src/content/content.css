@@ -21,14 +21,11 @@
 .rich-content .ql-editor.ql-blank::before {
   color: var(--muted-foreground);
 }
-.rich-content-fullscreen {
-  position: fixed;
-  inset: 0;
-  z-index: 45;
+.rich-content:fullscreen {
   overflow: auto;
   padding: 1.5rem;
   background: var(--background);
 }
-.rich-content-fullscreen .ql-editor {
+.rich-content:fullscreen .ql-editor {
   min-height: calc(100vh - 11rem);
 }

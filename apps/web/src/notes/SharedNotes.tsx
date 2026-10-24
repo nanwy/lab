@@ -64,6 +64,7 @@ function SharedSession({
     <section className="space-y-4" aria-label="共享笔记列表">
       <Input
         aria-label="搜索共享笔记"
+        maxLength={300}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />

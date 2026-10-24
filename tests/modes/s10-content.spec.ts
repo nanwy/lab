@@ -137,7 +137,7 @@ test('图片选择、拖入和base64粘贴均上传后插入，支持预览和�
   await page.route('**/api/front/upload_image/', (route) => {
     if (!failedUpload) {
       failedUpload = true
-      return route.fulfill({ status: 500, json: { error: '图片上传失败' } })
+      return route.fulfill({ status: 500, json: { image: '图片上传失败' } })
     }
     expect(route.request().headers()['authorization']).toBeUndefined()
     const body = route.request().postDataBuffer()!.toString()
@@ -441,4 +441,216 @@ test('场景保存后迟到旧读取不污染重开的正文', async ({ page }) 
   }
   await page.reload()
   await expect(editor).toContainText('场景已保存的新正文')
+})
+
+test('混合粘贴只剔除外链图片，保留文字格式和同源图片', async ({ page }) => {
+  await page.route('**/api/admin/simulation/experiment/one/user/note/', (r) =>
+    r.fulfill({ json: { id: 1, content: '' } }),
+  )
+  let uploads = 0
+  await page.route('**/api/front/upload_image/', (r) =>
+    r.fulfill({ json: { data: { url: `/uploads/base64-${++uploads}.png` } } }),
+  )
+  await page.route('**/uploads/*.png', (r) =>
+    r.fulfill({
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="50"/>',
+      contentType: 'image/svg+xml',
+    }),
+  )
+  await page.goto('/#/basic/user/bench/experiment/one/notes')
+  const editor = page.getByRole('textbox', { name: '富文本正文' })
+  await expect(editor).toBeVisible()
+  await editor.evaluate((element) => {
+    const data = new DataTransfer()
+    data.setData(
+      'text/html',
+      '<p><strong>保留实验步骤</strong></p><img src="https://outside.invalid/a.png"><img src="/uploads/valid.png"><img src="data:image/png;base64,YQ=="><img src="data:image/png;base64,Yg=="><p>后续步骤</p>',
+    )
+    element.dispatchEvent(
+      new ClipboardEvent('paste', {
+        bubbles: true,
+        cancelable: true,
+        clipboardData: data,
+      }),
+    )
+  })
+  await expect(editor.locator('strong')).toHaveText('保留实验步骤')
+  await expect(editor).toContainText('后续步骤')
+  await expect(editor.locator('img')).toHaveCount(3)
+  expect(uploads).toBe(2)
+  await expect(editor.locator('img[src="/uploads/valid.png"]')).toHaveAttribute(
+    'src',
+    '/uploads/valid.png',
+  )
+  await expect(
+    page.getByText('含有外部图片，请先上传图片后再保存', { exact: true }),
+  ).toHaveCount(1)
+})
+
+test('图片预览支持变换、拖动，关闭后重开复位且恢复焦点', async ({ page }) => {
+  await page.route('**/api/admin/simulation/experiment/one/user/note/', (r) =>
+    r.fulfill({
+      json: { id: 1, content: '<p><img src="/uploads/preview.svg"></p>' },
+    }),
+  )
+  await page.route('**/uploads/preview.svg', (r) =>
+    r.fulfill({
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000"><rect width="1600" height="1000" fill="blue"/></svg>',
+      contentType: 'image/svg+xml',
+    }),
+  )
+  await page.goto('/#/basic/user/bench/experiment/one/notes')
+  const editor = page.getByRole('textbox', { name: '富文本正文' })
+  await editor.locator('img').click()
+  const dialog = page.getByRole('dialog', { name: '图片预览' })
+  await expect(dialog).toBeVisible()
+  const image = dialog.locator('img').first()
+  const initial = await image.evaluate((el) => getComputedStyle(el).transform)
+  await dialog.getByRole('button', { name: '向右旋转', exact: true }).click()
+  await expect
+    .poll(() => image.evaluate((el) => getComputedStyle(el).transform))
+    .not.toBe(initial)
+  await page.screenshot({ path: '/tmp/s10-remediation-preview.png' })
+  await dialog.getByRole('button', { name: '水平翻转', exact: true }).click()
+  await dialog.getByRole('button', { name: '垂直翻转', exact: true }).click()
+  await dialog.getByRole('button', { name: '放大', exact: true }).click()
+  await dialog.getByRole('button', { name: '缩小', exact: true }).click()
+  await dialog.getByRole('button', { name: '向左旋转', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(editor).toBeFocused()
+  await editor.locator('img').click()
+  await expect(dialog).toBeVisible()
+  await expect
+    .poll(() => image.evaluate((el) => getComputedStyle(el).transform))
+    .toBe(initial)
+  const box = await image.boundingBox()
+  if (!box) throw new Error('预览图片未显示')
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(
+    box.x + box.width / 2 + 50,
+    box.y + box.height / 2 + 30,
+    { steps: 5 },
+  )
+  await page.mouse.up()
+  await expect
+    .poll(async () => (await image.boundingBox())?.x)
+    .toBeCloseTo(box.x + 50, 0)
+  await dialog.getByRole('button', { name: '关闭预览', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+})
+
+test('全屏编辑使用浏览器Fullscreen API并跟随原生退出状态', async ({ page }) => {
+  await page.route('**/api/admin/simulation/experiment/one/user/note/', (r) =>
+    r.fulfill({ json: { id: 1, content: '<p>全屏正文</p>' } }),
+  )
+  await page.goto('/#/basic/user/bench/experiment/one/notes')
+  await page.getByRole('button', { name: '全屏编辑', exact: true }).click()
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.fullscreenElement?.classList.contains('rich-content') ??
+          false,
+      ),
+    )
+    .toBe(true)
+  await page.getByRole('button', { name: '退出全屏', exact: true }).click()
+  await expect
+    .poll(() => page.evaluate(() => document.fullscreenElement === null))
+    .toBe(true)
+  await page.getByRole('button', { name: '全屏编辑', exact: true }).click()
+  await expect
+    .poll(() => page.evaluate(() => document.fullscreenElement !== null))
+    .toBe(true)
+  await page.evaluate(() => document.exitFullscreen())
+  await expect(
+    page.getByRole('button', { name: '全屏编辑', exact: true }),
+  ).toBeVisible()
+})
+
+test('场景写成功刷新失败时禁止旧ID导出，重读规范化内容保留后续输入', async ({
+  page,
+  errors,
+}) => {
+  let writes = 0
+  let fail = false
+  let pendingRead = false
+  let release!: () => void
+  const pending = new Promise<void>((r) => {
+    release = r
+  })
+  await page.route(
+    '**/api/admin/simulation/experiment/one/user/note/',
+    async (r) => {
+      if (r.request().method() === 'POST') {
+        writes++
+        fail = true
+        return r.fulfill({ json: { status: 1 } })
+      }
+      if (fail)
+        return r.fulfill({ status: 500, json: { error: '合成场景刷新失败' } })
+      if (pendingRead) await pending
+      return r.fulfill({
+        json: {
+          id: writes ? 42 : 7,
+          content: writes ? '<p>服务端规范化正文</p>' : '<p>场景原文</p>',
+        },
+      })
+    },
+  )
+  await page.goto('/#/basic/user/bench/experiment/one/notes')
+  const editor = page.getByRole('textbox', { name: '富文本正文', exact: true })
+  await editor.fill('提交场景正文')
+  await page.getByRole('button', { name: '保存笔记', exact: true }).click()
+  await expect(
+    page.getByText('已保存，内容刷新失败', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: '导出 Word', exact: true }),
+  ).toBeDisabled()
+  await expect(editor).toContainText('提交场景正文')
+  fail = false
+  pendingRead = true
+  await page
+    .getByRole('button', { name: '重新读取已保存内容', exact: true })
+    .click()
+  await editor.fill('继续输入的新场景正文')
+  release()
+  await expect(
+    page.getByRole('button', { name: '导出 Word', exact: true }),
+  ).toBeEnabled()
+  await expect(editor).toContainText('继续输入的新场景正文')
+  await expect(
+    page.getByText('有未保存的修改；Word 仅导出上次已保存的正文', {
+      exact: true,
+    }),
+  ).toBeVisible()
+  expect(writes).toBe(1)
+  expect(errors).toEqual([
+    'Failed to load resource: the server responded with a status of 500 (Internal Server Error)',
+  ])
+  errors.length = 0
+})
+
+test('浏览器拒绝全屏时提示一次且保留普通编辑状态', async ({ page }) => {
+  await page.addInitScript(() => {
+    HTMLElement.prototype.requestFullscreen = () =>
+      Promise.reject(new DOMException('Denied', 'NotAllowedError'))
+  })
+  await page.route('**/api/admin/simulation/experiment/one/user/note/', (r) =>
+    r.fulfill({ json: { id: 1, content: '<p>普通正文</p>' } }),
+  )
+  await page.goto('/#/basic/user/bench/experiment/one/notes')
+  await page.getByRole('button', { name: '全屏编辑', exact: true }).click()
+  await expect(
+    page.getByText('无法切换全屏，请检查浏览器权限', { exact: true }),
+  ).toHaveCount(1)
+  await expect(
+    page.getByRole('button', { name: '全屏编辑', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByRole('textbox', { name: '富文本正文' })).toContainText(
+    '普通正文',
+  )
 })

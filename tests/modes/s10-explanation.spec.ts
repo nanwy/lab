@@ -193,9 +193,13 @@ test('说明图片按scene上传保存重开，后台刷新保留草稿，取消
   await expect.poll(() => reads).toBeGreaterThan(beforeReads)
   await expect(editor).toContainText('未保存草稿')
   await page.getByRole('button', { name: '全屏编辑' }).click()
-  await expect(page.locator('.rich-content')).toHaveClass(
-    /rich-content-fullscreen/,
-  )
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        document.fullscreenElement?.classList.contains('rich-content'),
+      ),
+    )
+    .toBe(true)
   expect(patches).toBe(0)
   await page.getByRole('button', { name: '退出全屏' }).click()
   await page

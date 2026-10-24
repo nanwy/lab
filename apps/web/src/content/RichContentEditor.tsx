@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState, type AriaAttributes } from 'react'
-import Quill from 'quill'
+import Quill, { Delta } from 'quill'
 import BlotFormatter from '@enzedonline/quill-blot-formatter2'
 import { Button } from '@workspace/ui/components/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from '@workspace/ui/components/dialog'
+import Viewer from 'viewerjs'
+import 'viewerjs/dist/viewer.css'
 import { toast } from '@workspace/ui/components/sonner'
 import { ApiError } from '../api'
 import { uploadContentImage, type ContentUpload } from '../api/content'
@@ -58,11 +55,13 @@ function ContentSession({
   readOnly = false,
   onUploadingChange,
 }: RichContentEditorProps) {
+  const section = useRef<HTMLElement>(null)
   const host = useRef<HTMLDivElement>(null)
   const quill = useRef<Quill | null>(null)
   const callbacks = useRef({ onChange, onUploadingChange })
   const lastValue = useRef(value)
   const [full, setFull] = useState(false)
+  const previewHost = useRef<HTMLDivElement>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState(0)
   useEffect(() => {
@@ -149,6 +148,7 @@ function ContentSession({
     q.root.setAttribute('role', 'textbox')
     q.root.setAttribute('aria-label', readOnly ? '富文本阅读' : '富文本正文')
     q.root.setAttribute('aria-multiline', 'true')
+    if (readOnly) q.root.tabIndex = 0
     q.clipboard.dangerouslyPasteHTML(
       sanitizeContent(lastValue.current),
       'silent',
@@ -160,6 +160,18 @@ function ContentSession({
       callbacks.current.onChange?.(html)
     }
     q.on('text-change', changed)
+    let filteringPaste = false
+    let rejectedImage = false
+    q.clipboard.addMatcher('IMG', (node, delta) => {
+      if (!filteringPaste) return delta
+      try {
+        validateImageSources((node as HTMLImageElement).outerHTML)
+        return delta
+      } catch {
+        rejectedImage = true
+        return new Delta()
+      }
+    })
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
@@ -238,7 +250,7 @@ function ContentSession({
       event.stopImmediatePropagation()
       const doc = new DOMParser().parseFromString(html, 'text/html')
       const embedded: File[] = []
-      for (const img of doc.images) {
+      for (const img of Array.from(doc.images)) {
         const src = img.getAttribute('src') ?? ''
         const match = src.match(/^data:(image\/[\w+.-]+);base64,([\s\S]+)$/)
         if (match) {
@@ -254,23 +266,24 @@ function ContentSession({
             img.remove()
           } catch {
             toast.error('粘贴图片无法读取')
-            return
+            img.remove()
           }
         }
       }
-      try {
-        validateImageSources(doc.body.innerHTML)
-      } catch (error) {
-        toast.error((error as Error).message)
-        return
-      }
       const range = q.getSelection() ?? { index: 0, length: 0 }
       if (range.length) q.deleteText(range.index, range.length, 'user')
-      q.clipboard.dangerouslyPasteHTML(
-        range.index,
-        sanitizeContent(doc.body.innerHTML),
-        'user',
-      )
+      filteringPaste = true
+      rejectedImage = false
+      try {
+        q.clipboard.dangerouslyPasteHTML(
+          range.index,
+          sanitizeContent(doc.body.innerHTML),
+          'user',
+        )
+      } finally {
+        filteringPaste = false
+      }
+      if (rejectedImage) toast.error('含有外部图片，请先上传图片后再保存')
       for (const file of embedded) void uploadFile(file)
     }
     if (!readOnly) {
@@ -326,17 +339,86 @@ function ContentSession({
     }
   }, [value])
   useEffect(() => {
-    if (!full) return
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setFull(false)
+    const container = previewHost.current
+    if (!preview || !container) return
+    const returnFocus = quill.current?.root
+    const image = document.createElement('img')
+    image.src = preview
+    image.alt = '正文图片预览'
+    image.hidden = true
+    container.append(image)
+    const viewer = new Viewer(image, {
+      container,
+      navbar: false,
+      navigation: false,
+      title: () => '图片预览',
+      transition: false,
+      toolbar: {
+        zoomIn: true,
+        zoomOut: true,
+        oneToOne: true,
+        reset: true,
+        rotateLeft: true,
+        rotateRight: true,
+        flipHorizontal: true,
+        flipVertical: true,
+      },
+      ready() {
+        const labels: Record<string, string> = {
+          'zoom-in': '放大',
+          'zoom-out': '缩小',
+          'one-to-one': '原始尺寸',
+          reset: '重置',
+          'rotate-left': '向左旋转',
+          'rotate-right': '向右旋转',
+          'flip-horizontal': '水平翻转',
+          'flip-vertical': '垂直翻转',
+          button: '关闭预览',
+        }
+        for (const [name, label] of Object.entries(labels)) {
+          const button = container.querySelector(`.viewer-${name}`)
+          button?.setAttribute('aria-label', label)
+          button?.setAttribute('title', label)
+        }
+      },
+      hidden() {
+        setPreview(null)
+      },
+    })
+    viewer.show()
+    return () => {
+      viewer.destroy()
+      image.remove()
+      if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true })
     }
-    document.addEventListener('keydown', escape)
-    return () => document.removeEventListener('keydown', escape)
-  }, [full])
+  }, [preview])
+  useEffect(() => {
+    const element = section.current
+    const syncFullscreen = () => setFull(document.fullscreenElement === element)
+    const escapeFullscreen = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && document.fullscreenElement === element)
+        void document.exitFullscreen().catch(() => {})
+    }
+    document.addEventListener('keydown', escapeFullscreen)
+    document.addEventListener('fullscreenchange', syncFullscreen)
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreen)
+      document.removeEventListener('keydown', escapeFullscreen)
+      if (document.fullscreenElement === element)
+        void document.exitFullscreen().catch(() => {})
+    }
+  }, [])
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement === section.current)
+        await document.exitFullscreen()
+      else await section.current?.requestFullscreen()
+    } catch {
+      toast.error('无法切换全屏，请检查浏览器权限')
+    }
+  }
   return (
-    <section
-      className={`rich-content ${full ? 'rich-content-fullscreen' : ''}`}
-    >
+    <section ref={section} className="rich-content">
       {!readOnly && (
         <div className="mb-2 flex items-center justify-between gap-3">
           <span className="text-sm text-muted-foreground">
@@ -346,7 +428,7 @@ function ContentSession({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setFull(!full)}
+            onClick={() => void toggleFullscreen()}
           >
             {full ? '退出全屏' : '全屏编辑'}
           </Button>
@@ -365,23 +447,7 @@ function ContentSession({
           }
         }}
       />
-      <Dialog
-        open={preview !== null}
-        onOpenChange={(open) => {
-          if (!open) setPreview(null)
-        }}
-      >
-        <DialogContent className="max-w-5xl">
-          <DialogTitle>图片预览</DialogTitle>
-          {preview && (
-            <img
-              className="max-h-[75vh] max-w-full object-contain"
-              src={preview}
-              alt="正文图片预览"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      <div ref={previewHost} />
     </section>
   )
 }

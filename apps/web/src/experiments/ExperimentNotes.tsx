@@ -48,6 +48,8 @@ function NoteSession({
     baseline: string
     noteId: string | number
   } | null>(null)
+  const [refreshFailed, setRefreshFailed] = useState(false)
+  const savedContent = useRef<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
   const operation = useRef(new AbortController())
@@ -70,28 +72,55 @@ function NoteSession({
     ))
       toast.error(error instanceof Error ? error.message : '笔记操作失败')
   }
-  const save = async () => {
-    if (busy || uploading) return
+  const refreshSaved = async (submitted: string) => {
     try {
-      validateImageSources(content)
-      setBusy(true)
-      const saved = await saveExperimentNote(
-        id,
-        content,
-        operation.current.signal,
-      )
+      const saved = await getExperimentNote(id, operation.current.signal)
       await client.cancelQueries({ queryKey: key, exact: true })
       if (operation.current.signal.aborted) return
       client.setQueryData(key, saved)
       setDraft((current) => ({
         content:
-          current && current.content !== content
+          current && current.content !== submitted
             ? current.content
             : saved.content,
         baseline: saved.content,
         noteId: saved.id,
       }))
+      setRefreshFailed(false)
       toast.success('笔记已保存')
+    } catch (error) {
+      if (operation.current.signal.aborted) return
+      setRefreshFailed(true)
+      showError(error)
+    }
+  }
+  const retryRefresh = async () => {
+    if (busy || uploading || savedContent.current === null) return
+    setBusy(true)
+    try {
+      await refreshSaved(savedContent.current)
+    } finally {
+      if (!operation.current.signal.aborted) setBusy(false)
+    }
+  }
+  const save = async () => {
+    if (busy || uploading || !query.data) return
+    try {
+      validateImageSources(content)
+      setBusy(true)
+      await saveExperimentNote(id, content, operation.current.signal)
+      await client.cancelQueries({ queryKey: key, exact: true })
+      if (operation.current.signal.aborted) return
+      savedContent.current = content
+      client.setQueryData(key, { ...query.data, content })
+      setDraft((current) => ({
+        content: current?.content ?? content,
+        baseline: content,
+        noteId: current?.noteId ?? query.data.id,
+      }))
+      // 导出依赖本次写入后的 noteId，回读完成前保持禁用。
+      setRefreshFailed(true)
+      await refreshSaved(content)
     } catch (error) {
       showError(error)
     } finally {
@@ -99,7 +128,7 @@ function NoteSession({
     }
   }
   const download = async () => {
-    if (busy || uploading || !query.data) return
+    if (busy || uploading || refreshFailed || !query.data) return
     setBusy(true)
     try {
       const path = await exportExperimentNote(
@@ -142,7 +171,7 @@ function NoteSession({
           <Button
             variant="outline"
             onClick={() => void download()}
-            disabled={busy || uploading || !query.data}
+            disabled={busy || uploading || refreshFailed || !query.data}
           >
             导出 Word
           </Button>
@@ -156,6 +185,18 @@ function NoteSession({
           ? '有未保存的修改；Word 仅导出上次已保存的正文'
           : 'Word 导出使用已保存的正文。'}
       </p>
+      {refreshFailed && !busy && (
+        <div role="status" className="space-y-2">
+          <p>已保存，内容刷新失败</p>
+          <Button
+            variant="outline"
+            disabled={uploading}
+            onClick={() => void retryRefresh()}
+          >
+            重新读取已保存内容
+          </Button>
+        </div>
+      )}
       <RichContentEditor
         value={content}
         scopeKey={`${account}:${id}`}

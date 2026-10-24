@@ -43,3 +43,19 @@ it('调用者提供 uuid 时保留归属，猜测的url字段与危险地址不�
     uploadContentImage(new File(['image'], 'a.png'), { mode: 'scene' }),
   ).rejects.toMatchObject({ kind: 'invalid-response' })
 })
+
+it('图片端点HTTP失败读取唯一image说明，由统一客户端处理一次', async () => {
+  vi.stubGlobal('fetch', async () =>
+    Response.json(
+      { image: '图片格式不支持', error: '其他协议字段' },
+      { status: 400 },
+    ),
+  )
+  await expect(
+    uploadContentImage(new File(['bad'], 'a.png'), { mode: 'scene' }),
+  ).rejects.toMatchObject({
+    kind: 'http',
+    message: '图片格式不支持',
+    handled: true,
+  })
+})

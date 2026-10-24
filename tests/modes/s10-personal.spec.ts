@@ -340,32 +340,79 @@ test('未保存内容切目录可取消，路由离开需确认；接受后新�
   await expect(editor).not.toContainText('私有草稿')
 })
 
-test('保存回读旧正文时保留提交草稿且允许重试', async ({ page }) => {
+test('写入确认后接受规范化正文，刷新失败可只重读且保留后来输入', async ({
+  page,
+}) => {
   let saved = note.content
-  let stale = true
+  let failRead = false
+  let writes = 0
+  let release!: () => void
+  const pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/api/front/user/note/n1/', async (r) => {
+    if (r.request().method() === 'PATCH') {
+      writes++
+      saved = '<p>服务端规范化正文</p>'
+      failRead = true
+      return r.fulfill({ json: { id: 'n1' } })
+    }
+    if (failRead)
+      return r.fulfill({ status: 500, json: { error: '合成刷新失败' } })
+    if (writes) await pending
+    return r.fulfill({ json: { ...note, content: saved } })
+  })
+  await page.goto('/#/basic/user/note')
+  const editor = page.getByRole('textbox', { name: '富文本正文', exact: true })
+  await editor.fill('提交正文')
+  await page.getByRole('button', { name: '保存笔记', exact: true }).click()
+  await expect(
+    page.getByText('已保存，内容刷新失败', { exact: true }),
+  ).toBeVisible()
+  await expect(editor).toContainText('提交正文')
+  await expect(
+    page.getByText('有未保存的修改。Word 导出使用已保存的版本。', {
+      exact: true,
+    }),
+  ).toHaveCount(0)
+  failRead = false
+  await page
+    .getByRole('button', { name: '重新读取已保存内容', exact: true })
+    .click()
+  await editor.fill('重读过程中继续输入')
+  release()
+  await expect(
+    page.getByText('已保存，内容刷新失败', { exact: true }),
+  ).toHaveCount(0)
+  await expect(editor).toContainText('重读过程中继续输入')
+  await expect(
+    page.getByText('有未保存的修改。Word 导出使用已保存的版本。', {
+      exact: true,
+    }),
+  ).toBeVisible()
+  expect(writes).toBe(1)
+})
+
+test('写成功后的服务端HTML规范化直接作为干净正文', async ({ page }) => {
+  let saved = note.content
   await page.route('**/api/front/user/note/n1/', (r) => {
     if (r.request().method() === 'PATCH') {
-      if (!stale) saved = r.request().postDataJSON().content
+      saved = '<p>规范化后的正文</p>'
       return r.fulfill({ json: { id: 'n1' } })
     }
     return r.fulfill({ json: { ...note, content: saved } })
   })
   await page.goto('/#/basic/user/note')
   const editor = page.getByRole('textbox', { name: '富文本正文', exact: true })
-  await editor.fill('需要保存的草稿')
-  await page.getByRole('button', { name: '保存笔记', exact: true }).click()
-  await expect(
-    page.getByText('保存后读取的笔记正文与提交内容不一致，草稿已保留', {
-      exact: true,
-    }),
-  ).toBeVisible()
-  await expect(editor).toContainText('需要保存的草稿')
-  await expect(page.getByText('笔记已保存', { exact: true })).toHaveCount(0)
-  stale = false
+  await editor.fill('提交正文')
   await page.getByRole('button', { name: '保存笔记', exact: true }).click()
   await expect(page.getByText('笔记已保存', { exact: true })).toBeVisible()
-  await page.reload()
-  await expect(editor).toContainText('需要保存的草稿')
+  await expect(editor).toHaveText('规范化后的正文')
+  await expect(
+    page.getByText('有未保存的修改。Word 导出使用已保存的版本。', {
+      exact: true,
+    }),
+  ).toHaveCount(0)
 })
 
 test('新建刷新重排和活动笔记移出列表均保留当前草稿', async ({ page }) => {
@@ -512,4 +559,81 @@ test('无草稿搜索无结果时清理旧详情，恢复列表后选择合法�
   await expect(page.getByText('暂无详情', { exact: true })).toBeVisible()
   await page.getByRole('textbox', { name: '搜索笔记', exact: true }).clear()
   await expect(editor).toContainText('原始正文')
+})
+
+test('首个自定义目录默认选首子级并以section_id读取正文', async ({ page }) => {
+  await page.route('**/api/front/learn/task/my_notes/folders/?*', (r) =>
+    r.fulfill({
+      json: [
+        {
+          id: 9,
+          name: '研究',
+          type: 5,
+          courses: [
+            { id: 22, name: '首子级' },
+            { id: 23, name: '第二子级' },
+          ],
+        },
+      ],
+    }),
+  )
+  await page.route(
+    '**/api/front/learn/task/my_notes/folders/9/courses/0/notes/?*',
+    (r) =>
+      r.fulfill({
+        json:
+          new URL(r.request().url()).searchParams.get('section_id') === '22'
+            ? [{ id: 'n1', name: note.name }]
+            : [],
+      }),
+  )
+  await page.goto('/#/basic/user/note')
+  await expect(
+    page.getByRole('textbox', { name: '富文本正文', exact: true }),
+  ).toContainText('原始正文')
+  await expect(
+    page.getByRole('button', { name: '首子级', exact: true }),
+  ).toBeVisible()
+})
+
+test('保存刷新失败后分享更新基线，不遗留旧重读入口覆盖新稿', async ({
+  page,
+}) => {
+  let saved = note.content
+  let failRead = false
+  let share = false
+  await page.route('**/api/front/user/note/n1/', (r) => {
+    if (r.request().method() === 'PATCH') {
+      const body = r.request().postDataJSON()
+      saved = body.content
+      if (Object.hasOwn(body, 'share')) {
+        share = body.share
+        failRead = false
+      } else failRead = true
+      return r.fulfill({ json: { id: 'n1' } })
+    }
+    if (failRead)
+      return r.fulfill({ status: 500, json: { error: '合成刷新失败' } })
+    return r.fulfill({ json: { ...note, content: saved, share } })
+  })
+  await page.goto('/#/basic/user/note')
+  const editor = page.getByRole('textbox', { name: '富文本正文', exact: true })
+  await editor.fill('正文A')
+  await page.getByRole('button', { name: '保存笔记', exact: true }).click()
+  await expect(
+    page.getByText('已保存，内容刷新失败', { exact: true }),
+  ).toBeVisible()
+  await editor.fill('正文B')
+  await page.getByRole('switch', { name: '分享笔记', exact: true }).click()
+  await expect(page.getByText('已分享笔记', { exact: true })).toBeVisible()
+  await editor.fill('正文A')
+  await expect(
+    page.getByRole('button', { name: '重新读取已保存内容', exact: true }),
+  ).toHaveCount(0)
+  await expect(editor).toContainText('正文A')
+  await expect(
+    page.getByText('有未保存的修改。Word 导出使用已保存的版本。', {
+      exact: true,
+    }),
+  ).toBeVisible()
 })

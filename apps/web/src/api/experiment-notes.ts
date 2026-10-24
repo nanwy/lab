@@ -38,13 +38,6 @@ export async function saveExperimentNote(
     isBusinessFailure: (value) =>
       !z.object({ status: z.literal(1) }).safeParse(value).success,
   })
-  const saved = await getExperimentNote(id, signal)
-  if (saved.content !== content)
-    throw new ApiError(
-      'invalid-response',
-      '保存后读取的笔记正文与提交内容不一致，草稿已保留',
-    )
-  return saved
 }
 export async function exportExperimentNote(
   id: string | number,

@@ -21,6 +21,7 @@ export async function uploadContentImage(
     signal: context.signal,
     timeoutMs: 30 * 60 * 1000,
     authentication: 'csrf-only',
+    errorDisplay: { httpMessageField: 'image' },
     isBusinessFailure: (value) =>
       z.object({ status: z.literal(2) }).safeParse(value).success,
   })

@@ -169,19 +169,12 @@ it('Word只读唯一file_path并拒绝伪成功，驻点读取原can_enter', asy
     '/front/learn/task/self_study/open_courses/10/can_enter/',
   )
 })
-it('正文PATCH仅返回id仍能通过独立详情读回，不假设写响应完整字段', async () => {
-  const note = {
+it('正文PATCH仅返回id即可确认写成功，不依赖后续GET', async () => {
+  vi.stubGlobal('fetch', async (_url: URL, options: RequestInit) => {
+    expect(options.method).toBe('PATCH')
+    return Response.json({ id: 'n1' })
+  })
+  await expect(savePersonalNote('n1', '<p>A &amp; B</p>')).resolves.toEqual({
     id: 'n1',
-    name: '记录',
-    content: '<p>已保存</p>',
-    share: false,
-    extend: null,
-  }
-  vi.stubGlobal(
-    'fetch',
-    vi.fn<typeof globalThis.fetch>(async (_url, options) =>
-      Response.json(options?.method === 'PATCH' ? { id: 'n1' } : note),
-    ),
-  )
-  expect(await savePersonalNote('n1', note.content)).toEqual(note)
+  })
 })

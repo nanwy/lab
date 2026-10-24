@@ -506,7 +506,7 @@ function FileTypeGlyph({ file }: { file: DriveFile }) {
     : file.isLink
       ? 'link'
       : Object.hasOwn(fileTypeByExtension, extension)
-        ? fileTypeByExtension[extension]
+        ? fileTypeByExtension[extension]!
         : 'other'
   const { label, mark } = fileTypeGlyphs[type]
   return (

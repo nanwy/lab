@@ -11,7 +11,9 @@ export function ShareToggle({
   share,
   content,
   onShared,
+  disabled = false,
 }: {
+  disabled?: boolean
   noteId: NoteId
   share: boolean
   content: string
@@ -26,7 +28,7 @@ export function ShareToggle({
     return () => controller.abort()
   }, [])
   const change = async (next: boolean) => {
-    if (busy) return
+    if (busy || disabled) return
     try {
       validateImageSources(content)
       setBusy(true)
@@ -53,7 +55,7 @@ export function ShareToggle({
       <Switch
         aria-label="分享笔记"
         checked={share}
-        disabled={busy}
+        disabled={busy || disabled}
         onCheckedChange={(next) => void change(next)}
       />
       分享笔记

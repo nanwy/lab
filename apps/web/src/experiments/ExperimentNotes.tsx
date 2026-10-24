@@ -82,11 +82,14 @@ function NoteSession({
       )
       if (operation.current.signal.aborted) return
       client.setQueryData(key, saved)
-      setDraft({
-        content: saved.content,
+      setDraft((current) => ({
+        content:
+          current && current.content !== content
+            ? current.content
+            : saved.content,
         baseline: saved.content,
         noteId: saved.id,
-      })
+      }))
       toast.success('笔记已保存')
     } catch (error) {
       showError(error)
@@ -95,7 +98,7 @@ function NoteSession({
     }
   }
   const download = async () => {
-    if (dirty || busy || uploading || !query.data) return
+    if (busy || uploading || !query.data) return
     setBusy(true)
     try {
       const path = await exportExperimentNote(
@@ -138,7 +141,7 @@ function NoteSession({
           <Button
             variant="outline"
             onClick={() => void download()}
-            disabled={dirty || busy || uploading || !query.data}
+            disabled={busy || uploading || !query.data}
           >
             导出 Word
           </Button>
@@ -149,7 +152,7 @@ function NoteSession({
       </header>
       <p className="text-sm text-muted-foreground">
         {dirty
-          ? '有未保存的修改，保存后可导出 Word'
+          ? '有未保存的修改；Word 仅导出上次已保存的正文'
           : 'Word 导出使用已保存的正文。'}
       </p>
       <RichContentEditor

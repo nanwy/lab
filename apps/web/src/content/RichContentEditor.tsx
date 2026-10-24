@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type AriaAttributes } from 'react'
 import Quill from 'quill'
 import BlotFormatter from '@enzedonline/quill-blot-formatter2'
 import { Button } from '@workspace/ui/components/button'
@@ -31,6 +31,10 @@ const toolbar = [
   ['clean'],
 ]
 export type RichContentEditorProps = {
+  id?: string
+  name?: string
+  onBlur?: () => void
+  'aria-invalid'?: AriaAttributes['aria-invalid']
   value: string
   onChange?: (html: string) => void
   scopeKey: string
@@ -39,7 +43,14 @@ export type RichContentEditorProps = {
   onUploadingChange?: (busy: boolean) => void
 }
 
-export function RichContentEditor({
+export function RichContentEditor(props: RichContentEditorProps) {
+  return <ContentSession key={props.scopeKey} {...props} />
+}
+function ContentSession({
+  id,
+  name,
+  onBlur,
+  'aria-invalid': ariaInvalid,
   value,
   onChange,
   scopeKey,
@@ -89,6 +100,52 @@ export function RichContentEditor({
       },
     })
     quill.current = q
+    const labels: Record<string, string> = {
+      bold: '粗体',
+      italic: '斜体',
+      underline: '下划线',
+      strike: '删除线',
+      blockquote: '引用',
+      'code-block': '代码块',
+      list: '列表',
+      indent: '缩进',
+      script: '上下标',
+      image: '插入图片',
+      direction: '文字方向',
+      clean: '清除格式',
+      header: '标题级别',
+      color: '文字颜色',
+      background: '背景颜色',
+      align: '对齐',
+    }
+    for (const button of container.querySelectorAll<HTMLButtonElement>(
+      '.ql-toolbar button',
+    )) {
+      button.type = 'button'
+      const format = Array.from(button.classList)
+        .find((name) => name.startsWith('ql-'))
+        ?.slice(3)
+      const label = format && labels[format]
+      if (label) {
+        button.setAttribute(
+          'aria-label',
+          `${label}${button.value ? ' ' + button.value : ''}`,
+        )
+        button.title = label
+      }
+    }
+    for (const picker of container.querySelectorAll<HTMLElement>(
+      '.ql-picker',
+    )) {
+      const format = Array.from(picker.classList)
+        .find((name) => name !== 'ql-picker' && name.startsWith('ql-'))
+        ?.slice(3)
+      const label = format && labels[format]
+      if (label)
+        picker
+          .querySelector('.ql-picker-label')
+          ?.setAttribute('aria-label', label)
+    }
     q.root.setAttribute('role', 'textbox')
     q.root.setAttribute('aria-label', readOnly ? '富文本阅读' : '富文本正文')
     q.root.setAttribute('aria-multiline', 'true')
@@ -248,6 +305,18 @@ export function RichContentEditor({
     }
   }, [scopeKey, mode, uuid, readOnly])
   useEffect(() => {
+    const root = quill.current?.root
+    if (!root) return
+    for (const [attribute, value] of [
+      ['id', id],
+      ['name', name],
+      ['aria-invalid', ariaInvalid],
+    ] as const) {
+      if (value === undefined) root.removeAttribute(attribute)
+      else root.setAttribute(attribute, String(value))
+    }
+  }, [id, name, ariaInvalid, readOnly, mode, uuid])
+  useEffect(() => {
     lastValue.current = value
     const q = quill.current
     if (q && q.root.innerHTML !== value) {
@@ -273,16 +342,27 @@ export function RichContentEditor({
           <span className="text-sm text-muted-foreground">
             {uploading ? '正在上传图片…' : '支持选择、拖入或粘贴图片'}
           </span>
-          <Button variant="outline" size="sm" onClick={() => setFull(!full)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setFull(!full)}
+          >
             {full ? '退出全屏' : '全屏编辑'}
           </Button>
         </div>
       )}
       <div
         ref={host}
-        onDoubleClick={(event) => {
-          if (event.target instanceof HTMLImageElement)
+        onBlur={(event) => {
+          if (event.target === quill.current?.root) onBlur?.()
+        }}
+        onClickCapture={(event) => {
+          if (!full && event.target instanceof HTMLImageElement) {
+            event.preventDefault()
+            event.stopPropagation()
             setPreview(event.target.src)
+          }
         }}
       />
       <Dialog

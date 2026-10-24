@@ -121,6 +121,10 @@ test('说明图片按scene上传保存重开，后台刷新保留草稿，取消
   const slowUpload = new Promise<void>((resolve) => {
     releaseUpload = resolve
   })
+  let finishUpload: () => void = () => {}
+  const uploadFinished = new Promise<void>((resolve) => {
+    finishUpload = resolve
+  })
   await page.route(
     '**/api/front/simulation/experiment/*/?more=1',
     async (route) => {
@@ -155,16 +159,18 @@ test('说明图片按scene上传保存重开，后台刷新保留草稿，取消
     expect(data).toContain('name="image"')
     expect(data).toContain('name="mode"\r\n\r\nscene')
     expect(data).not.toContain('name="uuid"')
-    if (++uploadAttempts === 2) await slowUpload
+    const attempt = ++uploadAttempts
+    if (attempt === 2) await slowUpload
     await route
       .fulfill({ json: { data: { url: '/uploads/overview.png' } } })
       .catch(() => {})
+    if (attempt === 2) finishUpload()
   })
   await page.route('**/uploads/overview.png', (route) =>
     route.fulfill({
       contentType: 'image/png',
       body: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN1kAAAAASUVORK5CYII=',
+        'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR4nGNQ6NhNU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULAFiAjEx1W99+AAAAAElFTkSuQmCC',
         'base64',
       ),
     }),
@@ -207,10 +213,7 @@ test('说明图片按scene上传保存重开，后台刷新保留草稿，取消
   await expect(page.getByRole('textbox', { name: '富文本阅读' })).toContainText(
     '未保存草稿',
   )
-  await page
-    .getByRole('textbox', { name: '富文本阅读' })
-    .locator('img')
-    .dblclick()
+  await page.getByRole('textbox', { name: '富文本阅读' }).locator('img').click()
   await expect(page.getByRole('dialog', { name: '图片预览' })).toBeVisible()
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: '编辑说明' }).click()
@@ -218,12 +221,14 @@ test('说明图片按scene上传保存重开，后台刷新保留草稿，取消
     .locator('input[type=file][aria-label="选择正文图片"]')
     .setInputFiles(image)
   await expect(page.getByText('正在上传图片…')).toBeVisible()
+  await expect.poll(() => uploadAttempts).toBe(2)
   await expect(
     page.getByRole('button', { name: '确定', exact: true }),
   ).toBeDisabled()
   await page.getByRole('button', { name: '取消', exact: true }).click()
   await page.getByRole('button', { name: '编辑说明' }).click()
   releaseUpload()
+  await uploadFinished
   await expect(editor.locator('img')).toHaveCount(1)
   await page.getByRole('button', { name: '取消', exact: true }).click()
   await page.goto('/#/basic/user/bench/experiment/two/explain')
@@ -324,8 +329,7 @@ test('说明保存逐张检查图片来源，正文包含本站地址也不能�
           node_count: 0,
           user_name: '学员',
           tags: [],
-          overview:
-            '<p>http://127.0.0.1:4195</p><img src="https://outside.invalid/image.png">',
+          overview: `<p>${new URL(route.request().url()).origin}</p><img src="https://outside.invalid/image.png">`,
           release_type: 2,
           max_duration: 2,
           tags_category: null,

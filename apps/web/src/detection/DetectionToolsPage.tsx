@@ -19,6 +19,7 @@ import {
 } from '../api/detection-tools'
 import { currentUserQueryOptions } from '../auth/session'
 import { RichContentReadOnly } from '../content/RichContentEditor'
+import { DetectionMaterials } from './DetectionMaterials'
 import { useExperiment } from '../experiments/ExperimentContext'
 
 export function DetectionToolsPage({
@@ -99,6 +100,7 @@ function CatalogSession({
   experimentId: string | number
   category: DetectionCategory
 }) {
+  const [tab, setTab] = useState('info')
   const [selected, setSelected] = useState<string | number | null>(null)
   const list = useQuery({
     queryKey: ['detection-tools', account, experimentId, category.type, 'list'],
@@ -146,11 +148,12 @@ function CatalogSession({
       </nav>
       {current && (
         <ToolDetail
-          key={String(current.id)}
           account={account}
           experimentId={experimentId}
           category={category.type}
           toolId={current.id}
+          tab={tab}
+          onTabChange={setTab}
         />
       )}
     </div>
@@ -161,11 +164,15 @@ function ToolDetail({
   experimentId,
   category,
   toolId,
+  tab,
+  onTabChange,
 }: {
   account: string | number
   experimentId: string | number
   category: string
   toolId: string | number
+  tab: string
+  onTabChange: (value: string) => void
 }) {
   const detail = useQuery({
     queryKey: [
@@ -190,7 +197,7 @@ function ToolDetail({
     )
   const tool = detail.data
   return (
-    <Tabs defaultValue="info">
+    <Tabs value={tab} onValueChange={onTabChange}>
       <TabsList aria-label="工具详情">
         <TabsTrigger value="info">基本信息</TabsTrigger>
         <TabsTrigger value="manual">使用手册</TabsTrigger>
@@ -207,7 +214,11 @@ function ToolDetail({
         )}
       </TabsContent>
       <TabsContent value="materials">
-        <p role="note">相关资料功能待交付</p>
+        <DetectionMaterials
+          key={String(tool.id)}
+          toolId={tool.id}
+          context={[account, experimentId, category]}
+        />
       </TabsContent>
     </Tabs>
   )

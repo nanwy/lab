@@ -115,3 +115,18 @@ it('原卡片可缺少标签，详情标签仍为必填数组', async () => {
     kind: 'invalid-response',
   })
 })
+
+it('附件允许可选空串，但拒绝纯空白地址', async () => {
+  const { getDetectionTool } = await import('./detection-tools')
+  const detail = { id: 8, name: '工具', tags: [], tool_carrier: 1 }
+  const fetch = vi.fn<typeof globalThis.fetch>()
+  vi.stubGlobal('fetch', fetch)
+  fetch.mockResolvedValueOnce(Response.json({ ...detail, carrier_path: '' }))
+  expect(await getDetectionTool(8)).toMatchObject({ carrier_path: '' })
+  for (const carrier_path of [' ', '\t', '\n']) {
+    fetch.mockResolvedValueOnce(Response.json({ ...detail, carrier_path }))
+    await expect(getDetectionTool(8)).rejects.toMatchObject({
+      kind: 'invalid-response',
+    })
+  }
+})

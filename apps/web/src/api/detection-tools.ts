@@ -53,6 +53,7 @@ const detail = item.extend({
     .string()
     .refine(
       (value) => {
+        if (value !== '' && !value.trim()) return false
         try {
           return ['http:', 'https:'].includes(
             new URL(value, 'https://local.invalid').protocol,

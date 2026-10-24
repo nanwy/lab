@@ -253,9 +253,7 @@ test('读取失败、契约错误、拒绝访问和空目录可恢复，刷新�
   await expect(page.getByText('资料禁止访问', { exact: true })).toHaveCount(1)
   state = 'invalid'
   await page.getByRole('button', { name: '重试资料', exact: true }).click()
-  await expect(
-    page.getByText('检测资料响应契约错误', { exact: true }),
-  ).toBeVisible()
+  await expect(page.getByText(/^检测资料响应契约错误：/)).toBeVisible()
   state = 'empty'
   await page.getByRole('button', { name: '重试资料', exact: true }).click()
   await expect(page.getByText('此目录暂无资料', { exact: true })).toBeVisible()

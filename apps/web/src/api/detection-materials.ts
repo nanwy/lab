@@ -7,6 +7,7 @@ const address = z
   .string()
   .min(1)
   .refine((value) => {
+    if (!value.trim()) return false
     try {
       return ['http:', 'https:'].includes(
         new URL(value, 'https://local.invalid').protocol,
@@ -15,15 +16,16 @@ const address = z
       return false
     }
   }, '资料地址协议无效')
+const materialId = z.union([
+  z
+    .string()
+    .min(1)
+    .refine((id) => id !== '..'),
+  z.number().finite(),
+])
 const entry = z
   .object({
-    id: z.union([
-      z
-        .string()
-        .min(1)
-        .refine((id) => id !== '..'),
-      z.number().finite(),
-    ]),
+    id: materialId,
     name: z.string(),
     path: z.string(),
     is_file: truth,
@@ -49,6 +51,20 @@ const entry = z
   })
 export type DetectionMaterial = z.infer<typeof entry>
 const base = '/front/wqzb/detection_front/tools/'
+function materialContractError(endpoint: string, error: z.ZodError) {
+  const issues = error.issues
+    .slice(0, 5)
+    .map((issue) => `${issue.path.join('.')}:${issue.code}`)
+    .join('; ')
+  const label =
+    endpoint === 'materials/'
+      ? '检测资料响应契约错误'
+      : '检测资料导出响应契约错误'
+  return new ApiError(
+    'invalid-response',
+    `${label}：${base}{toolId}/${endpoint}（${issues}）`,
+  )
+}
 export async function getDetectionMaterials(
   toolId: string | number,
   path: string,
@@ -59,12 +75,15 @@ export async function getDetectionMaterials(
     { signal },
   )
   const parsed = z.object({ results: z.array(entry) }).safeParse(response)
+  if (!parsed.success) throw materialContractError('materials/', parsed.error)
   if (
-    !parsed.success ||
     new Set(parsed.data.results.map((file) => String(file.id))).size !==
-      parsed.data.results.length
+    parsed.data.results.length
   )
-    throw new ApiError('invalid-response', '检测资料响应契约错误')
+    throw new ApiError(
+      'invalid-response',
+      `检测资料响应契约错误：${base}{toolId}/materials/（results.id:duplicate_id）`,
+    )
   return parsed.data.results
 }
 export async function exportDetectionMaterials(
@@ -72,7 +91,7 @@ export async function exportDetectionMaterials(
   ids: DetectionMaterial['id'][],
   signal?: AbortSignal,
 ): Promise<string> {
-  if (!ids.length || ids.some((id) => !id || id === '..'))
+  if (!z.array(materialId).min(1).safeParse(ids).success)
     throw new Error('请选择有效资料')
   const response = await apiClient.request(
     `${base}${encodeURIComponent(toolId)}/materials/export_zip/`,
@@ -82,7 +101,7 @@ export async function exportDetectionMaterials(
     .object({ download_url: address, status: z.literal(1).optional() })
     .safeParse(response)
   if (!parsed.success)
-    throw new ApiError('invalid-response', '检测资料导出响应契约错误')
+    throw materialContractError('materials/export_zip/', parsed.error)
   return parsed.data.download_url
 }
 export function detectionDownloadName(attached: string) {

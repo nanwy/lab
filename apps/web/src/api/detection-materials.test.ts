@@ -104,3 +104,105 @@ it('ZIP空选择/无效项不发送请求，未知status不能转成下载地址
     'report.multi',
   )
 })
+
+it('文件地址和ZIP地址拒绝空格、制表及换行组成的空白地址', async () => {
+  const { exportDetectionMaterials } = await import('./detection-materials')
+  const fetch = vi.fn<typeof globalThis.fetch>()
+  vi.stubGlobal('fetch', fetch)
+  for (const address of [' ', '\t', '\n']) {
+    fetch.mockResolvedValueOnce(
+      Response.json({ results: [{ ...file, attached: address }] }),
+    )
+    await expect(getDetectionMaterials(1, '/')).rejects.toMatchObject({
+      kind: 'invalid-response',
+    })
+    fetch.mockResolvedValueOnce(Response.json({ download_url: address }))
+    await expect(exportDetectionMaterials(1, [7])).rejects.toMatchObject({
+      kind: 'invalid-response',
+    })
+  }
+})
+
+it('读取和导出一致接受数值0，非法资料ID不提交HTTP请求', async () => {
+  const { exportDetectionMaterials } = await import('./detection-materials')
+  const fetch = vi.fn<typeof globalThis.fetch>()
+  vi.stubGlobal('fetch', fetch)
+  fetch.mockResolvedValueOnce(Response.json({ results: [{ ...file, id: 0 }] }))
+  const materials = await getDetectionMaterials(1, '/')
+  fetch.mockResolvedValueOnce(
+    Response.json({ download_url: '/media/export.zip' }),
+  )
+  expect(
+    await exportDetectionMaterials(
+      1,
+      materials.map((material) => material.id),
+    ),
+  ).toBe('/media/export.zip')
+  expect(JSON.parse(String(fetch.mock.calls.at(-1)?.[1]?.body))).toEqual({
+    material_ids: [0],
+  })
+  fetch.mockClear()
+  for (const ids of [[], ['..'], [''], [NaN], [Infinity], [-Infinity]]) {
+    await expect(exportDetectionMaterials(1, ids)).rejects.toThrow(
+      '请选择有效资料',
+    )
+  }
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('资料契约错误保留脱敏端点和字段路径类型，不包含响应内容或目录与凭据', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>(async () =>
+    Response.json({
+      results: [
+        {
+          ...file,
+          name: '私密资料',
+          attached: 'https://user:password@local.invalid/file?token=secret',
+          size: { private: '私密内容' },
+        },
+      ],
+    }),
+  )
+  vi.stubGlobal('fetch', fetch)
+  const error = await getDetectionMaterials(
+    '私密工具',
+    '/私密目录?token=secret',
+  ).catch((error: unknown) => error)
+  expect(error).toMatchObject({
+    kind: 'invalid-response',
+    message: expect.stringContaining(
+      '/front/wqzb/detection_front/tools/{toolId}/materials/',
+    ),
+  })
+  expect((error as Error).message).toContain('results.0.size:invalid_union')
+  expect((error as Error).message).not.toMatch(
+    /私密|secret|password|user:|local.invalid/,
+  )
+})
+
+it('ZIP契约错误保留脱敏端点与字段路径，重复资料ID给出独立原因', async () => {
+  const { exportDetectionMaterials } = await import('./detection-materials')
+  const fetch = vi.fn<typeof globalThis.fetch>()
+  vi.stubGlobal('fetch', fetch)
+  fetch.mockResolvedValueOnce(
+    Response.json({ download_url: { token: 'secret' }, message: '私密内容' }),
+  )
+  const error = await exportDetectionMaterials('私密工具', [7]).catch(
+    (error: unknown) => error,
+  )
+  expect(error).toMatchObject({
+    kind: 'invalid-response',
+    message: expect.stringContaining(
+      '/front/wqzb/detection_front/tools/{toolId}/materials/export_zip/',
+    ),
+  })
+  expect((error as Error).message).toContain('download_url:invalid_type')
+  expect((error as Error).message).not.toMatch(/私密|secret|token/)
+  fetch.mockResolvedValueOnce(
+    Response.json({ results: [file, { ...file, id: '7' }] }),
+  )
+  await expect(getDetectionMaterials(1, '/')).rejects.toMatchObject({
+    kind: 'invalid-response',
+    message: expect.stringContaining('results.id:duplicate_id'),
+  })
+})

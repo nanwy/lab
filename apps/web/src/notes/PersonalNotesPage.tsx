@@ -334,8 +334,15 @@ export function PersonalNoteList({
     retry: false,
   })
   const [selected, setSelected] = useState<NoteId>()
-  const id = selected ?? list.data?.[0]?.id
-  if (selected === undefined && id !== undefined) setSelected(id)
+  const [preserveSelection, setPreserveSelection] = useState(false)
+  const selectedExists = list.data?.some(
+    (note) => String(note.id) === String(selected),
+  )
+  const id =
+    list.isSuccess && !selectedExists && !preserveSelection
+      ? list.data[0]?.id
+      : (selected ?? list.data?.[0]?.id)
+  if (selected !== id) setSelected(id)
   const selectedMissing =
     selected !== undefined &&
     list.isSuccess &&
@@ -454,6 +461,7 @@ export function PersonalNoteList({
             account={account}
             context={context}
             noteId={id}
+            onProtectionChange={setPreserveSelection}
           />
         ) : (
           <p>暂无详情</p>
@@ -466,10 +474,12 @@ export function PersonalNoteEditor({
   account,
   context,
   noteId,
+  onProtectionChange,
 }: {
   account: NoteId
   context: NoteContext
   noteId: NoteId
+  onProtectionChange: (protectedSession: boolean) => void
 }) {
   const client = useQueryClient()
   const leave = useContext(NoteLeaveContext)
@@ -490,12 +500,14 @@ export function PersonalNoteEditor({
   const content = draft?.content ?? note.data?.content ?? ''
   const dirty = draft !== null && draft.content !== draft.baseline
   useEffect(() => {
-    if (!leave) return
-    leave.current = dirty || busy || uploading || sharing
+    const protectedSession = dirty || busy || uploading || sharing
+    onProtectionChange(protectedSession)
+    if (leave) leave.current = protectedSession
     return () => {
-      leave.current = false
+      onProtectionChange(false)
+      if (leave) leave.current = false
     }
-  }, [leave, dirty, busy, uploading, sharing])
+  }, [leave, dirty, busy, uploading, sharing, onProtectionChange])
   const blocker = useBlocker({
     shouldBlockFn: () => dirty || busy || uploading || sharing,
     enableBeforeUnload: dirty || busy || uploading || sharing,

@@ -488,3 +488,28 @@ for (const action of ['保存', '分享'] as const) {
     await expect(editor).toContainText('刚刚持久化的新正文')
   })
 }
+
+test('无草稿搜索无结果时清理旧详情，恢复列表后选择合法笔记', async ({
+  page,
+}) => {
+  await page.route(
+    '**/api/front/learn/task/my_notes/folders/*/courses/*/notes/?*',
+    (r) =>
+      r.fulfill({
+        json: new URL(r.request().url()).searchParams.get('search')
+          ? []
+          : [{ id: note.id, name: note.name }],
+      }),
+  )
+  await page.goto('/#/basic/user/note')
+  const editor = page.getByRole('textbox', { name: '富文本正文', exact: true })
+  await expect(editor).toContainText('原始正文')
+  await page
+    .getByRole('textbox', { name: '搜索笔记', exact: true })
+    .fill('无匹配内容')
+  await expect(page.getByText('暂无笔记', { exact: true })).toBeVisible()
+  await expect(editor).toHaveCount(0)
+  await expect(page.getByText('暂无详情', { exact: true })).toBeVisible()
+  await page.getByRole('textbox', { name: '搜索笔记', exact: true }).clear()
+  await expect(editor).toContainText('原始正文')
+})

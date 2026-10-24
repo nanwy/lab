@@ -40,9 +40,9 @@ const client = createApiClient({
     toast.error(error.message)
   },
   requestPolicy: {
-    apply({ headers, method }) {
+    apply({ headers, method, authentication }) {
       const token = globalThis.localStorage?.getItem('token')
-      if (token)
+      if (token && authentication !== 'csrf-only')
         headers.set('authorization', `Token ${encodeURIComponent(token)}`)
 
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {

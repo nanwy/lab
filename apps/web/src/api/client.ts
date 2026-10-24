@@ -2,6 +2,7 @@ export type RequestPolicyContext = {
   headers: Headers
   method: string
   url: URL
+  authentication: 'session' | 'csrf-only'
 }
 
 export type RequestPolicy = {
@@ -15,6 +16,7 @@ export type ErrorDisplayPolicy = {
 }
 
 export type RequestOptions = Omit<RequestInit, 'body' | 'signal'> & {
+  authentication?: 'session' | 'csrf-only'
   json?: unknown
   body?: BodyInit | null
   response?: ResponseKind
@@ -283,7 +285,12 @@ export function createApiClient(options: ApiClientOptions) {
       body = JSON.stringify(request.json)
     }
 
-    await options.requestPolicy?.apply({ headers, method, url })
+    await options.requestPolicy?.apply({
+      headers,
+      method,
+      url,
+      authentication: request.authentication ?? 'session',
+    })
     const signal = combineSignals(request.signal, request.timeoutMs)
 
     let response: Response

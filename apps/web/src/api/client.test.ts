@@ -381,3 +381,25 @@ describe('request contract', () => {
     expect(await new Response(stream).text()).toBe('streamed')
   })
 })
+
+it('显式图片认证策略传至统一请求策略，同时保留 CSRF', async () => {
+  const client = createApiClient({
+    baseUrl: 'http://localhost/api',
+    requestPolicy: {
+      apply(context) {
+        if (Reflect.get(context, 'authentication') !== 'csrf-only')
+          context.headers.set('authorization', 'Token secret')
+        context.headers.set('x-csrftoken', 'csrf')
+      },
+    },
+    fetch: async (_url, options) => {
+      expect(new Headers(options?.headers).get('authorization')).toBeNull()
+      expect(new Headers(options?.headers).get('x-csrftoken')).toBe('csrf')
+      return Response.json({ data: { url: '/image.png' } })
+    },
+  })
+  await client.request('/front/upload_image/', {
+    method: 'POST',
+    ...{ authentication: 'csrf-only' as const },
+  })
+})

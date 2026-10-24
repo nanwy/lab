@@ -1,3 +1,4 @@
+import { ExperimentNotes } from './experiments/ExperimentNotes'
 import {
   Link,
   Outlet,
@@ -460,6 +461,11 @@ const experimentExplanationRoute = createRoute({
   path: '/explain',
   component: ExperimentExplanation,
 })
+const experimentNotesRoute = createRoute({
+  getParentRoute: () => experimentRoute,
+  path: '/notes',
+  component: ExperimentNotes,
+})
 const experimentFutureRoute = createRoute({
   getParentRoute: () => experimentRoute,
   path: '$',
@@ -468,7 +474,6 @@ const experimentFutureRoute = createRoute({
     if (
       ![
         'simulate',
-        'notes',
         'detection/penetration',
         'detection/defense',
         'detection/baseline',
@@ -612,6 +617,7 @@ const routeTree = rootRoute.addChildren([
       experimentExplanationRoute,
       experimentSceneRoute,
       experimentFlowRoute,
+      experimentNotesRoute,
       experimentFutureRoute,
     ]),
     futureRoute,

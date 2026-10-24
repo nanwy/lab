@@ -28,7 +28,7 @@
 
 - 独立 `detection-materials` 适配器只读取 `results`；文件/目录与 UI 上级行分离，`is_file` 接受 boolean/0/1，`size` 接受数值及数值字符串。`create_time` 显示与 `altertime` 排序保留独立来源，重复或哨兵 ID、文件缺地址、可执行 URL 明确失败。
 - 原 `d8s` @12722200 将活动页签保存在目录层，按此保留切工具时的资料页签；资料组件按工具、路径重挂载，清旧目录、选择和播放器，Query 与导出请求离页取消。原 `Ks` @1803278 仅以 attached 的 mp4 扩展名打开视频；Office 名称保持普通文本。
-- ZIP 只接受 `download_url` 非空 HTTP(S)/相对地址，不猜 `url`、字符串或无地址。可选 `status` 仅静态支持字面量 1，其他值视为契约错误；这不定义本域业务状态码，也不证明真实服务字段。错误统一提示一次，不显示“导出成功”。命名沿 `jf(attached)` 的原算法，忽略 displayName。
+- ZIP 只接受 `download_url` 非空 HTTP(S)/相对地址，不猜 `url`、字符串或无地址。原实现曾限制可选status=1；本轮对照整改移除该无证约束，只消费原download_url及可选filename，缺名使用download.zip，不推断未知业务码。错误统一提示一次，不显示“导出成功”。命名沿 `jf(attached)` 的原算法，忽略 displayName。
 - 从网盘原样提取纯 `FileTypeGlyph` / `formatBytes` 到 `files/file-presentation.tsx`，两页面共享展示，不引入网盘资料对象或请求协议。
 - 有效 red → green：资料读取最初返回 envelope 导致公共结果断言失败；ZIP 最初返回对象导致地址断言失败；资料页签只有待交付占位导致表格用户行为断言失败。随后逐条实现并通过。测试环境命令错误、下载 route 截获限制和排序预期纠正不计作功能红灯。
 - 验证：`fnm exec --using 24.14.0 pnpm --filter @xueyuan/web test src/api/detection-materials.test.ts src/api/detection-tools.test.ts`，10 通过。`pnpm exec playwright test --config=playwright.s11.config.ts`，目录/阅读/资料 8 通过；补强名称/大小排序、精确日志筛选后资料专项 4 通过。浏览器检查没有未预期 pageerror/console.error，仅排除本资料端点精确 HTTP 500/403 预期日志。

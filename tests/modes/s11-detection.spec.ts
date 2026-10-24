@@ -76,6 +76,66 @@ test.beforeEach(async ({ page }) => {
     }),
   )
 })
+test('工具附件显示名沿原jf规则，不改下载地址', async ({ page }) => {
+  await page.route('**/api/front/wqzb/detection_front/tools/first/', (route) =>
+    route.fulfill({
+      json: { ...detail('first'), carrier_path: '/media/tool_hash.zip' },
+    }),
+  )
+  await page.goto(`${root}penetration`)
+  await expect(
+    page.getByRole('link', { name: 'tool.zip 附件', exact: true }),
+  ).toHaveAttribute('href', '/media/tool_hash.zip')
+})
+
+test('跨分类保留当前页签，换实验时重置页签与工具选择', async ({ page }) => {
+  await page.goto(`${root}penetration`)
+  await page.getByRole('tab', { name: '使用手册' }).click()
+  await page.getByRole('link', { name: '防御验证', exact: true }).click()
+  await expect(page.getByRole('tab', { name: '使用手册' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await expect(page.getByRole('textbox', { name: '富文本阅读' })).toContainText(
+    '工具使用步骤',
+  )
+  await page.goto('/#/basic/user/bench/experiment/two/detection/defense')
+  await expect(page.getByRole('tab', { name: '基本信息' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await expect(
+    page.getByRole('button', { name: '工具first', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('整张工具卡片和标签可选工具，支持键盘操作', async ({ page }) => {
+  await page.route('**/api/front/wqzb/detection_front/tools/?*', (route) =>
+    route.fulfill({
+      json: {
+        results: [
+          { id: 'first', name: '工具first', tags: [] },
+          { id: 'second', name: '工具second', tags: ['二号标签'] },
+        ],
+      },
+    }),
+  )
+  await page.goto(`${root}penetration`)
+  await page
+    .getByRole('navigation', { name: '选择检测工具' })
+    .getByText('二号标签', { exact: true })
+    .click()
+  await expect(
+    page.getByRole('button', { name: '工具second', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
+  await page
+    .getByRole('button', { name: '工具first', exact: true })
+    .press('Enter')
+  await expect(
+    page.getByRole('button', { name: '工具first', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
+})
+
 test('五类深链、历史导航、首项选择和工具切换支持附件、镜像与只读手册', async ({
   page,
 }, testInfo) => {

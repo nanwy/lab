@@ -90,7 +90,7 @@ export async function exportDetectionMaterials(
   toolId: string | number,
   ids: DetectionMaterial['id'][],
   signal?: AbortSignal,
-): Promise<string> {
+) {
   if (!z.array(materialId).min(1).safeParse(ids).success)
     throw new Error('请选择有效资料')
   const response = await apiClient.request(
@@ -98,11 +98,17 @@ export async function exportDetectionMaterials(
     { method: 'POST', json: { material_ids: ids }, signal },
   )
   const parsed = z
-    .object({ download_url: address, status: z.literal(1).optional() })
+    .object({
+      download_url: address,
+      filename: z
+        .string()
+        .nullish()
+        .transform((name) => name || 'download.zip'),
+    })
     .safeParse(response)
   if (!parsed.success)
     throw materialContractError('materials/export_zip/', parsed.error)
-  return parsed.data.download_url
+  return parsed.data
 }
 export function detectionDownloadName(attached: string) {
   const [stem, extension] = attached.split('/').at(-1)!.split('.')

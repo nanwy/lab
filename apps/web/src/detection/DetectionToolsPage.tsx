@@ -10,6 +10,7 @@ import {
   TabsContent,
 } from '@workspace/ui/components/tabs'
 import { ApiError } from '../api'
+import { detectionDownloadName } from '../api/detection-materials'
 import {
   detectionCategories,
   getDetectionTools,
@@ -20,6 +21,7 @@ import {
 import { currentUserQueryOptions } from '../auth/session'
 import { RichContentReadOnly } from '../content/RichContentEditor'
 import { DetectionMaterials } from './DetectionMaterials'
+import { useDetectionTabs } from './DetectionTabs'
 import { useExperiment } from '../experiments/ExperimentContext'
 
 export function DetectionToolsPage({
@@ -29,7 +31,10 @@ export function DetectionToolsPage({
 }) {
   const experiment = useExperiment()
   const user = useQuery(currentUserQueryOptions())
+  const { tab, setTab } = useDetectionTabs()
   if (!user.data) return <p role="status">正在加载账号…</p>
+  const account = user.data.id
+  const experimentId = experiment.id
   return (
     <section className="space-y-5">
       <nav aria-label="检测分类" className="flex flex-wrap gap-5 border-b pb-3">
@@ -37,7 +42,7 @@ export function DetectionToolsPage({
           <Link
             key={entry.type}
             to="/basic/user/bench/experiment/$id/detection/$type"
-            params={{ id: String(experiment.id), type: entry.type }}
+            params={{ id: String(experimentId), type: entry.type }}
             aria-current={
               (category?.type ?? 'penetration') === entry.type
                 ? 'page'
@@ -55,10 +60,12 @@ export function DetectionToolsPage({
       </nav>
       {category ? (
         <CatalogSession
-          key={`${user.data.id}:${experiment.id}:${category.type}`}
-          account={user.data.id}
-          experimentId={experiment.id}
+          key={category.type}
+          account={account}
+          experimentId={experimentId}
           category={category}
+          tab={tab}
+          onTabChange={setTab}
         />
       ) : (
         <p>请选择检测分类</p>
@@ -95,12 +102,15 @@ function CatalogSession({
   account,
   experimentId,
   category,
+  tab,
+  onTabChange,
 }: {
   account: string | number
   experimentId: string | number
   category: DetectionCategory
+  tab: string
+  onTabChange: (value: string) => void
 }) {
-  const [tab, setTab] = useState('info')
   const [selected, setSelected] = useState<string | number | null>(null)
   const list = useQuery({
     queryKey: ['detection-tools', account, experimentId, category.type, 'list'],
@@ -124,26 +134,24 @@ function CatalogSession({
     <div className="grid gap-5 md:grid-cols-[15rem_minmax(0,1fr)]">
       <nav aria-label="选择检测工具" className="space-y-3 border-r pr-4">
         {list.data.map((tool) => (
-          <div
+          <Button
             key={tool.id}
-            className={`rounded-md border-2 p-3 ${String(current?.id) === String(tool.id) ? 'border-primary bg-accent' : 'border-border'}`}
+            type="button"
+            variant="outline"
+            className={`h-auto min-h-24 w-full flex-col whitespace-normal border-2 p-3 ${String(current?.id) === String(tool.id) ? 'border-primary bg-accent' : 'border-border'}`}
+            aria-label={tool.name}
+            aria-pressed={String(current?.id) === String(tool.id)}
+            onClick={() => setSelected(tool.id)}
           >
-            <Button
-              variant="ghost"
-              className="h-auto w-full whitespace-normal"
-              aria-pressed={String(current?.id) === String(tool.id)}
-              onClick={() => setSelected(tool.id)}
-            >
-              {tool.name}
-            </Button>
-            <div className="mt-2 flex flex-wrap justify-center gap-2">
+            <span>{tool.name}</span>
+            <span className="mt-2 flex flex-wrap justify-center gap-2">
               {tool.tags.map((tag) => (
                 <Badge key={tag} variant="secondary">
                   {tag}
                 </Badge>
               ))}
-            </div>
-          </div>
+            </span>
+          </Button>
         ))}
       </nav>
       {current && (
@@ -153,7 +161,7 @@ function CatalogSession({
           category={category.type}
           toolId={current.id}
           tab={tab}
-          onTabChange={setTab}
+          onTabChange={onTabChange}
         />
       )}
     </div>
@@ -243,7 +251,7 @@ function ToolInfo({ tool }: { tool: DetectionTool }) {
               target="_blank"
               rel="noopener noreferrer"
             >
-              {attachment.split('/').at(-1)} 附件
+              {detectionDownloadName(attachment)} 附件
             </a>
           ) : (
             '暂无附件'

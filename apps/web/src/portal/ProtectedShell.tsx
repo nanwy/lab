@@ -21,6 +21,7 @@ import { PasswordDialog } from '../auth/PasswordDialog'
 import NiceModal from '@ebay/nice-modal-react'
 import { ActivityButtons } from '../activity/ActivityButtons'
 import { OperationMachinesButton } from '../desktop/OperationMachines'
+import { DetectionTabsProvider } from '../detection/DetectionTabs'
 
 export function ProtectedShell() {
   const session = useQuery(currentUserQueryOptions())
@@ -77,7 +78,7 @@ function LearnerShell({ user }: { user: CurrentUser }) {
         )
     }
   }
-  return (
+  const content = (
     <NiceModal.Provider key={pathname}>
       <div className="min-h-screen bg-background text-foreground">
         <header className="flex flex-wrap items-center justify-between gap-4 border-b bg-card px-5 py-4 lg:px-10">
@@ -183,5 +184,15 @@ function LearnerShell({ user }: { user: CurrentUser }) {
         ) : null}
       </div>
     </NiceModal.Provider>
+  )
+  const detectionScope = pathname
+    .match(/^\/basic\/user\/bench\/experiment\/[^/]+\/detection(?:\/|$)/)?.[0]
+    .replace(/\/$/, '')
+  return detectionScope ? (
+    <DetectionTabsProvider key={detectionScope}>
+      {content}
+    </DetectionTabsProvider>
+  ) : (
+    content
   )
 }

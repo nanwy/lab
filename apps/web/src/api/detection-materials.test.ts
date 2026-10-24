@@ -36,9 +36,10 @@ it('ZIP只提交material_ids，返回download_url并拒绝候选地址与无地�
     Response.json({ download_url: '/media/export.zip' }),
   )
   vi.stubGlobal('fetch', fetch)
-  expect(await exportDetectionMaterials('a/b', [7, 'dir'])).toBe(
-    '/media/export.zip',
-  )
+  expect(await exportDetectionMaterials('a/b', [7, 'dir'])).toEqual({
+    download_url: '/media/export.zip',
+    filename: 'download.zip',
+  })
   expect(new URL(String(fetch.mock.calls[0]?.[0])).pathname).toBe(
     '/api/front/wqzb/detection_front/tools/a%2Fb/materials/export_zip/',
   )
@@ -81,14 +82,14 @@ it('资料空目录合法；错误字段、哨兵ID、重复ID、无文件地址
     })
   }
 })
-it('ZIP空选择/无效项不发送请求，未知status不能转成下载地址', async () => {
+it('ZIP空选择/无效项不发送请求，不按未确认的status拒绝原下载分支', async () => {
   const { exportDetectionMaterials, detectionDownloadName } =
     await import('./detection-materials')
   const fetch = vi.fn<typeof globalThis.fetch>(async () =>
     Response.json({
-      status: 0,
-      message: '禁止导出',
-      download_url: '/should-not-download.zip',
+      status: 200,
+      download_url: '/media/export.zip',
+      filename: '工具资料.zip',
     }),
   )
   vi.stubGlobal('fetch', fetch)
@@ -97,8 +98,9 @@ it('ZIP空选择/无效项不发送请求，未知status不能转成下载地址
       '请选择有效资料',
     )
   expect(fetch).not.toHaveBeenCalled()
-  await expect(exportDetectionMaterials(1, [7])).rejects.toMatchObject({
-    kind: 'invalid-response',
+  await expect(exportDetectionMaterials(1, [7])).resolves.toEqual({
+    download_url: '/media/export.zip',
+    filename: '工具资料.zip',
   })
   expect(detectionDownloadName('/media/report_123.multi.zip')).toBe(
     'report.multi',
@@ -137,7 +139,7 @@ it('读取和导出一致接受数值0，非法资料ID不提交HTTP请求', asy
       1,
       materials.map((material) => material.id),
     ),
-  ).toBe('/media/export.zip')
+  ).toEqual({ download_url: '/media/export.zip', filename: 'download.zip' })
   expect(JSON.parse(String(fetch.mock.calls.at(-1)?.[1]?.body))).toEqual({
     material_ids: [0],
   })

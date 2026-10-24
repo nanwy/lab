@@ -96,18 +96,19 @@ function MaterialsDirectory({
     const signal = pageSignal()
     setPending(true)
     try {
-      const address = await exportDetectionMaterials(
+      const archive = await exportDetectionMaterials(
         toolId,
         selected.map((file) => file.id),
         signal,
       )
       if (signal.aborted) return
       const link = document.createElement('a')
-      link.href = address
-      link.download = 'download.zip'
+      link.href = archive.download_url
+      link.download = archive.filename
       document.body.append(link)
       link.click()
       link.remove()
+      toast.success('下载开始')
     } catch (error) {
       if (!signal.aborted && (!(error instanceof ApiError) || !error.handled))
         toast.error(error instanceof Error ? error.message : '导出失败')
@@ -370,7 +371,7 @@ function MaterialsDirectory({
             <DialogTitle>{video?.name}</DialogTitle>
           </DialogHeader>
           {video?.attached ? (
-            <video src={video.attached} controls autoPlay preload="metadata" />
+            <video src={video.attached} controls preload="metadata" />
           ) : null}
         </DialogContent>
       </Dialog>

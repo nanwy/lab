@@ -196,6 +196,7 @@ test('相关资料目录、选择、附带命名下载和视频/Office区别', a
     'src',
     '/media/video_hash.mp4',
   )
+  await expect(page.locator('video')).toHaveJSProperty('autoplay', false)
   await page.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.locator('video')).toHaveCount(0)
   await page.getByRole('row').filter({ hasText: '目录' }).dblclick()
@@ -358,6 +359,46 @@ const zipBytes = Buffer.from(
   'UEsDBBQAAAgAANWhWF1yVnUOEAAAABAAAAAKAAAA6K+05piOLnR4dFMxMSBpc29sYXRlZCBaSVBQSwECFAMUAAAIAADVoVhdclZ1DhAAAAAQAAAACgAAAAAAAAAAAAAAgAEAAAAA6K+05piOLnR4dFBLBQYAAAAAAQABADgAAAA4AAAAAAA=',
   'base64',
 )
+test('ZIP以响应filename保存，同源下载保留字节，缺名使用原默认名', async ({
+  page,
+}) => {
+  const { randomUUID } = await import('node:crypto')
+  const { resolve } = await import('node:path')
+  const { writeFile, readFile, unlink } = await import('node:fs/promises')
+  const name = `s11-export-${randomUUID()}.zip`
+  const file = resolve('apps/web/public', name)
+  await writeFile(file, zipBytes)
+  try {
+    await page.route(
+      '**/api/front/wqzb/detection_front/tools/*/materials/?*',
+      (route) => route.fulfill({ json: { results: materials } }),
+    )
+    let filename: string | undefined = '检测资料.zip'
+    await page.route(
+      '**/api/front/wqzb/detection_front/tools/first/materials/export_zip/',
+      (route) =>
+        route.fulfill({
+          json: { download_url: `/${name}`, filename },
+        }),
+    )
+    await page.goto(`${root}penetration`)
+    await page.getByRole('tab', { name: '相关资料' }).click()
+    await page
+      .getByRole('checkbox', { name: '选择 说明.txt', exact: true })
+      .check()
+    for (const expectedName of ['检测资料.zip', 'download.zip']) {
+      const wait = page.waitForEvent('download')
+      await page.getByRole('button', { name: '批量导出', exact: true }).click()
+      const download = await wait
+      expect(download.suggestedFilename()).toBe(expectedName)
+      expect(await readFile((await download.path())!)).toEqual(zipBytes)
+      filename = undefined
+    }
+  } finally {
+    await unlink(file)
+  }
+})
+
 test('ZIP导出核对参数、重复提交、单下载及ZIP字节，失败保留选择可重试', async ({
   page,
   artifacts,
@@ -392,7 +433,11 @@ test('ZIP导出核对参数、重复提交、单下载及ZIP字节，失败保�
         return route.fulfill({ status: 500, json: { error: '导出暂时失败' } })
       await slow
       return route.fulfill({
-        json: { download_url: `${artifacts}/export.zip` },
+        json: {
+          download_url: `${artifacts}/export.zip`,
+          filename: '工具资料.zip',
+          status: 200,
+        },
       })
     },
   )
@@ -426,5 +471,6 @@ test('ZIP导出核对参数、重复提交、单下载及ZIP字节，失败保�
   // ZIP central directory以及未压缩文件内容直接来自独立fixture。
   expect(bytes.subarray(0, 4).toString('hex')).toBe('504b0304')
   expect(bytes.includes(Buffer.from('S11 isolated ZIP'))).toBe(true)
+  await expect(page.getByText('下载开始', { exact: true })).toHaveCount(1)
   await expect(page.getByText('已选择 2 项', { exact: true })).toBeVisible()
 })

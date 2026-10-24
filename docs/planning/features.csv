@@ -30,7 +30,7 @@ F028,资源,漏洞库,/basic/resource/vuln,漏洞检索、筛选、详情及相�
 F029,资源,知识库,/basic/resource/knowledge,知识列表、检索、详情与内容呈现,/api/front/resources/knowledge/,知识发布/可见范围,内容格式和附件,详情正确呈现且资源链接可用,P5
 F030,个人,任务中心,/basic/user/taskcenter,个人路线与阶段；学情画像四页签：学习统计、知识画像、技能画像、岗位画像,/api/front/user/todo/; /api/front/guidance_control/,个人分配范围,任务类型与其他任务中心关系,聚合入口与原业务入口状态一致,P5
 F031,个人,学习路线与学情画像,/basic/user/studypath; /basic/user/profile,个人路线、进度、画像、能力/学习统计,/api/front/guidance_control/learning_route/; /api/front/user/learning_guide/,当前用户及统计范围,画像指标与图表数据契约,来源与统计口径可追溯,P5
-F032,个人,我的笔记与共享笔记,/basic/user/note,公开资料/我的资料两页签；目录浏览/创建、上传、重命名、批量删除、分享、打包导出与预览,/api/front/learn/task/my_profile/files/; /api/front/open/resource_network_disk/; attachment/platform旧封装,私有、共享、本人可编辑/他人只读需验证,上传类型/大小、分享范围、目录/重名规则；平台资料是否第三入口待验证,保存重开、文件夹、分享与导出分别验收,P5
+F032,个人,我的笔记与共享笔记,/basic/user/note,我的笔记/共享笔记；默认训练归档与自定义目录；目录新建、重命名、删除；笔记新建、改名、删除、富文本/图片、保存重开、Word导出；默认归档分享与评分,/api/front/learn/task/my_notes/; /api/front/user/note/; /api/front/share/note/; /api/front/upload_image/,type1–4 默认归档可查看共享和切换分享；type>4 自定义目录可新建笔记及改删目录；共享详情只读；真实服务端权限待验证,服务端字段类型/空详情、分享可见范围与权限、目录级联删除、上传限制及Word真实正文/图片未实测；静态调用链见 S10 分析,默认/自定义目录门控正确；笔记保存重开及图片格式一致；分享、评分与Word产物分别验收,P5
 F033,个人,资源网盘,/basic/user/file,今日/历史实验、分类/标签、创建、编辑、删除、选择场景、进入详情,/api/front/learn/base/pan/; /api/front/base/pan/; /api/front/open/resource_network_disk/,个人、平台、课程、公开资源分域,可写目录、配额、文件类型与重名规则,路径导航、预览下载及错误处理正确,P5
 F034,实验台,实验列表与管理,/basic/user/bench,实验名称/描述、标签、节点总数、释放时长配置、场景说明（按分支）,/api/front/simulation/experiment/; /api/front/base/tag/,本人/共享/受限实验；类型与配额未知,所有权、发布方式、删除影响范围,创建→编辑→重开；无权编辑拒绝,P1
 F035,实验台,场景概述与说明,/basic/user/bench/experiment/:id/overview; explain,实验名称描述、标签、统计、说明编辑（按分支）,/api/front/simulation/experiment/,所有者与只读、锁定状态,概述和说明的实际字段及可写条件,修改重开一致；只读不出现可写操作,P2

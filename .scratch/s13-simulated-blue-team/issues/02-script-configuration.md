@@ -89,4 +89,4 @@
 
 ### 双轴初审修正
 
-初审Standards P3多选框缺独立id、Spec P2普通连线误带成功标签已统一修正。源码有界复查确认仅type3判断源生成成功/失败，其他源生成空标签。新回归先在POST保存图label断言得到红灯，再修真实连接生成逻辑；2项连线/模拟多选定向通过（`/tmp/s13-02-review-green.log`），web类型和改动文件lint/格式/diff通过；没有重跑22项全组或真实请求。详情见[S13记录](../../../docs/planning/s13-implementation.md)，尚待增量复查。
+初审Standards P3多选框缺独立id、Spec P2普通连线误带成功标签已统一修正。源码有界复查确认仅type3判断源生成成功/失败，其他源生成空标签。新回归先在POST保存图label断言得到红灯，再修真实连接生成逻辑；2项连线/模拟多选定向通过（`/tmp/s13-02-review-green.log`），web类型和改动文件lint/格式/diff通过；没有重跑22项全组或真实请求。详情见[S13记录](../../../docs/planning/s13-implementation.md)。增量差异`a845ce4...9d99ce3`经独立Standards/Spec复查，两项均关闭且无新增发现；已随`e53606b`合入集成分支。

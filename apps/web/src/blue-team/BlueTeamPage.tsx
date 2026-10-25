@@ -28,6 +28,7 @@ import {
 import { usePageSignal } from '../auth/use-page-signal'
 import { BlueImport } from './BlueImport'
 import { blueError } from './feedback'
+import { ScriptConfiguration } from './ScriptConfiguration'
 import { InitialSituation } from './InitialSituation'
 
 export function BlueTeamPage() {
@@ -123,11 +124,18 @@ function BlueTeamSession() {
               <TabsTrigger value="run">运行控制</TabsTrigger>
             </TabsList>
             <TabsContent value="configuration">
-              <p role="note">
-                {current?.scenario_type === 2
-                  ? '智能蓝军配置当前尚未开放。'
-                  : '剧本编排与终端配置当前尚未开放。'}
-              </p>
+              {current?.scenario_type === 1 ? (
+                current.scenario == null ? (
+                  <p role="alert">当前蓝军缺少剧本标识，无法读取配置。</p>
+                ) : (
+                  <ScriptConfiguration
+                    key={String(current.scenario)}
+                    scenarioId={current.scenario}
+                  />
+                )
+              ) : (
+                <p role="note">智能蓝军配置当前尚未开放。</p>
+              )}
             </TabsContent>
             <TabsContent value="initial">
               {taskId == null ? (

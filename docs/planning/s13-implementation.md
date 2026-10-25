@@ -9,3 +9,15 @@
 七项隔离浏览器通过，补块编辑/截图一项通过，选择蓝军顶层/运行子页重置1项定向通过。实测修复右键菜单出视口；类型搜索先以原生select不能输入得到红灯，再接共享Combobox得到绿灯。详细红绿日志和场景见[工单](../../.scratch/s13-simulated-blue-team/issues/01-entry-and-initial-situation.md)。截图`/tmp/s13-01-situation.png`已目视核对。web最小类型及改动文件ESLint/Prettier、diff检查通过；不运行全量check、构建或其他页面浏览器回归。
 
 真实API及服务端持久化、权限、两导入参数的服务端含义未验证；全部浏览器请求隔离，未触发资源写入。PATCH原truthy成功改为拒绝显式非1业务状态；缺测试任务ID时不猜实验ID。查询/命令随弹窗和页面生命周期取消，迟到列表有跨实验隔离验收。原缺失链和其余5票仍按分析与工单保留，整体进度以实施计划为准。
+
+## S13-01 双轴审查
+
+固定差异`git diff 07cece3...dcb1d8d`由独立代理按Standards/Spec两轴审查，均0项发现；复用已通过的定向验证，未重复跑第一票全量检查。
+
+## S13-02 剧本蓝军编排与终端（2026-10-25）
+
+交付React Flow原格式编排（五形状、原端口和连接样式）、draw保存回图、连线/判断/分支抽屉、动作能力与指令/次数/样例、已有type8工具/文件/解释器/rename，以及剧本终端适配系统、提取、分页/删除。数据按scenario和节点/边业务ID适配，未知图字段往返保留；新对象配置等待服务返回标识。
+
+22项受影响浏览器通过：剧本11、终端4、入口直接消费者7，日志`/tmp/s13-02-final.log`，输出`/tmp/s13-02-final-results`。真实鼠标拖放与端口连接、保存重开、草稿失败、参数表单、上传字节/失败、业务拒绝、隔离清理均有行为验收。web类型、改动文件ESLint/Prettier及diff检查通过；截图`/tmp/s13-02-behavior.png`与`/tmp/s13-02-empty-script.png`已目视核对。不运行全量check、构建或无关页面测试。
+
+实测修正branch/action错误成功判据、指令未定义分页变量、type8 rename draw回调未定义detail、节点删除后悬空边，以及回图缺measured导致React Flow新节点消失的问题。原字段消费/修正理由与红绿记录见[第二票](../../.scratch/s13-simulated-blue-team/issues/02-script-configuration.md)。type7原链缺失明确不可用；终端编辑不可达不新增按钮；真实配置归属、后端响应与写入效果均未验证。整片仍有智能配置、运行与结果、过程和数据票待交付。

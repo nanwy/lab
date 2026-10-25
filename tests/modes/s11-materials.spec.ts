@@ -122,8 +122,7 @@ const materials = [
     attached: null,
     size: 0,
     type: '',
-    create_time: '2020',
-    altertime: '2030',
+    create_time: '2030',
   },
   {
     id: 'txt',
@@ -133,8 +132,7 @@ const materials = [
     attached: '/media/manual_hash.txt',
     size: '120',
     type: 'text/plain',
-    create_time: '展示时间',
-    altertime: '2026',
+    create_time: '2026',
   },
   {
     id: 'office',
@@ -144,8 +142,7 @@ const materials = [
     attached: '/media/office_hash.docx',
     size: 1024,
     type: '',
-    create_time: '早期展示',
-    altertime: '2000',
+    create_time: '2000',
   },
   {
     id: 'video',
@@ -155,10 +152,96 @@ const materials = [
     attached: '/media/video_hash.mp4',
     size: 4096,
     type: 'video/mp4',
-    create_time: '中期展示',
-    altertime: '2010',
+    create_time: '2010',
   },
 ]
+test('模块与表格使用统一加载态，表格等待时不显示空目录', async ({
+  page,
+}, info) => {
+  let releaseList!: () => void
+  const listGate = new Promise<void>((resolve) => {
+    releaseList = resolve
+  })
+  await page.route(
+    '**/api/front/wqzb/detection_front/tools/?*',
+    async (route) => {
+      await listGate
+      await route.fulfill({
+        json: { results: [{ id: 'first', name: '工具first', tags: [] }] },
+      })
+    },
+  )
+  await page.goto(`${root}penetration`)
+  await expect(page.locator('[data-slot="loading"]')).toContainText(
+    '正在加载检测工具',
+  )
+  await expect(page.getByRole('status')).toHaveCount(1)
+  releaseList()
+  await page.getByRole('tab', { name: '相关资料' }).waitFor()
+  let releaseMaterials!: () => void
+  const materialsGate = new Promise<void>((resolve) => {
+    releaseMaterials = resolve
+  })
+  await page.route(
+    '**/api/front/wqzb/detection_front/tools/*/materials/?*',
+    async (route) => {
+      await materialsGate
+      await route.fulfill({ json: { results: [] } })
+    },
+  )
+  await page.getByRole('tab', { name: '相关资料' }).click()
+  const loading = page
+    .getByRole('table', { name: '工具相关资料' })
+    .locator('[data-slot="loading"]')
+  await expect(loading).toContainText('正在读取资料')
+  await expect(page.getByText('此目录暂无资料', { exact: true })).toHaveCount(0)
+  await page.screenshot({
+    path: info.outputPath('table-loading.png'),
+    animations: 'disabled',
+  })
+  releaseMaterials()
+  await expect(loading).toHaveCount(0)
+  await expect(page.getByText('此目录暂无资料', { exact: true })).toBeVisible()
+})
+test('真实资料缺少altertime仍可展示，时间排序只使用create_time', async ({
+  page,
+}) => {
+  const sample = [
+    {
+      ...materials[1]!,
+      id: 'old',
+      name: '较早资料.txt',
+      create_time: '2025-01-01',
+    },
+    {
+      ...materials[1]!,
+      id: 'new',
+      name: '较新资料.txt',
+      create_time: '2026-01-01',
+    },
+    {
+      ...materials[1]!,
+      id: 'empty',
+      name: '无时间资料.txt',
+      create_time: null,
+    },
+  ]
+  await page.route(
+    '**/api/front/wqzb/detection_front/tools/*/materials/?*',
+    (route) => route.fulfill({ json: { results: sample, breadcrumbs: [] } }),
+  )
+  await page.goto(`${root}baseline`)
+  await page.getByRole('tab', { name: '相关资料' }).click()
+  await expect(page.getByText('较早资料.txt', { exact: true })).toBeVisible()
+  await expect(page.getByText('资料读取失败', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: '修改时间', exact: true }).click()
+  await expect(page.getByRole('row').nth(1)).toContainText('较新资料.txt')
+  await expect(page.getByRole('row').nth(3)).toContainText('无时间资料.txt')
+  await page.getByRole('button', { name: '修改时间', exact: true }).click()
+  await expect(page.getByRole('row').nth(1)).toContainText('无时间资料.txt')
+  await expect(page.getByRole('row').nth(2)).toContainText('较早资料.txt')
+  await expect(page.getByRole('row').nth(3)).toContainText('较新资料.txt')
+})
 test('相关资料目录、选择、附带命名下载和视频/Office区别', async ({
   page,
 }, info) => {

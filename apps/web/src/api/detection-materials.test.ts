@@ -10,10 +10,40 @@ const file = {
   size: '120',
   type: 'text/plain',
   create_time: '展示日期',
-  altertime: '2026-01-01',
   isLink: 0,
 }
-it('资料独立域读取results，保留显示时间与排序时间并归一消费真值和数值字符串', async () => {
+it('真实资料响应只有create_time时正常读取，不要求原排序器遗留的altertime', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () =>
+      Response.json({
+        results: [
+          {
+            id: 1,
+            name: '示例资料.txt',
+            path: '/示例资料.txt',
+            parent_path: '/',
+            is_file: 1,
+            type_display: '文本',
+            attached: '/media/example.txt',
+            file_url: '/media/example.txt',
+            create_time: '2026-10-24 12:00:00',
+            size: 18,
+          },
+        ],
+        breadcrumbs: [],
+      }),
+    ),
+  )
+  const materials = await getDetectionMaterials(6, '/')
+  expect(materials).toHaveLength(1)
+  expect(materials[0]).toMatchObject({
+    id: 1,
+    create_time: '2026-10-24 12:00:00',
+  })
+  expect(materials[0]).not.toHaveProperty('altertime')
+})
+it('资料独立域读取results，保留create_time并归一消费真值和数值字符串', async () => {
   const fetch = vi.fn<typeof globalThis.fetch>(async () =>
     Response.json({ results: [file] }),
   )
@@ -73,7 +103,7 @@ it('资料空目录合法；错误字段、哨兵ID、重复ID、无文件地址
     { results: [{ ...file, attached: null }] },
     { results: [{ ...file, attached: 'javascript:alert(1)' }] },
     { results: [{ ...file, size: 'NaN' }] },
-    { results: [{ ...file, altertime: null }] },
+    { results: [{ ...file, create_time: 123 }] },
     { results: [{ ...file, is_file: 'false' }] },
   ]) {
     fetch.mockResolvedValueOnce(Response.json(body))

@@ -25,6 +25,25 @@ import { DetectionTabsProvider } from '../detection/DetectionTabs'
 
 export function ProtectedShell() {
   const session = useQuery(currentUserQueryOptions())
+  const client = useQueryClient()
+  const navigate = useNavigate()
+  const error = session.error
+  useEffect(() => {
+    if (!error) return
+    // 已确认的激活/权限拒绝由统一客户端送往各自页面。
+    if (
+      error instanceof ApiError &&
+      error.status === 403 &&
+      (error.serviceError === 'inactive' || error.serviceError === 'forbidden')
+    )
+      return
+    clearSession(client)
+    void navigate({
+      to: '/login',
+      search: { reason: 'expired' },
+      replace: true,
+    })
+  }, [client, error, navigate])
   if (session.isPending)
     return (
       <main className="p-10" role="status">
@@ -33,10 +52,8 @@ export function ProtectedShell() {
     )
   if (session.isError)
     return (
-      <main className="space-y-5 p-10" role="alert">
-        <h1 className="text-2xl font-semibold">无法恢复会话</h1>
-        <p>当前用户读取失败，未展示可能过期的账号数据。</p>
-        <Button onClick={() => void session.refetch()}>重试</Button>
+      <main className="p-10" role="status">
+        正在返回登录页…
       </main>
     )
   return <LearnerShell key={session.data.id} user={session.data} />

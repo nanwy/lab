@@ -1,3 +1,4 @@
+import { Loading } from '@workspace/ui/components/loading'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
@@ -32,7 +33,7 @@ export function DetectionToolsPage({
   const experiment = useExperiment()
   const user = useQuery(currentUserQueryOptions())
   const { tab, setTab } = useDetectionTabs()
-  if (!user.data) return <p role="status">正在加载账号…</p>
+  if (!user.data) return <Loading label="正在加载账号…" />
   const account = user.data.id
   const experimentId = experiment.id
   return (
@@ -120,7 +121,7 @@ function CatalogSession({
   const current =
     list.data?.find((tool) => String(tool.id) === String(selected)) ??
     list.data?.[0]
-  if (list.isPending) return <p role="status">正在加载检测工具…</p>
+  if (list.isPending) return <Loading label="正在加载检测工具…" />
   if (list.isError)
     return (
       <ReadError
@@ -194,7 +195,7 @@ function ToolDetail({
     queryFn: ({ signal }) => getDetectionTool(toolId, signal),
     retry: false,
   })
-  if (detail.isPending) return <p role="status">正在加载工具详情…</p>
+  if (detail.isPending) return <Loading label="正在加载工具详情…" />
   if (detail.isError)
     return (
       <ReadError

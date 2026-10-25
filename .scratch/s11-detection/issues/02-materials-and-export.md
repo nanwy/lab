@@ -13,7 +13,7 @@
 ## Acceptance criteria
 
 - [x] GET tools/{id}/materials/ 发送工具 id 与 parent_path，读取独立资料契约；不直接套用网盘响应、接口或对象归属。切换工具回到根目录，清空旧选择和资料，迟到响应不串工具。
-- [x] 无分页表格显示名称、大小和修改时间；名称/大小/时间排序保留原语义，create_time显示与altertime排序不混淆。支持双击目录、上级、根目录及面包屑，长路径按原末三级规则展示；上级行禁止选择/下载，目录下载按钮禁用。
+- [x] 无分页表格显示名称、大小和修改时间；名称/大小/时间排序保留原语义，时间展示沿原create_time；真实响应确认缺少altertime后，排序明确改用create_time。支持双击目录、上级、根目录及面包屑，长路径按原末三级规则展示；上级行禁止选择/下载，目录下载按钮禁用。
 - [x] 文件名链接、单文件下载及命名沿原 attached 来源和原下载命名规则；视频名称打开播放器，关闭/离页释放本地资源。Office名称保持普通文本，不新增编辑器/预览器；文件类型图标和链接/文件夹/普通文件大小展示分别处理。
 - [x] 选择状态及已选数量正确，空选择禁用批量导出，提交前排除上级等无效项；切目录或重新取得列表清选择，资料页签卸载清选择。POST tools/{id}/materials/export_zip/ 的 body 仅 material_ids，执行中禁重复提交。
 - [x] 依据[资料契约补证](../material-contracts.md)，在适配边界只支持原消费者明确首选读取的 download_url 静态协议；不得实现 download_url/url/字符串逐个猜测。缺地址、类型错误或业务失败不显示下载成功。隔离下载核对ZIP文件字节和内容；真实唯一响应形态及真实ZIP产物保持未验证，不以fixture或点击锚点冒充真实验收。
@@ -26,7 +26,7 @@
 
 ## 交付与验证（2026-10-24）
 
-- 独立 `detection-materials` 适配器只读取 `results`；文件/目录与 UI 上级行分离，`is_file` 接受 boolean/0/1，`size` 接受数值及数值字符串。`create_time` 显示与 `altertime` 排序保留独立来源，重复或哨兵 ID、文件缺地址、可执行 URL 明确失败。
+- 独立 `detection-materials` 适配器只读取 `results`；文件/目录与 UI 上级行分离，`is_file` 接受 boolean/0/1，`size` 接受数值及数值字符串。初次静态实现曾保留 `create_time` 显示与 `altertime` 排序；真实响应确认后，已修正为单一 `create_time` 来源，重复或哨兵 ID、文件缺地址、可执行 URL 明确失败。
 - 原 `d8s` @12722200 将活动页签保存在目录层，按此保留切工具时的资料页签；资料组件按工具、路径重挂载，清旧目录、选择和播放器，Query 与导出请求离页取消。原 `Ks` @1803278 仅以 attached 的 mp4 扩展名打开视频；Office 名称保持普通文本。
 - ZIP 只接受 `download_url` 非空 HTTP(S)/相对地址，不猜 `url`、字符串或无地址。原实现曾限制可选status=1；本轮对照整改移除该无证约束，只消费原download_url及可选filename，缺名使用download.zip，不推断未知业务码。错误统一提示一次，不显示“导出成功”。命名沿 `jf(attached)` 的原算法，忽略 displayName。
 - 从网盘原样提取纯 `FileTypeGlyph` / `formatBytes` 到 `files/file-presentation.tsx`，两页面共享展示，不引入网盘资料对象或请求协议。

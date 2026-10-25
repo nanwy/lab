@@ -411,7 +411,7 @@ test('普通节点无拦截动作，关闭后换节点取消旧读取且清理�
   expect(state.errors).toEqual([])
 })
 
-test('协议响应损坏明确报错且保留手动输入，合法空列表正常显示', async ({
+test('协议错误只提示一次，损坏响应保留提示和手动输入，合法空列表正常显示', async ({
   page,
 }) => {
   const state = await mount(page)
@@ -430,8 +430,11 @@ test('协议响应损坏明确报错且保留手动输入，合法空列表正�
     route.fulfill({ json: [] }),
   )
   let data: unknown = ['tcp', 42]
+  let httpFailure = false
   await page.route('**/api/front/topo/common_protocol/', (route) =>
-    route.fulfill({ json: { status: 1, data } }),
+    httpFailure
+      ? route.fulfill({ status: 500, json: { error: '协议服务不可用' } })
+      : route.fulfill({ json: { status: 1, data } }),
   )
   async function open() {
     await page
@@ -454,6 +457,16 @@ test('协议响应损坏明确报错且保留手动输入，合法空列表正�
   await page.reload()
   await open()
   await expect(dialog.getByLabel('协议', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('alert')).toHaveCount(0)
+  httpFailure = true
+  await page.reload()
+  await open()
+  await expect(
+    page.locator('[data-sonner-toast]').filter({ hasText: '协议服务不可用' }),
+  ).toHaveCount(1)
+  await dialog.getByLabel('协议', { exact: true }).fill('custom')
+  await expect(dialog.getByRole('alert')).toHaveCount(0)
+  await dialog.getByRole('button', { name: '拦截模板', exact: true }).click()
   await expect(dialog.getByRole('alert')).toHaveCount(0)
   expect(state.errors).toEqual([])
 })

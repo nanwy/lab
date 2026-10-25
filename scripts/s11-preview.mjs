@@ -31,7 +31,6 @@ const material = (id, name, options = {}) => ({
   type: 'text/plain',
   isLink: false,
   create_time: '2026-10-24 12:00:00',
-  altertime: '2026-10-24 12:00:00',
   ...options,
 })
 const api = createServer(async (request, response) => {

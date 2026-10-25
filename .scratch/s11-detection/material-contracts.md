@@ -39,3 +39,11 @@ UZr @1829751：GET tools/{id}/materials/，params 原样传入；c8s 以 `{id:to
 ## 下载命名补证
 
 jf @1800433 只接收一个参数；c8s 虽调用 `jf(C.attached,C.name)`，第二参数被忽略。逻辑：取 attached 最后一个 '/' 段，按 '.' 分割，取第一段名字；若含 '_'，去掉最后一个 '_' 段；后缀直接取 split 的第 2 段；返回 `${name}.${extension}`。这不是按条目 name 重命名，亦不是 S09 的另一个 $E 帮助函数规则。原 c8s 明确使用 jf，不能无意替换成网盘命名。
+
+## 真实读取修正（2026-10-24）
+
+按“原bundle消费 → 真实响应类型 → 定向修改”核对。原c8s @12719500附近将修改时间列dataIndex设为create_time，sorter却调用altertime.localeCompare；未排序时原页不访问altertime，仍可正常显示。重建版错误地将排序器引用当成所有资料的必填字段，导致读取即失败。
+
+用户指定实验139的基线检查页，选中工具6：GET materials/ HTTP200，envelope为results/breadcrumbs，22条结果全部不含altertime；create_time全部为string，is_file与size均为number。仅记录结构/类型，不保存真实资料正文或凭据。
+
+修正：内部模型不再要求或消费altertime；显示与排序只读取create_time，合法null时间显式排序，不用其他字段兜底。该项是基于真实响应修正原排序字段缺陷，不是把两个来源合并兼容。其他字段及ZIP真实协议仍按各自已确认范围，不能据这次只读证明真实导出。

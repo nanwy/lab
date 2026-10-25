@@ -1,3 +1,4 @@
+import { Loading } from '@workspace/ui/components/loading'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -182,12 +183,17 @@ function MaterialsDirectory({
           : '',
     },
     {
-      id: 'altertime',
-      accessorKey: 'altertime',
+      accessorKey: 'create_time',
       header: '修改时间',
       sortDescFirst: true,
-      sortingFn: (a, b) =>
-        a.original.altertime.localeCompare(b.original.altertime),
+      sortingFn: (a, b) => {
+        const left = a.original.create_time
+        const right = b.original.create_time
+        if (left === right) return 0
+        if (left === null) return -1
+        if (right === null) return 1
+        return left.localeCompare(right)
+      },
       cell: ({ row }) => row.original.create_time,
     },
     {
@@ -307,6 +313,13 @@ function MaterialsDirectory({
           ))}
         </TableHeader>
         <TableBody>
+          {query.isPending ? (
+            <TableRow>
+              <TableCell colSpan={5}>
+                <Loading label="正在读取资料…" />
+              </TableCell>
+            </TableRow>
+          ) : null}
           {path !== '/' ? (
             <TableRow
               onDoubleClick={() =>
@@ -343,9 +356,7 @@ function MaterialsDirectory({
           ))}
         </TableBody>
       </Table>
-      {query.isPending ? (
-        <p role="status">正在读取资料…</p>
-      ) : query.isError ? (
+      {query.isError ? (
         <div role="alert">
           <p>
             {query.error instanceof ApiError && query.error.status === 403
@@ -357,7 +368,7 @@ function MaterialsDirectory({
           ) : null}
           <Button onClick={() => void query.refetch()}>重试资料</Button>
         </div>
-      ) : !files.length ? (
+      ) : !query.isPending && !files.length ? (
         <p>此目录暂无资料</p>
       ) : null}
       <Dialog

@@ -37,7 +37,6 @@ const entry = z
     type: z.string().nullish(),
     isLink: truth.nullish().transform(Boolean),
     create_time: z.string().nullable(),
-    altertime: z.string(),
   })
   .superRefine((value, ctx) => {
     if (value.is_file && !value.attached)

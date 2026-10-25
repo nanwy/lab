@@ -19,6 +19,7 @@ import {
 } from '../api/traffic-interception'
 import { subscribeInterceptionLog } from '../api/interception-log'
 import { usePageSignal } from '../auth/use-page-signal'
+import { ApiError } from '../api'
 import { captureError } from './CaptureRecords'
 import {
   InterceptionTemplates,
@@ -79,9 +80,10 @@ export function InterceptionDialog({
           <Button onClick={() => setTab('node')}>拦截修改</Button>
           <Button onClick={() => setTab('templates')}>拦截模板</Button>
         </div>
-        {protocols.isError && (
-          <p role="alert">协议列表读取失败：{protocols.error.message}</p>
-        )}
+        {protocols.isError &&
+          !(protocols.error instanceof ApiError && protocols.error.handled) && (
+            <p role="alert">协议列表读取失败：{protocols.error.message}</p>
+          )}
         {info.isPending ? (
           <p role="status">正在加载拦截配置…</p>
         ) : info.isError ? (

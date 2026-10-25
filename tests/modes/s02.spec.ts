@@ -243,7 +243,37 @@ test('离开登录页取消提交，迟到结果不能更新会话或跳转', as
   ])
 })
 
-test('会话读取失败可重试，未知 403 不清凭据，业务查询的拒绝与失效走全局分支', async ({
+test('会话恢复的HTTP和契约失败均回登录，不停在重试页', async ({
+  page,
+  errors,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem('token', 'expired-session'),
+  )
+  for (const status of [401, 500, 200]) {
+    await page.route('**/api/front/user/info/', (route) =>
+      route.fulfill({
+        status,
+        json: status === 200 ? {} : { error: '会话读取失败' },
+      }),
+    )
+    await page.goto(
+      '/#/basic/user/bench/experiment/139/detection/riskAssessment',
+    )
+    await expect(page).toHaveURL(/#\/login\?reason=expired/)
+    await expect(
+      page.getByRole('textbox', { name: '用户名', exact: true }),
+    ).toBeVisible()
+    expect(await page.evaluate(() => localStorage.getItem('token'))).toBeNull()
+    await page.unroute('**/api/front/user/info/')
+  }
+  expect(errors.splice(0)).toEqual([
+    'Failed to load resource: the server responded with a status of 401 (Unauthorized)',
+    'Failed to load resource: the server responded with a status of 500 (Internal Server Error)',
+  ])
+})
+
+test('会话读取失败清理凭据并跳登录，业务查询的拒绝与失效走全局分支', async ({
   page,
   errors,
 }) => {
@@ -258,14 +288,12 @@ test('会话读取失败可重试，未知 403 不清凭据，业务查询的拒
     }),
   )
   await page.goto('/#/basic/home')
-  await expect(
-    page.getByRole('heading', { name: '无法恢复会话' }),
-  ).toBeVisible()
-  expect(await page.evaluate(() => localStorage.getItem('token'))).toBe(
-    'test-session',
-  )
+  await expect(page).toHaveURL(/#\/login\?reason=expired/)
+  await expect(page.getByText('会话已失效，请重新登录。')).toBeVisible()
+  expect(await page.evaluate(() => localStorage.getItem('token'))).toBeNull()
   available = true
-  await page.getByRole('button', { name: '重试', exact: true }).click()
+  await page.evaluate(() => localStorage.setItem('token', 'test-session'))
+  await page.goto('/#/basic/home')
   await expect(
     page.getByRole('heading', { name: '首页', exact: true }),
   ).toBeVisible()

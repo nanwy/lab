@@ -60,3 +60,7 @@ S02 当时的原 bundle 补证与双轴审查发现并修复课程请求竞态�
 ## 上传真实传输专项
 
 S09 的上传字节进度、取消和响应正文生命周期使用真实本地 HTTP 服务，依赖 Vite 源码模块及测试组件入口，独立于正式网盘用户路径测试。运行 `pnpm exec playwright test --config=playwright.upload.config.ts`，仅启动隔离开发服务，不构建生产包。默认开发端口 4193、临时 HTTP 服务端口 4293；端口被占用时可通过 `PLAYWRIGHT_UPLOAD_PORT` 和 `PLAYWRIGHT_UPLOAD_API_PORT` 同时指定一组空闲端口。测试按实际 baseURL 设置 CORS 和 Cookie；开发服务只在此配置中代理到临时 HTTP 服务，退出后关闭连接，不复用未知实例。正式页面上传集成仍由两种业务模式中的 `s09-files.spec.ts` 覆盖。
+
+## 通用请求加载态
+
+新增或修改模块、列表、表格的加载态时，遵守 [前端AGENTS的Loading规则](../apps/web/AGENTS.md#技术边界)。共享组件实现见 [Loading](../packages/ui/src/components/loading.tsx)，提交按钮沿用LoadingButton；本流程不重复维护组件用法。

@@ -1,3 +1,4 @@
+import { Loading } from '@workspace/ui/components/loading'
 import { createContext, useContext, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Outlet } from '@tanstack/react-router'
@@ -26,7 +27,7 @@ export function ExperimentLayout({ id }: { id: string }) {
     queryFn: ({ signal }) => getExperiment(id, signal),
     retry: false,
   })
-  if (detail.isPending) return <p role="status">正在加载实验…</p>
+  if (detail.isPending) return <Loading label="正在加载实验…" />
   if (detail.isError && !detail.data)
     return (
       <section className="space-y-4" role="alert">

@@ -566,19 +566,21 @@ function ParameterRows({ parameters }: { parameters: AbilityParameter[] }) {
     </ul>
   )
 }
-function ParameterSample({
+export function ParameterSample({
   title,
   parameters,
+  showFields = true,
 }: {
   title: string
   parameters: AbilityParameter[]
+  showFields?: boolean
 }) {
   return (
     <section className="space-y-2 rounded border p-3">
       <h3 className="font-semibold">{title}</h3>
       {parameters.length ? (
         <>
-          <ParameterRows parameters={parameters} />
+          {showFields && <ParameterRows parameters={parameters} />}
           <pre className="overflow-auto text-xs">
             {JSON.stringify(example(parameters), null, 2)}
           </pre>

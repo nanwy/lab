@@ -87,6 +87,8 @@ API 定义证据：`mJr/vJr/yJr/bJr/AJr` 位于 1833226 附近；`ZQr` 位于 18
 
 `rmo` / 9915143 按 `blue.intelligent` 请求智能详情和统计；卸载清 intelligent/intStatistic 并移除 resize 监听。详情消费 `name/ability_scenario_names/description`；统计消费 `tactics_count/technologies_count/attack_tendency/force_count/enabled_engines_count/ability_styles[].{name,abilities_count}`。攻击倾向 1 为深度优先，其余按原 UI 显示广度优先。
 
+实施时有界复查`Xzt @ 5738616`及`rmo @ 9915143`：能力维度图是雷达图，数据由`ability_styles`映射`key=name/value=abilities_count`，共用上限`Math.max(...values,5)*1.2`、四层网格、紫色轮廓与渐变填充。Xzt空数组会换成硬编码演示数据；新实现将合法空维度显示为空态，避免演示值冒充当前蓝军统计。
+
 以下 `I` 是智能蓝军 ID，`R` 是兵力角色 ID；共同前缀 `P=/api/front/wqzb/simulated_blue_team/intelligent/list/{I}`。协议定义位于 1830726–1835730，状态消费位于 9689358–9695650。
 
 ### 能力动作：`Wgo` / 9891318、`Vgo` / 9886237

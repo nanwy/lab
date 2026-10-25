@@ -23,6 +23,7 @@ export const experimentDetailSchema = experimentSchema
     // 原详情以空字符串表达未分类；保留原值，不放宽其他实体 ID。
     tags_category: id.or(z.literal('')).nullable(),
     topo_id: id.nullable().optional(),
+    test_task: id.nullable().optional(),
   })
 export type Experiment = z.infer<typeof experimentSchema>
 export type ExperimentDetail = z.infer<typeof experimentDetailSchema>

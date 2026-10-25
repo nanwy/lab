@@ -484,11 +484,11 @@
     "module": "实验台",
     "name": "攻击教学与模拟蓝军",
     "entry": "/basic/user/bench/experiment/:id/attackteaching; simulate",
-    "operations": "教学内容/任务、蓝军节点及工具配置、运行与结果（操作细节待核对）",
-    "api_families": "/api/front/wqzb/simulated_blue_team/; /api/front/wqzb/test_task/",
-    "permission_checks": "角色/工具能力、实验状态和可用资源",
-    "unknowns": "调用链、执行条件、任务终止与结果",
-    "acceptance": "配置与结果可追踪；执行在测试范围开放后联调",
+    "operations": "S12：固定教学视频、PDF课件、只读手册、逐题练习与本地考核；S13：蓝军节点及工具配置、运行与状态，终止、日志和结果按调用链补证",
+    "api_families": "S12：无教学业务API，读取固定内容及原媒体；S13：/api/front/wqzb/simulated_blue_team/; /api/front/wqzb/test_task/（候选，按调用链确认）",
+    "permission_checks": "S12：沿用实验入口与账号上下文，不新增运行门控；S13：角色/工具能力、实验状态和可用资源待核对",
+    "unknowns": "S12：原视频/PDF/手册图片真实可用性；S13：调用链、执行条件、任务终止、日志与结果",
+    "acceptance": "S12五页签阅读、练习、考核及原状态行为完整覆盖；S13配置与运行结果按原调用链验收，执行在测试范围开放后联调；两片均完成才算F041完成",
     "phase": "P2"
   },
   {

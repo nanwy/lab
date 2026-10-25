@@ -54,6 +54,7 @@ export function IntelligentEngines({
     queryFn: ({ signal }) => getIntelligentEngines(intelligentId, signal),
     retry: false,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
   return query.isPending ? (
     <Loading label="正在读取决策引擎…" />

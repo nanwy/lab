@@ -78,7 +78,10 @@ export const getIntelligentAbilities = (id: BlueId, signal?: AbortSignal) =>
       data: z.array(
         dimensionSchema.extend({
           color: rgbaSchema.nullable().optional(),
-          abilities: z.array(abilitySchema),
+          abilities: z
+            .array(abilitySchema)
+            .nullish()
+            .transform((v) => v ?? []),
         }),
       ),
     }),
@@ -117,12 +120,18 @@ export const getImportAbilities = (
   ).then((r) => r.data)
 const tacticSchema = z.object({
   name: z.string(),
-  child: z.array(
-    z.object({
-      name: z.string(),
-      child: z.array(abilitySchema.extend({ is_exists: z.boolean() })),
-    }),
-  ),
+  child: z
+    .array(
+      z.object({
+        name: z.string(),
+        child: z
+          .array(abilitySchema.extend({ is_exists: z.boolean() }))
+          .nullish()
+          .transform((v) => v ?? []),
+      }),
+    )
+    .nullish()
+    .transform((v) => v ?? []),
 })
 export const getIntelligentTactics = (id: BlueId, signal?: AbortSignal) =>
   readIntelligent(

@@ -324,3 +324,96 @@ test('切换智能蓝军清页签与旧统计响应，空能力不生成假图',
   await expect(page.getByRole('img', { name: '能力维度雷达图' })).toHaveCount(0)
   await expect(page.getByText('旧统计不应显示', { exact: true })).toHaveCount(0)
 })
+
+test('原能力与技战术允许缺失或null的空子列表，错误类型仍拒绝', async ({
+  page,
+}) => {
+  await intelligentFixture(page)
+  await page.route(`**${intBase}/ability_action/`, (r) =>
+    r.fulfill({
+      json: {
+        status: 1,
+        data: [
+          { id: 1, name: '缺省能力维度' },
+          { id: 2, name: '空值能力维度', abilities: null },
+        ],
+      },
+    }),
+  )
+  await page.route(`**${intBase}/tactics/`, (r) =>
+    r.fulfill({
+      json: {
+        status: 1,
+        data: [
+          { name: '缺省技术战术' },
+          { name: '空值技术战术', child: null },
+          {
+            name: '有技术战术',
+            child: [
+              { name: '缺省能力技术' },
+              { name: '空值能力技术', child: null },
+            ],
+          },
+        ],
+      },
+    }),
+  )
+  await page.goto(simulateURL)
+  await expect(
+    page.getByText('缺省能力维度（0个能力）', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByText('空值能力维度（0个能力）', { exact: true }),
+  ).toBeVisible()
+  await page.getByRole('tab', { name: '技战术', exact: true }).click()
+  await expect(page.getByText('缺省技术战术', { exact: true })).toBeVisible()
+  await expect(page.getByText('空值技术战术', { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: '缺省能力技术', exact: true }),
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('button', { name: '空值能力技术', exact: true }),
+  ).toBeDisabled()
+  await page.route(`**${intBase}/ability_action/`, (r) =>
+    r.fulfill({
+      json: {
+        status: 1,
+        data: [{ id: 1, name: '错误能力维度', abilities: {} }],
+      },
+    }),
+  )
+  await page.reload()
+  await expect(
+    page.getByRole('alert').filter({ hasText: '能力读取失败' }),
+  ).toBeVisible()
+})
+
+test('引擎未保存权重在浏览器断线恢复后保留', async ({ page }) => {
+  await intelligentFixture(page)
+  await page.route(`**${intBase}/decision_engine/`, (r) =>
+    r.fulfill({
+      json: {
+        status: 1,
+        data: [
+          {
+            engine_type: 1,
+            engine_type_name: '数据决策',
+            is_enabled: true,
+            weight: 0.2,
+          },
+        ],
+      },
+    }),
+  )
+  await page.goto(simulateURL)
+  await page.getByRole('tab', { name: '决策引擎', exact: true }).click()
+  await page.getByLabel('数据决策权重', { exact: true }).fill('0.9')
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('offline'))
+    window.dispatchEvent(new Event('online'))
+  })
+  await page.waitForLoadState('networkidle')
+  await expect(page.getByLabel('数据决策权重', { exact: true })).toHaveValue(
+    '0.9',
+  )
+})

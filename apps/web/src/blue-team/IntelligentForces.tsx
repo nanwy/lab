@@ -86,6 +86,8 @@ function ForceSession({
     queryKey: ['blue-intelligent', String(intelligentId), 'forces'],
     queryFn: ({ signal }) => getForces(intelligentId, signal),
     retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
   const [selected, setSelected] = useState<string | null>(null)
   const [editing, setEditing] = useState<Role | 'new' | null>(null)
@@ -607,6 +609,7 @@ function ForceAbilities({
     retry: false,
     gcTime: 0,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
   return config.isPending ? (
     <Loading label="正在读取能力配置…" />

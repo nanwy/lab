@@ -276,3 +276,41 @@ test('智能终端末页唯一行删除后退页，分页请求仍不携带query
     '71/terminal/',
   ])
 })
+
+test('角色能力未保存勾选在断线恢复后保留，不被后台错误卸载', async ({
+  page,
+}) => {
+  await fixture(page)
+  let reads = 0
+  await page.route(`**${root}71/ability_configuration/`, (r) => {
+    reads++
+    return r.fulfill({
+      json:
+        reads === 1
+          ? {
+              status: 1,
+              data: {
+                dimensions: [
+                  { id: 11, name: '信息收集', count: 2, is_configured: true },
+                  { id: 12, name: '权限提升', count: 3, is_configured: false },
+                ],
+              },
+            }
+          : { status: 2, message: '后台读取失败' },
+    })
+  })
+  await page.goto(simulateURL)
+  await page.getByRole('tab', { name: '兵力数量', exact: true }).click()
+  await page.getByRole('tab', { name: '能力配置', exact: true }).click()
+  await page
+    .getByRole('checkbox', { name: '权限提升 (3个能力)', exact: true })
+    .check()
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('offline'))
+    window.dispatchEvent(new Event('online'))
+  })
+  await page.waitForLoadState('networkidle')
+  await expect(
+    page.getByRole('checkbox', { name: '权限提升 (3个能力)', exact: true }),
+  ).toBeChecked()
+})

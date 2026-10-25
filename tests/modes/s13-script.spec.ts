@@ -373,6 +373,27 @@ test('已有模拟节点按当前剧本重命名，工具多版本与文件上�
     page.locator('.react-flow__node[data-id="behavior-ui"]'),
   ).toContainText('新模拟名')
   expect(names[0]).toEqual({ name: '新模拟名' })
+  await expect(dialog.getByLabel('模拟工具全部版本')).toHaveAttribute(
+    'id',
+    'tool_detail-tool-50-all',
+  )
+  await expect(dialog.getByLabel('模拟工具 / v1')).toHaveAttribute(
+    'id',
+    'tool_detail-tool-50-version-501',
+  )
+  await expect(dialog.getByLabel('模拟工具 / v2')).toHaveAttribute(
+    'id',
+    'tool_detail-tool-50-version-502',
+  )
+  await expect(
+    dialog.locator('label[for="tool_detail-tool-50-all"]'),
+  ).toHaveText('模拟工具全部版本')
+  await expect(
+    dialog.locator('label[for="tool_detail-tool-50-version-501"]'),
+  ).toHaveText('模拟工具 / v1')
+  await expect(
+    dialog.locator('label[for="tool_detail-tool-50-version-502"]'),
+  ).toHaveText('模拟工具 / v2')
   await dialog.getByLabel('模拟工具全部版本').check()
   await page.screenshot({ path: '/tmp/s13-02-behavior.png', fullPage: true })
   await dialog.getByRole('button', { name: '保存模拟配置' }).click()
@@ -807,6 +828,78 @@ test('判断侧端口生成失败折线并保存原端口编号', async ({ page 
     source: 'decision-ui',
     target: 'action-ui',
     sourceHandle: '3',
+    targetHandle: '5',
+    type: 'step',
+    label: '失败',
+  })
+})
+
+test('普通连线无条件标签，判断底部与侧端分别保存成功失败语义', async ({
+  page,
+}) => {
+  const fixture = await scriptFixture(page)
+  await page.goto(simulateURL)
+  await expect(page.locator('.react-flow__node')).toHaveCount(7)
+  await page.locator('.react-flow').scrollIntoViewIfNeeded()
+  for (const [sourceId, sourceHandle, targetId, targetHandle] of [
+    ['start-ui', '2', 'end-ui', '1'],
+    ['decision-ui', '2', 'action-ui', '1'],
+    ['decision-ui', '3', 'action-ui', '5'],
+  ]) {
+    const source = await page
+      .locator(
+        `.react-flow__node[data-id="${sourceId}"] .source[data-handleid="${sourceHandle}"]`,
+      )
+      .boundingBox()
+    const target = await page
+      .locator(
+        `.react-flow__node[data-id="${targetId}"] .target[data-handleid="${targetHandle}"]`,
+      )
+      .boundingBox()
+    if (!source || !target) throw new Error('连接端口不可见')
+    await page.mouse.move(
+      source.x + source.width / 2,
+      source.y + source.height / 2,
+    )
+    await page.mouse.down()
+    await page.mouse.move(
+      target.x + target.width / 2,
+      target.y + target.height / 2,
+      { steps: 12 },
+    )
+    await page.mouse.up()
+  }
+  await expect(page.locator('.react-flow__edge')).toHaveCount(4)
+  expect(fixture.writes).toHaveLength(0)
+  await page.getByRole('button', { name: '保存剧本', exact: true }).click()
+  await expect.poll(() => fixture.writes.length).toBe(1)
+  const saved = fixture.getGraph().edges
+  expect(
+    saved.find(
+      (edge) => edge.source === 'start-ui' && edge.target === 'end-ui',
+    ),
+  ).toMatchObject({
+    sourceHandle: '2',
+    targetHandle: '1',
+    type: 'straight',
+    label: '',
+  })
+  expect(
+    saved.find(
+      (edge) => edge.source === 'decision-ui' && edge.sourceHandle === '2',
+    ),
+  ).toMatchObject({
+    target: 'action-ui',
+    targetHandle: '1',
+    type: 'straight',
+    label: '成功',
+  })
+  expect(
+    saved.find(
+      (edge) => edge.source === 'decision-ui' && edge.sourceHandle === '3',
+    ),
+  ).toMatchObject({
+    target: 'action-ui',
     targetHandle: '5',
     type: 'step',
     label: '失败',

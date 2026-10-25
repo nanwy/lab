@@ -315,7 +315,7 @@ function CanvasSession({
           ...connection,
           type: step ? 'step' : 'straight',
           animated: true,
-          label: branch ? '失败' : '成功',
+          label: source?.data.type === 3 ? (branch ? '失败' : '成功') : '',
           style: { stroke: '#1677ff' },
           markerEnd: { type: MarkerType.ArrowClosed, width: 15, height: 15 },
         },

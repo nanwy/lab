@@ -274,9 +274,13 @@ function BehaviorForm({
                         value.tools.map((tool) => (
                           <fieldset key={tool.value} className="space-y-2">
                             <legend>
-                              <label className="flex gap-2">
+                              <label
+                                htmlFor={`${field.name}-tool-${tool.value}-all`}
+                                className="flex gap-2"
+                              >
                                 <input
                                   type="checkbox"
+                                  id={`${field.name}-tool-${tool.value}-all`}
                                   checked={
                                     !!values.tool_detail.find(
                                       (item) => item.tool_id === tool.value,
@@ -306,10 +310,12 @@ function BehaviorForm({
                             {(tool.children ?? []).map((version) => (
                               <label
                                 key={version.value}
+                                htmlFor={`${field.name}-tool-${tool.value}-version-${version.value}`}
                                 className="ml-5 flex gap-2"
                               >
                                 <input
                                   type="checkbox"
+                                  id={`${field.name}-tool-${tool.value}-version-${version.value}`}
                                   checked={values.tool_detail.some(
                                     (item) =>
                                       item.tool_id === tool.value &&

@@ -484,11 +484,11 @@
     "module": "实验台",
     "name": "攻击教学与模拟蓝军",
     "entry": "/basic/user/bench/experiment/:id/attackteaching; simulate",
-    "operations": "S12：固定教学视频、PDF课件、只读手册、逐题练习与本地考核；S13：蓝军节点及工具配置、运行与状态，终止、日志和结果按调用链补证",
-    "api_families": "S12：无教学业务API，读取固定内容及原媒体；S13：/api/front/wqzb/simulated_blue_team/; /api/front/wqzb/test_task/（候选，按调用链确认）",
-    "permission_checks": "S12：沿用实验入口与账号上下文，不新增运行门控；S13：角色/工具能力、实验状态和可用资源待核对",
-    "unknowns": "S12：原视频/PDF/手册图片真实可用性；S13：调用链、执行条件、任务终止、日志与结果",
-    "acceptance": "S12五页签阅读、练习、考核及原状态行为完整覆盖；S13配置与运行结果按原调用链验收，执行在测试范围开放后联调；两片均完成才算F041完成",
+    "operations": "S12：固定教学视频、PDF课件、只读手册、逐题练习与本地考核；S13：两种蓝军导入、剧本编排与终端、智能蓝军四页签配置、内嵌初始态势、运行控制、轮次对比、执行/决策过程与蓝军数据",
+    "api_families": "S12：无教学业务API；S13：/api/front/simulation/experiment/{E}/blue_team/；/api/front/wqzb/simulated_blue_team/scenario/及intelligent/list/；/api/front/wqzb/test_task/{T}/；/ws/emulate_task/{T}/blue_team/{B}/（静态调用链已核对，详见s13-analysis.md及配置补证）",
+    "permission_checks": "S12：沿用实验入口与账号上下文；S13：实验/测试任务/蓝军/剧本/智能蓝军/角色/轮次标识分别归属；控制状态门控及候选筛选状态已静态确认，配置入口未见角色或运行态禁用；真实服务端授权未实测",
+    "unknowns": "S12：原视频/PDF/手册图片真实可用性；S13：原自定义指令部分方法缺失；真实字段类型/空值及授权、两导入参数差异的服务端含义、历史日志轮次过滤、实时事件轮次标识及执行效果未实测",
+    "acceptance": "S12五页签阅读、练习、考核及原状态行为完整覆盖；S13按可达配置/运行/过程/数据调用链及状态逐项验收，覆盖不同ID、轮次、失败恢复与异步清理；真实执行在测试范围开放后单独联调；两片均完成才算F041完成",
     "phase": "P2"
   },
   {

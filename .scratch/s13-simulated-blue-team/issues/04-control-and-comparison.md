@@ -49,3 +49,7 @@
 - TDD：检查/控制占位红灯`/tmp/s13-04-control-red.log`，轮次/对比红灯`/tmp/s13-04-rounds-red.log`；条件刷新红灯`/tmp/s13-04-timer-red2.log`在5秒后HTTP读取次数仍1而预期2。初次预加载冻结时钟阻塞Query通知的环境失败不计业务红灯。
 - 最终3项本票浏览器与入口导入/选择直接消费者1项通过`/tmp/s13-04-final.log`（4项、6.2秒），覆盖精确检查判据、start/pause/continue/over/clear、确认取消与业务失败、轮次删除退页、对比门控/失败/成功/详情/空结果/分页、计时和条件刷新停止/切换清理。05/06数组分支仅静态契约适配，本票没有该UI消费者验证。
 - web类型`/tmp/s13-04-types-final.log`、五代码/测试文件ESLint、九文件Prettier、文档链接及diff检查通过；`/tmp/s13-04-control.png`与`/tmp/s13-04-comparison.png`已目视核对。未运行全量check、构建、其他票全组或真实后端。第四票已实施验证，双轴审查待执行；S13整体仍进行中。
+
+## 双轴初审修正
+
+初审Standards 0项，Spec两项P2和一项P3已由同一实施代理修正，尚待增量复查：同一轮次再次查看也重置结果页码1；JSON根/嵌套容器保留[]/{}与展开收起；五类control动作成功显示原服务端可选message，无自造成功文案或重复错误提示。有界复查sho/aho/zg后，三项关键行为先红后绿，定向3项通过`/tmp/s13-04-review-green.log`；web类型/四文件lint/六文件格式及diff通过，不重跑未改计时与入口。具体修正与证据见[S13实施记录](../../../docs/planning/s13-implementation.md#s13-04-双轴初审修正2026-10-25)。

@@ -16,8 +16,7 @@ import {
   getBlueControl,
   getBlueRounds,
   checkBlueStage,
-  blueControlBase,
-  blueControlCommand,
+  executeBlueControl,
   type BlueControlAction,
 } from '../api/blue-control'
 import { usePageSignal } from '../auth/use-page-signal'
@@ -102,12 +101,9 @@ function ControlSession({
     const signal = signalForPage()
     setAction(next)
     try {
-      await blueControlCommand(
-        `${blueControlBase(taskId, blueId)}/control/`,
-        { action: next },
-        signal,
-      )
+      const message = await executeBlueControl(taskId, blueId, next, signal)
       if (signal.aborted) return
+      if (message) toast.success(message)
       setClearing(false)
       await Promise.all([control.refetch(), rounds.refetch()])
     } catch (e) {

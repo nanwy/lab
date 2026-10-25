@@ -47,6 +47,22 @@ export const blueControlCommand = (
     isBusinessFailure: (v) =>
       !z.object({ status: z.literal(1) }).safeParse(v).success,
   })
+export async function executeBlueControl(
+  task: BlueId,
+  blue: BlueId,
+  action: BlueControlAction,
+  signal: AbortSignal,
+) {
+  const raw = await blueControlCommand(
+    `${blueControlBase(task, blue)}/control/`,
+    { action },
+    signal,
+  )
+  const result = z.object({ message: z.string().nullish() }).safeParse(raw)
+  if (!result.success)
+    throw new ApiError('invalid-response', '蓝军控制成功响应消息格式错误')
+  return result.data.message
+}
 export const checkBlueStage = (
   task: BlueId,
   blue: BlueId,

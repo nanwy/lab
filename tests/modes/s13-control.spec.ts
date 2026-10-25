@@ -36,7 +36,9 @@ async function controlFixture(page: Page) {
         { start: 1, pause: 2, continue: 1, over: 4, clear: 0 }[
           b.action as string
         ] ?? state.status
-      return r.fulfill({ json: { status: 1 } })
+      return r.fulfill({
+        json: { status: 1, message: `服务端${b.action}成功` },
+      })
     }
     state.controlReads++
     return r.fulfill({
@@ -83,10 +85,20 @@ test('三项和一键检查保留精确通过判据，全部控制动作及清�
   await page.getByRole('button', { name: '一键检查', exact: true }).click()
   await expect(page.getByText('已布设', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '启动模拟蓝军', exact: true }).click()
+  await expect(page.getByText('服务端start成功', { exact: true })).toHaveCount(
+    1,
+  )
   await expect(page.getByText('00小时01分05秒', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '暂停', exact: true }).click()
+  await expect(page.getByText('服务端pause成功', { exact: true })).toHaveCount(
+    1,
+  )
   await page.getByRole('button', { name: '继续', exact: true }).click()
+  await expect(
+    page.getByText('服务端continue成功', { exact: true }),
+  ).toHaveCount(1)
   await page.getByRole('button', { name: '结束', exact: true }).click()
+  await expect(page.getByText('服务端over成功', { exact: true })).toHaveCount(1)
   await expect(
     page.getByRole('button', { name: '启动模拟蓝军', exact: true }),
   ).toBeVisible()
@@ -100,6 +112,9 @@ test('三项和一键检查保留精确通过判据，全部控制动作及清�
   await expect(d).toBeVisible()
   await d.getByRole('button', { name: '确认清空', exact: true }).click()
   await expect(d).toHaveCount(0)
+  await expect(page.getByText('服务端clear成功', { exact: true })).toHaveCount(
+    1,
+  )
   expect(s.checks).toEqual(['1', '2', '3', null])
   expect(s.writes).toEqual([
     { action: 'start' },
@@ -215,9 +230,17 @@ test('攻击轮次删除退页与对比门控、结果分页和两侧JSON详情'
   await expect(
     page.getByRole('cell', { name: '第二页动作', exact: true }),
   ).toBeVisible()
+  await page.getByRole('button', { name: '查看第2轮', exact: true }).click()
+  await expect(
+    page.getByRole('navigation', { name: '结果分页', exact: true }),
+  ).toContainText('第1页')
+  await expect(
+    page.getByRole('cell', { name: '读取配置', exact: true }),
+  ).toBeVisible()
+  await page.waitForLoadState('networkidle')
   await page.getByRole('button', { name: '查看第3轮', exact: true }).click()
   await expect(page.getByText('暂无对比结果', { exact: true })).toBeVisible()
-  expect(reads).toEqual(['202:1', '202:2', '303:1'])
+  expect(reads).toEqual(['202:1', '202:2', '202:1', '303:1'])
   await page
     .getByRole('navigation', { name: '轮次分页', exact: true })
     .getByRole('button', { name: '下一页', exact: true })
@@ -333,4 +356,54 @@ test('首行执行中才5秒重读轮次，结束只读一次状态，计时与�
   await page.goto('/#/basic/home')
   await page.clock.runFor(10000)
   expect(otherReads).toBe(last)
+})
+
+test('对比详情区分数组与数字键对象，并保留JSON展开', async ({ page }) => {
+  await controlFixture(page)
+  await page.route(`**${root}/control_record/?*`, (r) =>
+    r.fulfill({
+      json: { count: 1, results: [{ id: 202, round: 2, status: 5 }] },
+    }),
+  )
+  await page.route(`**${root}/control_record/compare/202/?*`, (r) =>
+    r.fulfill({
+      json: {
+        count: 1,
+        results: [
+          {
+            id: 900,
+            sub_technology_name: '比较容器',
+            undefended_return: { items: [1, 2] },
+            defended_return: { items: { '0': 1, '1': 2 } },
+            conclusion: '内容不同',
+          },
+        ],
+      },
+    }),
+  )
+  await page.goto(simulateURL)
+  await page.getByRole('tab', { name: '运行控制', exact: true }).click()
+  await page.getByRole('button', { name: '查看第2轮', exact: true }).click()
+  await page
+    .getByRole('button', { name: '对比详情：比较容器', exact: true })
+    .click()
+  const d = page.getByRole('dialog', { name: '对比详情', exact: true })
+  const before = d.locator('section').filter({
+    has: page.getByRole('heading', {
+      name: '未防御攻击结果数据',
+      exact: true,
+    }),
+  })
+  const after = d.locator('section').filter({
+    has: page.getByRole('heading', {
+      name: '防御后攻击结果数据',
+      exact: true,
+    }),
+  })
+  await expect(before.locator('summary')).toHaveText('items []')
+  await expect(after.locator('summary')).toHaveText('items {}')
+  await before.locator('summary').click()
+  await expect(before.locator('details')).not.toHaveAttribute('open')
+  await before.locator('summary').click()
+  await expect(before.getByText('1', { exact: true })).toBeVisible()
 })

@@ -65,6 +65,7 @@ export function ControlRounds({
   const signalForPage = usePageSignal(),
     [deleting, setDeleting] = useState<BlueRound | null>(null),
     [selected, setSelected] = useState<BlueRound | null>(null),
+    [comparisonPage, setComparisonPage] = useState(1),
     [busy, setBusy] = useState<string | null>(null)
   async function remove() {
     if (!deleting || busy) return
@@ -151,7 +152,10 @@ export function ControlRounds({
             <Button
               variant="link"
               aria-label={`查看第${row.original.round}轮`}
-              onClick={() => setSelected(row.original)}
+              onClick={() => {
+                setComparisonPage(1)
+                setSelected(row.original)
+              }}
             >
               查看
             </Button>
@@ -280,6 +284,8 @@ export function ControlRounds({
             taskId={taskId}
             blueId={blueId}
             roundId={selected.id}
+            page={comparisonPage}
+            setPage={setComparisonPage}
           />
         ) : (
           <p>请点击左侧攻击轮次列表对比按钮，对比完成可查看对比结果</p>
@@ -329,13 +335,16 @@ function ComparisonResults({
   taskId,
   blueId,
   roundId,
+  page,
+  setPage,
 }: {
   taskId: BlueId
   blueId: BlueId
   roundId: BlueId
+  page: number
+  setPage: (page: number) => void
 }) {
-  const [page, setPage] = useState(1),
-    [detail, setDetail] = useState<BlueComparison | null>(null)
+  const [detail, setDetail] = useState<BlueComparison | null>(null)
   const query = useQuery({
     queryKey: [
       'blue-control',
@@ -511,10 +520,13 @@ function ResultJson({ value }: { value: unknown }) {
     return <code className="break-all">{JSON.stringify(value)}</code>
   return (
     <div className="space-y-1 font-mono text-xs">
+      <span>{Array.isArray(value) ? '[' : '{'}</span>
       {Object.entries(value).map(([key, item]) =>
         item !== null && typeof item === 'object' ? (
           <details key={key} open>
-            <summary className="cursor-pointer">{key}</summary>
+            <summary className="cursor-pointer">
+              {key} {Array.isArray(item) ? '[]' : '{}'}
+            </summary>
             <div className="border-l pl-3">
               <ResultJson value={item} />
             </div>
@@ -525,6 +537,7 @@ function ResultJson({ value }: { value: unknown }) {
           </div>
         ),
       )}
+      <span>{Array.isArray(value) ? ']' : '}'}</span>
     </div>
   )
 }

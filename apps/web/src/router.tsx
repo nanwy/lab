@@ -1,3 +1,4 @@
+import { BlueTeamPage } from './blue-team/BlueTeamPage'
 import { AttackTeachingPage } from './teaching/AttackTeachingPage'
 import { DetectionToolsPage } from './detection/DetectionToolsPage'
 import { detectionCategories } from './api/detection-tools'
@@ -501,7 +502,7 @@ const experimentFutureRoute = createRoute({
     const { _splat } = experimentFutureRoute.useParams()
     if (_splat === 'attackteaching') return <AttackTeachingPage />
     if (_splat !== 'simulate') return <NotFoundPage />
-    return <p role="note">此实验子页属于后续实施切片，尚未实现。</p>
+    return <BlueTeamPage />
   },
 })
 

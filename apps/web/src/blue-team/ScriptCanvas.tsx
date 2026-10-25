@@ -81,7 +81,7 @@ const shapes = [
     style: { width: 120, height: 40, borderRadius: 10 },
   },
 ] as const
-function ScriptNodeView({ data }: NodeProps<CanvasNode>) {
+export function ScriptNodeView({ data }: NodeProps<CanvasNode>) {
   const type = data.type
   const shape = shapes.find((s) => s.type === type)
   return (

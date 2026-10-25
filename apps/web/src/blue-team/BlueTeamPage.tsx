@@ -30,6 +30,8 @@ import { BlueImport } from './BlueImport'
 import { blueError } from './feedback'
 import { ScriptConfiguration } from './ScriptConfiguration'
 import { IntelligentConfiguration } from './IntelligentConfiguration'
+import { DecisionProcess } from './DecisionProcess'
+import { ExecutionProcess } from './ExecutionProcess'
 import { BlueControl } from './BlueControl'
 import { InitialSituation } from './InitialSituation'
 
@@ -171,7 +173,21 @@ function BlueTeamSession() {
                       <BlueControl taskId={taskId} blueId={current.id} />
                     )}
                   </TabsContent>
-                  {['execution', 'decision', 'data'].map((value) => (
+                  <TabsContent value="execution">
+                    {current && (
+                      <ExecutionProcess
+                        taskId={taskId}
+                        blueId={current.id}
+                        scenarioId={current.scenario}
+                      />
+                    )}
+                  </TabsContent>
+                  <TabsContent value="decision">
+                    {current && (
+                      <DecisionProcess taskId={taskId} blueId={current.id} />
+                    )}
+                  </TabsContent>
+                  {['data'].map((value) => (
                     <TabsContent value={value} key={value}>
                       <p role="note">当前功能尚未开放。</p>
                     </TabsContent>

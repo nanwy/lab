@@ -29,6 +29,7 @@ import { usePageSignal } from '../auth/use-page-signal'
 import { BlueImport } from './BlueImport'
 import { blueError } from './feedback'
 import { ScriptConfiguration } from './ScriptConfiguration'
+import { IntelligentConfiguration } from './IntelligentConfiguration'
 import { InitialSituation } from './InitialSituation'
 
 export function BlueTeamPage() {
@@ -133,8 +134,13 @@ function BlueTeamSession() {
                     scenarioId={current.scenario}
                   />
                 )
+              ) : current?.intelligent == null ? (
+                <p role="alert">当前蓝军缺少智能蓝军标识，无法读取配置。</p>
               ) : (
-                <p role="note">智能蓝军配置当前尚未开放。</p>
+                <IntelligentConfiguration
+                  key={String(current.intelligent)}
+                  intelligentId={current.intelligent}
+                />
               )}
             </TabsContent>
             <TabsContent value="initial">

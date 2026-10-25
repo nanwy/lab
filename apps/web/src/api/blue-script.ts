@@ -296,6 +296,11 @@ export const getAbility = (id: BlueId, signal?: AbortSignal) =>
     z.object({
       id: blueId,
       name: z.string(),
+      sign: z.string().nullable().optional(),
+      desc: z.string().nullable().optional(),
+      tactics_name: z.string().nullable().optional(),
+      technology_name: z.string().nullable().optional(),
+      attack_style_display: z.string().nullable().optional(),
       input_params: z
         .array(parameterSchema)
         .optional()

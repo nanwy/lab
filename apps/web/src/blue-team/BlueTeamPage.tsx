@@ -30,6 +30,7 @@ import { BlueImport } from './BlueImport'
 import { blueError } from './feedback'
 import { ScriptConfiguration } from './ScriptConfiguration'
 import { IntelligentConfiguration } from './IntelligentConfiguration'
+import { BlueControl } from './BlueControl'
 import { InitialSituation } from './InitialSituation'
 
 export function BlueTeamPage() {
@@ -165,7 +166,12 @@ function BlueTeamSession() {
                     <TabsTrigger value="decision">决策过程</TabsTrigger>
                     <TabsTrigger value="data">蓝军数据</TabsTrigger>
                   </TabsList>
-                  {['control', 'execution', 'decision', 'data'].map((value) => (
+                  <TabsContent value="control">
+                    {current && (
+                      <BlueControl taskId={taskId} blueId={current.id} />
+                    )}
+                  </TabsContent>
+                  {['execution', 'decision', 'data'].map((value) => (
                     <TabsContent value={value} key={value}>
                       <p role="note">当前功能尚未开放。</p>
                     </TabsContent>

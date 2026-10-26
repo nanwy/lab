@@ -54,4 +54,4 @@
 
 ## 原范围精简复核（2026-10-26）
 
-第五票两轴初审均0项，父代理另行核对精简范围发现sunburst额外增加wheel缩放与pointer拖拽。有界复查`bho @ 9738423`仅series sunburst、radius、sort、label及空click/contextmenu，未配置roam；`vho`才有zoom-canvas/drag-canvas。删除环的transform/drag状态及相关事件，保留响应式viewBox、原层次扇区和标签，不改树画布。受影响环1项、web类型、图文件ESLint/三文件Prettier及diff通过，未追加矩阵或重跑未改流程；尚待父代理增量复核。
+第五票两轴初审均0项，父代理另行核对精简范围发现sunburst额外增加wheel缩放与pointer拖拽。有界复查`bho @ 9738423`仅series sunburst、radius、sort、label及空click/contextmenu，未配置roam；`vho`才有zoom-canvas/drag-canvas。删除环的transform/drag状态及相关事件，保留响应式viewBox、原层次扇区和标签，不改树画布。受影响环1项、web类型、图文件ESLint/三文件Prettier及diff通过，未追加矩阵或重跑未改流程。增量`f533621...39601f6`经两轴独立复查无新增发现，原功能未减少，已随`cfa79ef`合入集成分支。

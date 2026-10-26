@@ -7,7 +7,7 @@ const terminalFields = {
   blue_team_id: blueId,
   blue_team_name: z.string().nullish(),
   terminal_id: z.string().optional(),
-  position_init_id: blueId.optional(),
+  position_init_id: blueId.nullish(),
 }
 export const positionTerminalSchema = z.discriminatedUnion('scenario_type', [
   z.looseObject({

@@ -1,6 +1,42 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { getPositionTerminals, getPositionTools } from './blue-position'
 afterEach(() => vi.unstubAllGlobals())
+it('真实未关联终端的position_init_id为null时可读取并保留原字段', async () => {
+  // 2026-10-26 任务1556只读响应：status=1，unused_data含两个终端，position_init_id/image均为null。
+  const terminal = {
+    id: 'terminal-a',
+    blue_team_id: 100,
+    blue_team_name: '测试蓝军',
+    scenario_type: 1,
+    position_init_id: null,
+    name: '测试终端',
+    image: null,
+    system: 'Linux',
+    image_name: '',
+  }
+  vi.stubGlobal('fetch', async () =>
+    Response.json({
+      status: 1,
+      data: { used_data: [], unused_data: [terminal] },
+    }),
+  )
+  await expect(getPositionTerminals('task')).resolves.toEqual({
+    used_data: [],
+    unused_data: [terminal],
+  })
+  vi.stubGlobal('fetch', async () =>
+    Response.json({
+      status: 1,
+      data: {
+        used_data: [],
+        unused_data: [{ ...terminal, position_init_id: {} }],
+      },
+    }),
+  )
+  await expect(getPositionTerminals('task')).rejects.toMatchObject({
+    kind: 'invalid-response',
+  })
+})
 it('终端保留未知字段及可空列表，工具未启动与业务失败和坏列表明确区分', async () => {
   const terminal = {
     id: 7,

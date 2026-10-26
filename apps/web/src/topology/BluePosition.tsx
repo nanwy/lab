@@ -453,11 +453,15 @@ function PositionTools({
       toast.warning('请先启动环境！')
       return
     }
+    if (tool && tool.id == null) {
+      toast.warning('工具尚未生成部署记录，请启动环境后刷新状态')
+      return
+    }
     const signal = signalForPage()
     setWorking(`${action}:${tool?.id ?? 'all'}`)
     try {
       const message = tool
-        ? await runPositionTool(taskId, tool.id, action, signal)
+        ? await runPositionTool(taskId, tool.id!, action, signal)
         : await runPositionTools(taskId, terminal, action, signal)
       if (signal.aborted) return
       if (message) toast.success(message)
@@ -478,7 +482,7 @@ function PositionTools({
       accessorKey: 'tool_name',
       header: '工具名称',
       cell: ({ row }) =>
-        `${row.original.tool_name ?? ''} ${row.original.version ?? ''}`,
+        `${row.original.tool_name ?? ''} ${row.original.version_name ?? ''}`,
     },
     { accessorKey: 'instruction_count', header: '指令数量' },
     {
@@ -530,7 +534,8 @@ function PositionTools({
     data: query.data?.results ?? [],
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => String(row.id),
+    getRowId: (row) =>
+      row.id != null ? `record:${row.id}` : `tool:${row.tool_uuid}`,
   })
   if (query.isPending) return <Loading label="正在读取部署工具…" />
   if (query.isError)

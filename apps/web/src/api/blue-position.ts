@@ -86,15 +86,20 @@ export const removePosition = (
   ids: BlueId[],
   signal?: AbortSignal,
 ) => command(`${base(task)}/init_info/`, 'DELETE', { ids }, signal)
-export const positionToolSchema = z.object({
-  id: blueId,
-  tool_name: z.string().nullish(),
-  version: z.string().nullish(),
-  instruction_count: z.number().nullish(),
-  tool_uuid: z.string().nullish(),
-  status: z.number().nullish(),
-  run_status: z.number().nullish(),
-})
+export const positionToolSchema = z
+  .object({
+    id: blueId.nullable(),
+    tool_name: z.string().nullish(),
+    version_name: z.string().nullish(),
+    instruction_count: z.number().nullish(),
+    tool_uuid: z.string().nullish(),
+    status: z.number().nullish(),
+    run_status: z.number().nullish(),
+  })
+  .refine((tool) => tool.id != null || !!tool.tool_uuid, {
+    message: '未生成部署记录的工具必须有tool_uuid',
+    path: ['tool_uuid'],
+  })
 export type PositionTool = z.infer<typeof positionToolSchema>
 const toolPageSchema = z.object({
   count: z.number(),

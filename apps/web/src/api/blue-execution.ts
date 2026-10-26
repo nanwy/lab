@@ -31,8 +31,8 @@ export type ExecutionRun = z.infer<typeof runSchema>
 const recordSchema = z.object({
   id: blueId,
   number_of_decisions: z.number(),
-  update_time: z.string(),
-  instruction_name: z.string(),
+  update_time: z.string().nullish(),
+  instruction_name: z.string().nullish(),
   status: z.number(),
   exec_params: z.object({ data: z.unknown() }).nullish(),
   exec_return: z.unknown(),

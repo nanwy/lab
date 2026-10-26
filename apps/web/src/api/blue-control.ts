@@ -114,7 +114,7 @@ export function getBlueRounds(
 }
 const comparisonSchema = z.object({
   id: blueId,
-  sub_technology_name: z.string(),
+  sub_technology_name: z.string().nullish(),
   undefended_return: z.unknown(),
   defended_return: z.unknown(),
   conclusion: z.string().nullish(),

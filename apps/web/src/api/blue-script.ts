@@ -133,7 +133,7 @@ export const previousSchema = z.array(
 export const lineSchema = z.looseObject({
   weight: z.number(),
   sign: z.number(),
-  brief: z.string().optional(),
+  brief: z.string().nullish(),
 })
 export const getLine = (id: BlueId, edge: BlueId, signal?: AbortSignal) =>
   readScript(
@@ -245,7 +245,7 @@ export const actionSchema = z.object({
   tactics: optionalActionId,
   technology: optionalActionId,
   sub_technology: optionalActionId,
-  sub_technology_name: z.string().optional(),
+  sub_technology_name: z.string().nullish(),
 })
 export const getAction = (id: BlueId, node: BlueId, signal?: AbortSignal) =>
   readScript(
@@ -361,7 +361,13 @@ export async function uploadBehavior(file: File, signal?: AbortSignal) {
 }
 export const getTerminalSystems = (id: BlueId, signal?: AbortSignal) =>
   readScript(
-    z.object({ status: z.literal(1), data: z.array(z.string()) }),
+    z.object({
+      status: z.literal(1),
+      data: z
+        .array(z.string())
+        .nullish()
+        .transform((value) => value ?? []),
+    }),
     `${scriptBase(id)}/instruction/terminal/`,
     signal,
   ).then((r) => r.data)

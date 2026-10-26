@@ -1,6 +1,36 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { getPositionTerminals, getPositionTools } from './blue-position'
 afterEach(() => vi.unstubAllGlobals())
+it('真实未就绪工具允许null记录ID并保留version_name，错误ID类型仍拒绝', async () => {
+  const terminal = { id: '1715', blue_team_id: 1682, scenario_type: 1 as const }
+  const tool = {
+    id: null,
+    tool_name: 'Nmap',
+    tool_uuid: 'tool-nmap',
+    status: 1,
+    run_status: 2,
+    instruction_count: 8,
+    version_name: 'v1',
+  }
+  vi.stubGlobal('fetch', async () =>
+    Response.json({ count: 1, results: [tool] }),
+  )
+  await expect(
+    getPositionTools('task', terminal, { page: 1, search: '' }),
+  ).resolves.toEqual({ count: 1, results: [tool] })
+  vi.stubGlobal('fetch', async () =>
+    Response.json({ count: 1, results: [{ ...tool, id: {} }] }),
+  )
+  await expect(
+    getPositionTools('task', terminal, { page: 1, search: '' }),
+  ).rejects.toMatchObject({ kind: 'invalid-response' })
+  vi.stubGlobal('fetch', async () =>
+    Response.json({ count: 1, results: [{ ...tool, tool_uuid: null }] }),
+  )
+  await expect(
+    getPositionTools('task', terminal, { page: 1, search: '' }),
+  ).rejects.toMatchObject({ kind: 'invalid-response' })
+})
 it('真实未关联终端的position_init_id为null时可读取并保留原字段', async () => {
   // 2026-10-26 任务1556只读响应：status=1，unused_data含两个终端，position_init_id/image均为null。
   const terminal = {

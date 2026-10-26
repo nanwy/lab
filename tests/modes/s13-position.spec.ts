@@ -223,7 +223,7 @@ test('部署列表业务失败可重试，搜索分页和单项批量操作保�
             id: 301,
             tool_name:
               url.searchParams.get('page') === '2' ? '第二页工具' : '采集工具',
-            version: 'v1',
+            version_name: 'v1',
             instruction_count: 2,
             status: 1,
             run_status: 1,
@@ -417,4 +417,61 @@ test('锁图关联保存失败可重试，重试后可解除，保存中关窗�
   await expect(
     page.getByRole('button', { name: '保存拓扑', exact: true }),
   ).toBeDisabled()
+})
+
+test('未就绪工具的空记录ID仍显示多行且不会发送空ID请求', async ({ page }) => {
+  const state = await fixture(page)
+  state.association = script
+  ;(
+    state.graph.cells as { data: Record<string, unknown> }[]
+  )[0]!.data.blueInfo = { ...script, terminal_id: '100-7' }
+  await page.route(`**${task}/blue_team/100/terminal/7/tool/?*`, (r) =>
+    r.fulfill({
+      json: {
+        count: 2,
+        results: [
+          {
+            id: null,
+            tool_name: '工具甲',
+            tool_uuid: 'uuid-a',
+            version_name: 'v1',
+            run_status: 2,
+          },
+          {
+            id: null,
+            tool_name: '工具乙',
+            tool_uuid: 'uuid-b',
+            version_name: null,
+            run_status: 1,
+          },
+        ],
+      },
+    }),
+  )
+  await page.goto(scene)
+  await page.getByRole('button', { name: '蓝军配置', exact: true }).click()
+  const panel = page.getByRole('dialog', { name: '蓝军配置', exact: true })
+  await expect(
+    panel.getByRole('row').filter({ hasText: '工具甲 v1' }),
+  ).toBeVisible()
+  await expect(
+    panel.getByRole('row').filter({ hasText: '工具乙' }),
+  ).toBeVisible()
+  await panel
+    .getByRole('row')
+    .filter({ hasText: '工具甲' })
+    .getByRole('button', { name: '部署', exact: true })
+    .click()
+  await expect(page.getByText('请先启动环境！', { exact: true })).toBeVisible()
+  await panel
+    .getByRole('row')
+    .filter({ hasText: '工具乙' })
+    .getByRole('button', { name: '检测', exact: true })
+    .click()
+  await expect(
+    page.getByText('工具尚未生成部署记录，请启动环境后刷新状态', {
+      exact: true,
+    }),
+  ).toBeVisible()
+  expect(state.writes).toEqual([])
 })

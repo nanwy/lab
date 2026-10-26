@@ -50,7 +50,7 @@ web 类型 `/tmp/s14-01-review-types.log`、三个改动代码/测试文件 ESLi
 
 ## S14-02 防御态势与3D拓扑（2026-10-26）
 
-按[第二票](../../.scratch/s14-situation/issues/02-defensive-situation.md)交付 R099；01完成，03未实施，本票待双轴审查。
+按[第二票](../../.scratch/s14-situation/issues/02-defensive-situation.md)交付 R099；本票已完成双轴审查及增量复查，03未实施。
 
 ### 交付与边界
 
@@ -73,3 +73,9 @@ web 类型 `/tmp/s14-01-review-types.log`、三个改动代码/测试文件 ESLi
 Standards 初审0项，Spec 初审1项P2：共享计数卡的z-index=2反转了原防御页DOM中右侧面板晚于卡片的绘制次序，遮住90%与安全状态。先前将其记录为原布局问题的结论不成立，已撤销。仅给防御右侧面板指定高于卡片的局部层级，不改尺寸、排布、固定数据或其他页面。
 
 主链回归在文字实际Range的三处覆盖点检查绘制层级；由于原计数卡不接收指针，检查时暂时恢复其pointer-events以暴露透明于指针的遮挡，再立即恢复原值。原实现返回false红灯 `/tmp/s14-02-review-layer-red.log`，修正后主链1项绿灯 `/tmp/s14-02-review-layer-green.log`，同时复用原拓扑、计数、空日志及面板验收。最终唯一截图 `/tmp/s14-02-defense-layer-final.png` 用于复核安全状态文字完整可读。其余已通过测试结果复用，不重跑整组。修复尚待增量复查，不提前声明审查关闭。
+
+## 第二票最终收口（2026-10-26）
+
+初审固定差异 `8e13032...f9be487`：Standards 0项、Spec 1项P2。局部层级修复 `987eafd` 经固定增量 `8bc9b33...987eafd` 两轴复查确认原问题关闭、新增均为0；详见[审查记录](../../.scratch/s14-situation/review-02.md)。修复已以 `c3b984c` 合入 `integration/s14-situation`，第二票关闭。
+
+复用3项本票浏览器、01共享直接消费者1项、3项契约、web类型及定向lint/格式；层级修复主链1项先红后绿，最终截图 `/tmp/s14-02-defense-layer-final.png` 已目视确认90%及安全状态完整可读。收口只检查文档、工单与进度一致性，不重复应用验证、不启动第三票、不推送远端。真实接口、原媒体可用性及授权仍未实测。

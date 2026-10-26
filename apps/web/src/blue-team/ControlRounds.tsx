@@ -513,7 +513,7 @@ function ComparisonResults({
     </>
   )
 }
-function ResultJson({ value }: { value: unknown }) {
+export function ResultJson({ value }: { value: unknown }) {
   if (value && typeof value === 'object' && Object.keys(value).length === 0)
     return <code>{JSON.stringify(value)}</code>
   if (value === null || typeof value !== 'object')

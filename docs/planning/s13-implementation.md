@@ -76,3 +76,19 @@
 - 3项受影响公共行为先红`/tmp/s13-04-review-red.log`（成功消息缺失、重复查看仍第2页、容器无类型标记），修正后通过`/tmp/s13-04-review-green.log`（3项、5.9秒），保留原控制/轮次/对比流程验证。web类型、四代码/测试文件ESLint、六文件Prettier及diff通过，未重跑无关入口/计时或全组、构建、真实服务。更新后的JSON截图已目视核对，05/06未实施。
 
 增量差异`8a97c09...9928c77`经Standards与Spec独立复查，三项发现均关闭，新增发现均为0。第四票及修正已以`325326f`合入`integration/s13-simulated-blue-team`，临时工作树已清理，未推送远端。最终仅补交付记录并检查文档格式、链接和工单状态，不重复已通过的应用检查；S13整片仍进行中，05/06保持未实施。
+
+## S13-05 执行与决策过程（2026-10-26）
+
+在集成`11308fa`上交付按轮次查看的只读执行剧本图、高亮、分页决策记录/输入输出、可收起面板及历史/实时日志；无剧本保留记录与详情，无轮次显示原空态。复用ScriptNodeView与ResultJson展示，不接入画布编辑动作。历史control/log保持原无query，只有首轮读取初始control信息；原WS无已确认轮次字段，不声称可靠的历史轮次事件归属。
+
+实时协议按qxt/hho保持普通同源路径、kind1前插日志、kind2更新运行信息并重读当前记录、60秒心跳、onerror后4秒检查状态与未收消息时最多4次重连；close仅可见提示。用页面独立socket和消息标记修复原全局连接/处理器覆盖，切轮次/蓝军/离页清理连接、心跳、重连timer、Query及图；不另建实时框架或历史归档策略。重连参数核对原件与代码，未另搭WS服务平台或声称真实协议已联调。
+
+决策页交付全部/单次筛选、原树及sunburst层次图、树右键步骤详情与直接下一步图、当前轮次日志。sunburst保持原层次/参数标签及权重，不替换为任意环；原环click/contextmenu为空不增加操作。child/params合法空值按证据归一，空树/日志与失败重试明确展示，日志无新增分页控件。详细范围、源码补证与红绿记录见[第五票](../../.scratch/s13-simulated-blue-team/issues/05-execution-and-decision.md)。
+
+6项本票浏览器及2项共享直接消费者通过：`/tmp/s13-05-direct.log`执行3+共享2，`/tmp/s13-05-integrated.log`正式入口决策3+受影响执行1；其余未改结果直接复用。web类型、11文件ESLint、15文件Prettier、文档链接/diff检查通过；`/tmp/s13-05-execution.png`、`/tmp/s13-05-decision-tree.png`、`/tmp/s13-05-decision-ring.png`已目视核对。未全量check、构建或真实后端。第五票已实施验证、双轴审查尚待；整体仍进行中，第六票未实施，历史日志/实时事件轮次语义和真实执行结果仍保留未知。
+
+## S13-05 原范围精简复核（2026-10-26）
+
+两轴初审均0项；父代理复核用户“只原bundle、精简”要求发现环图额外加入wheel缩放/pointer拖拽。经有界复核`bho @ 9738423`，原sunburst只配置层次series/radius/sort/label、click/contextmenu为空，无roam；zoom-canvas/drag-canvas仅在vho树画布。已删除DecisionSunburst的transform/drag状态及wheel/pointer处理，保留原层次扇区、标签与响应式viewBox，树画布平移/缩放不变，并精确修订第五票条款。
+
+仅决策环相关1项通过`/tmp/s13-05-trim-ring.log`；web类型`/tmp/s13-05-trim-types.log`、图文件ESLint与三文件Prettier/diff通过，未增加负面矩阵或重跑其他流程。该项为去除额外设计，不扩展原业务；尚待父代理增量复核，第六票未实施。

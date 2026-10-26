@@ -424,3 +424,64 @@ test('HTTP和实时空块数组保留空结构，可编辑保存且错误元素�
   ).toBeVisible()
   await expect(page.locator('.react-flow__node[data-id="35"]')).toHaveCount(0)
 })
+
+test('块数组首项内部为空时保存保留块元数据及原内层类型来源', async ({
+  page,
+}) => {
+  const s = await fixture(page)
+  s.tree = [
+    {
+      id: 43,
+      data_type: 3,
+      data_define: 99,
+      define_name: '已有空块',
+      define_value: [
+        {
+          data_define: 7,
+          define_name: '原块类型',
+          define_value: [],
+          unit: 'opaque',
+          metadata: { source: 'server' },
+        },
+      ],
+    },
+  ]
+  await page.route('**/api/front/wqzb/basic_resources/inouput/?nopage=1', (r) =>
+    r.fulfill({ json: [{ id: 7, datatype: '块类型', desc: '数组' }] }),
+  )
+  await page.route(`**${root}/init_situation_node/43/`, (r) => {
+    s.writes.push({
+      method: r.request().method(),
+      body: r.request().postDataJSON(),
+    })
+    return r.fulfill({ json: { status: 1 } })
+  })
+  await page.routeWebSocket('**/ws/emulate_task/**', () => {})
+  await page.goto(simulateURL)
+  await page.getByRole('tab', { name: '运行控制', exact: true }).click()
+  await page.getByRole('tab', { name: '蓝军数据', exact: true }).click()
+  await page.getByRole('button', { name: '数据视图', exact: true }).click()
+  await expect(page.locator('.react-flow__node[data-id="43"]')).toContainText(
+    '已有空块',
+  )
+  await page
+    .locator('.react-flow__node[data-id="43"]')
+    .click({ button: 'right' })
+  await page.getByRole('button', { name: '编辑节点', exact: true }).click()
+  const d = page.getByRole('dialog', { name: '编辑数据', exact: true })
+  await expect(d.getByLabel('数组值1', { exact: true })).toHaveCount(0)
+  await d.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(d).toHaveCount(0)
+  expect(s.writes[0]!.body).toMatchObject({
+    data_define: 7,
+    define_value: [
+      {
+        data_define: 7,
+        define_name: '原块类型',
+        define_value: [],
+        unit: 'opaque',
+        metadata: { source: 'server' },
+      },
+    ],
+  })
+})

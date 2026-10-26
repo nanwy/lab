@@ -55,3 +55,7 @@
 ## 双轴初审修正
 
 两轴汇总3项独立P2（读取竞态重复发现只计一次）已统一修正，尚待增量复查：当前GET窗口暂存节点事件，响应快照合并事件后再写缓存；未知parent必须明确反馈，不能提升为根；原type3空define_value数组在HTTP/WS、图与编辑中合法，保存不伪造首项，错误数组元素仍拒绝。三项公共行为先红后绿`/tmp/s13-06-review-green.log`，原蓝军CRUD/任务级态势CRUD直接消费者2项通过`/tmp/s13-06-review-consumers.log`；web类型、六文件lint、八文件格式/链接/diff通过。只处理当前读取窗口，不建归档或轮次协议，未重跑原7项全组；细节见[S13记录](../../../docs/planning/s13-implementation.md#s13-06-双轴初审修正2026-10-26)。
+
+## 空结构增量回归修正
+
+原3项P2已复查关闭后，Spec新增1项P2已修：只有原外层define_value=[]且未添加值才保留外层空；首块内部define_value=[]仍保留该块与未知元字段，按原HZn保存逻辑将首块data_define写入顶层，不错误改用旧外层来源。独立fixture outer99/inner7及未知unit/metadata先红后绿，连同既有outer[]定向2项通过`/tmp/s13-06-inner-green.log`，类型/两文件lint/四文件格式及diff通过。尚待此次增量复查，整体仍待审；细节见[S13记录](../../../docs/planning/s13-implementation.md#s13-06-空结构增量回归修正2026-10-26)。

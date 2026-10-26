@@ -126,3 +126,11 @@
 - 三项公共行为先红`/tmp/s13-06-review-red.log`（读取窗口先到节点丢失、未知父无反馈且入根、空块数组整图被拒），修正后通过`/tmp/s13-06-review-green.log`（3项、4.1秒）。原蓝军CRUD及任务级态势CRUD两个直接消费者通过`/tmp/s13-06-review-consumers.log`，未重跑网络/05实时或原7项全组。web类型、六代码/测试文件ESLint、八文件Prettier/文档链接及diff通过。
 
 S13继续维持待最终审查的进行中状态；不声明真实服务、事件轮次归属或写入隔离已验证，不扩展其他切片。
+
+## S13-06 空结构增量回归修正（2026-10-26）
+
+前轮3项P2经增量复查关闭、Standards无新增；Spec新发现1项P2：把编辑值数组为空泛化当作外层块数组为空，导致合法`[{data_define:7,define_value:[]}]`保存变成[]并丢失块元字段，顶层类型也错误保留为原外层来源。
+
+已将保留空外层的判据限定为原editing.define_value.length为0且编辑值仍为空。已有首块时继续构造该块、保留其未知字段及内部空值数组。有界复查HZn保存v明确`u.data_define=u.define_value[0].data_define`，因此已有首块的顶层类型沿用原内层来源；仅没有首块的外层[]保留原顶层字段，未把两种空结构混用。
+
+新增独立HTTP样例以outer data_define=99、inner=7及未知unit/metadata字段验证直接编辑保存。先红`/tmp/s13-06-inner-red.log`显示实际错误为顶层99/外层[]；修正后与既有outer[]用例定向2项通过`/tmp/s13-06-inner-green.log`（3.2秒），外部PATCH保留首块全部元字段并按原保存逻辑取类型7。web类型、两文件ESLint、四文件Prettier及diff通过。仅新增回归修正，尚待独立复查；未重跑其他流程或全组，S13继续进行中待审。

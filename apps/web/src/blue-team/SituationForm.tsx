@@ -151,12 +151,16 @@ export function SituationForm({
       const rows = value.rows.map((row) => ({ ...row }))
       const dataDefine =
         value.data_type === 1 ? first.data_define : value.data_define
+      const preserveEmptyOuter =
+        editing?.data_type === 3 &&
+        editing.define_value.length === 0 &&
+        value.values.length === 0
       const defineValue =
         value.data_type === 1
           ? first.define_value
           : value.data_type === 2
             ? rows
-            : editing?.data_type === 3 && value.values.length === 0
+            : preserveEmptyOuter
               ? []
               : [
                   {
@@ -170,10 +174,7 @@ export function SituationForm({
       const data = editing
         ? {
             ...situationGraphData(editing),
-            data_define:
-              editing.data_type === 3 && value.values.length === 0
-                ? editing.data_define
-                : dataDefine,
+            data_define: preserveEmptyOuter ? editing.data_define : dataDefine,
             define_value: defineValue,
           }
         : {

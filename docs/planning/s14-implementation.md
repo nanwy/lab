@@ -47,3 +47,23 @@ web 类型 `/tmp/s14-01-review-types.log`、三个改动代码/测试文件 ESLi
 初审固定差异 `fdc4aef...a872eee`：Standards 1 项 P2、Spec 0 项。日志接口 HTTP 200 业务失败原被 literal Schema 误判格式错误，修复提交 `c0a8401` 已仅对日志接入统一客户端业务失败判据，风险/网络 raw 协议保持原样。增量 `a872eee...c0a8401` 两轴复查确认原问题关闭，新增均为 0；完整[审查记录](../../.scratch/s14-situation/review-01.md)。
 
 修复以 `0062f9b` 合入 `integration/s14-situation`，第一票关闭。累计 5 项不同浏览器用例通过（原 4 项复用、增量业务失败单提示 1 项通过），最终 7 项契约、web 类型、定向 lint/格式通过。最终收口仅检查文档和工单一致性，不重复应用测试，不推进 02/03，不推送远端。静态范围完成与真实服务未验证、原媒体外观差异继续分开记录。
+
+## S14-02 防御态势与3D拓扑（2026-10-26）
+
+按[第二票](../../.scratch/s14-situation/issues/02-defensive-situation.md)交付 R099；01完成，03未实施，本票待双轴审查。
+
+### 交付与边界
+
+- 原五段参数保留，拓扑只消费 secne_id、resource_type、scene_type。scene_type=scene 选择 scene，否则 topo；原特殊 POST 的 numeric14 判据不会命中 string 深链，保持 GET draw/?task_type，直接消费顶层 cells，不套 S07 固定6或 status/data 包装。
+- Three 真实 WebGL 场景保留原设备 Sprite、data.logo、名称 CanvasTexture、直线、原坐标与顺序 level、透视相机、雾及 wireframe/透明地面。使用 OrbitControls 原旋转、缩放、平移，不补相机按钮、节点详情或编辑。原 composer 未在主动画循环使用，不复制无消费者后处理。
+- 五项计数固定0、安全90%、资产分布2/1/2/1/5和训练任务空壳原样保留，不主动读取日志、风险或网络。底部/右侧原收起尺寸及0.5秒过渡保留；原五卡片与安全状态在小视口下重叠、底部固定 right400px 未另做重排。
+- 已出现第二个消费者后，仅抽取现有 Chart/Clock/参数类型供01和02复用，不预建03或通用图形平台。场景查询透传 AbortSignal，换上下文/空图不残留；离页取消帧、断开 resize 和 controls、销毁 renderer/context、geometry/material/texture，迟到贴图加载也释放。
+- 原装饰媒体未复制；节点 logo 按响应指定 URL 加载，本次浏览器采用独立 SVG 图标 fixture。WebGL 不可用有明确状态，不以2D假图冒充；真实服务字段/媒体/授权未验证。
+
+### 依赖与验证
+
+固定 three@0.170.0 与对应 @types/three@0.170.0。Three 无 React peer 依赖，直接在 effect 管理实例，不引入 React Three Fiber；对应类型与当前 TypeScript 兼容，类型和浏览器通过。仅新增该运行时与对应类型依赖树，按[Three 官方 OrbitControls](https://threejs.org/docs/#examples/en/controls/OrbitControls)及[资源释放说明](https://threejs.org/manual/en/cleanup.html)使用 controls/dispose，不修改现有依赖版本。冻结锁文件离线安装通过 `/tmp/s14-02-install.log`。
+
+测试边界沿票面：scene/topo 参数、真实3D相机及原面板、静态内容、空图/切页/失败。首项404红灯见 `/tmp/s14-02-red.log`，主链绿见 `/tmp/s14-02-green.log`。3D实际鼠标旋转、滚轮缩放、右键平移通过画面变化验证；空图与离页、迟到响应和失败单提示两项通过 `/tmp/s14-02-interactions.log`（2项、21.1秒）。主链在局部修正原生按钮白底污染后定向1项复测通过 `/tmp/s14-02-initial-final.log`（8.0秒）。累计3项不同本票浏览器用例通过；01共享直接消费者1项通过 `/tmp/s14-02-consumer.log`（4.2秒），未重跑01其他未变分支。
+
+3项公共 API 契约通过 `/tmp/s14-02-contract.log`，确认顶层 cells、string14 GET、原坐标层级及合法空值/错误引用/HTTP失败。web类型 `/tmp/s14-02-types.log`、改动代码定向 ESLint `/tmp/s14-02-lint.log` 通过。初始完整面板截图 `/tmp/s14-02-defense-initial.png` 已目视核对；动态相机截图另见 `/tmp/s14-02-defense.png`。未运行全量 check、构建、无关回归或真实后端。

@@ -591,6 +591,23 @@ const blueSituationRoute = createRoute({
   },
 })
 
+const LazyDefensiveSituationPage = lazy(async () => ({
+  default: (await import('./situation/DefensiveSituationPage'))
+    .DefensiveSituationPage,
+}))
+const defensiveSituationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/defensive/$secne_id/$resource_type/$resource_id/$test_task_id/$scene_type',
+  component: () => {
+    const params = defensiveSituationRoute.useParams()
+    return (
+      <Suspense fallback={<Loading label="正在加载防御态势…" />}>
+        <LazyDefensiveSituationPage {...params} />
+      </Suspense>
+    )
+  },
+})
+
 const resourceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/resources/$resourceId',
@@ -673,6 +690,7 @@ const routeTree = rootRoute.addChildren([
   fullscreenRoute,
   controlPanelRoute,
   blueSituationRoute,
+  defensiveSituationRoute,
   diagnosticErrorRoute,
 ])
 

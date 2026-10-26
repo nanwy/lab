@@ -118,3 +118,7 @@ R089 的 `_8s → e_t(module=1)` 可达蓝军配置、初始态势、运行控�
 ## R098–R100 独立态势边界补证（2026-10-26）
 
 三个原组件仅首次读取业务数据，另有每秒显示时钟；未发现业务刷新按钮、轮询、WS、角色条件或业务钻取。蓝军使用任务级风险/日志/网络，防御/导调按原场景及任务类型读取拓扑；固定统计和空白区域原样保留。三个深链独立存在，正常菜单打开分支原不可达，不补入口。原路由定义和偏移不变；调用链及精简范围见[S14 分析](../../.scratch/s14-situation/analysis.md)，当前交付范围以[实施计划](page-rebuild-implementation.md)为准。
+
+## R099 防御态势请求补证（2026-10-26）
+
+防御页仅以 secne_id/resource_type/scene_type 读取顶层 cells。原 t9n 对任务类型14的特殊 POST 判据未 Number 转换，深链资源类型为字符串，所以沿普通 GET scene/topo draw 请求。不根据未消费的 resource_id/test_task_id 增加请求，不主动拉取日志。3D仅渲染原设备 Sprite、名称及直线，保留坐标/顺序层级、OrbitControls 旋转缩放平移；原未参与主循环的 composer 不扩成新能力。详细证据见[S14分析](../../.scratch/s14-situation/analysis.md)。

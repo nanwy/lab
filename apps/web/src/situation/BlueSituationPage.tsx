@@ -1,18 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
-import { init, use as registerCharts, type ComposeOption } from 'echarts/core'
-import {
-  GraphChart,
-  PieChart,
-  type GraphSeriesOption,
-  type PieSeriesOption,
-} from 'echarts/charts'
-import {
-  LegendComponent,
-  TooltipComponent,
-  type LegendComponentOption,
-  type TooltipComponentOption,
-} from 'echarts/components'
+import { use as registerCharts } from 'echarts/core'
+import { GraphChart, PieChart } from 'echarts/charts'
+import { LegendComponent, TooltipComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
 import { Loading } from '@workspace/ui/components/loading'
 import {
@@ -22,6 +12,7 @@ import {
   type TaskSituationLog,
 } from '../api/task-situation'
 import { blueError } from '../blue-team/feedback'
+import { Chart, Clock, type ChartOption, type SituationParams } from './shared'
 import './situation.css'
 
 registerCharts([
@@ -31,53 +22,6 @@ registerCharts([
   TooltipComponent,
   SVGRenderer,
 ])
-type ChartOption = ComposeOption<
-  | GraphSeriesOption
-  | PieSeriesOption
-  | LegendComponentOption
-  | TooltipComponentOption
->
-
-// 三个原独立路径共用参数拼写；各页只消费原组件实际使用的参数。
-export type SituationParams = {
-  secne_id: string
-  resource_type: string
-  resource_id: string
-  test_task_id: string
-  scene_type: string
-}
-
-function Chart({ label, option }: { label: string; option: ChartOption }) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const element = ref.current
-    if (!element) return
-    const chart = init(element, undefined, { renderer: 'svg' })
-    chart.setOption(option)
-    const resize = new ResizeObserver(() => chart.resize())
-    resize.observe(element)
-    return () => {
-      resize.disconnect()
-      chart.dispose()
-    }
-  }, [option])
-  return (
-    <div className="situation-chart" role="img" aria-label={label} ref={ref} />
-  )
-}
-
-function Clock() {
-  const [time, setTime] = useState(() => new Date())
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-  const pad = (v: number) => String(v).padStart(2, '0')
-  return (
-    <time className="situation-clock">{`${time.getFullYear()}-${pad(time.getMonth() + 1)}-${pad(time.getDate())} ${pad(time.getHours())}:${pad(time.getMinutes())}:${pad(time.getSeconds())}`}</time>
-  )
-}
-
 function QueryState({ query }: { query: UseQueryResult }) {
   useEffect(() => {
     if (query.error) blueError(query.error)

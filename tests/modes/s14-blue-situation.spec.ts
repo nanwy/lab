@@ -249,3 +249,25 @@ test('失败只提示一次，其他成功面板仍可显示且不把错误当�
   ).toHaveCount(12)
   expect(state.errors).toEqual([])
 })
+
+test('日志业务失败提示原消息一次，其余成功面板仍可显示', async ({ page }) => {
+  const state = await fixture(page)
+  await page.route(`**${root}/73/control/log/?kind=1`, (route) =>
+    route.fulfill({ json: { status: 0, message: '任务不可用' } }),
+  )
+  await page.goto(url())
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(1)
+  await expect(page.locator('[data-sonner-toast]')).toContainText('任务不可用')
+  await expect(
+    page
+      .getByRole('region', { name: '攻击日志', exact: true })
+      .getByRole('alert'),
+  ).toContainText('态势读取失败')
+  await expect(
+    page.getByRole('region', { name: '执行日志', exact: true }).locator('li'),
+  ).toHaveCount(12)
+  await expect(
+    page.getByRole('img', { name: '蓝军网络拓扑', exact: true }),
+  ).toBeVisible()
+  expect(state.errors).toEqual([])
+})

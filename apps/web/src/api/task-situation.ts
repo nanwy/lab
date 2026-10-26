@@ -41,8 +41,11 @@ async function read<T>(
   schema: z.ZodType<T>,
   path: string,
   signal?: AbortSignal,
+  isBusinessFailure?: (value: unknown) => boolean,
 ) {
-  const result = schema.safeParse(await apiClient.request(path, { signal }))
+  const result = schema.safeParse(
+    await apiClient.request(path, { signal, isBusinessFailure }),
+  )
   if (!result.success)
     throw new ApiError(
       'invalid-response',
@@ -63,6 +66,7 @@ export async function getTaskSituationLogs(
     z.object({ status: z.literal(1), data: z.object({ log: logSchema }) }),
     `${taskPath(taskId)}/control/log/?kind=${kind}`,
     signal,
+    (value) => !z.object({ status: z.literal(1) }).safeParse(value).success,
   )
   const logs = result.data.log
   return logs.length > 5 && logs.length < 10 ? [...logs, ...logs] : logs

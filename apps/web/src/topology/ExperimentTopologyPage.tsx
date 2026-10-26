@@ -77,6 +77,12 @@ import {
 } from '@workspace/ui/components/tabs'
 import { useExperiment } from '../experiments/ExperimentContext'
 import { DeviceResources } from './DeviceResources'
+import { BluePosition } from './BluePosition'
+import {
+  savePositionTopology,
+  type PositionTerminal,
+} from '../api/blue-position'
+import type { BlueId } from '../api/blue-team'
 import { TrafficSniffingDialog } from './TrafficSniffingDialog'
 import { NodeConfiguration } from './NodeConfiguration'
 import { CanvasNode, CanvasNodeContext } from './CanvasNode'
@@ -271,6 +277,7 @@ export function ExperimentTopologyPage() {
     <ExperimentSceneTabs
       key={`${experiment.id}:${id}`}
       id={id}
+      taskId={experiment.test_task}
       initial={graph.data}
     />
   )
@@ -278,9 +285,11 @@ export function ExperimentTopologyPage() {
 
 function ExperimentSceneTabs({
   id,
+  taskId,
   initial,
 }: {
   id: string | number
+  taskId?: BlueId | null
   initial: EditorGraph
 }) {
   const [tab, setTab] = useState('scene')
@@ -291,7 +300,7 @@ function ExperimentSceneTabs({
         <TabsTrigger value="mirror">流量镜像</TabsTrigger>
       </TabsList>
       <TabsContent value="scene" forceMount hidden={tab !== 'scene'}>
-        <ExperimentTopologyEditor id={id} initial={initial} />
+        <ExperimentTopologyEditor id={id} taskId={taskId} initial={initial} />
       </TabsContent>
       <TabsContent value="mirror">
         {tab === 'mirror' ? <TrafficMirroring id={id} /> : null}
@@ -303,16 +312,20 @@ function ExperimentSceneTabs({
 // 原实验入口未传 readOnly/shared；保留共享包装层明确传入的查看能力，不从详情猜字段。
 export function ExperimentTopologyEditor({
   id,
+  taskId,
   initial,
   readOnly = false,
   shared = false,
 }: {
   id: string | number
+  taskId?: BlueId | null
   initial: EditorGraph
   readOnly?: boolean
   shared?: boolean
 }) {
   const queryClient = useQueryClient()
+  const [bluePositionOpen, setBluePositionOpen] = useState(false)
+  const [positionUnsaved, setPositionUnsaved] = useState(false)
   const [sniffingEdge, setSniffingEdge] = useState<string | number | null>(null)
   const [nodes, setNodes, changeNodes] = useNodesState<FlowNode>(initial.nodes)
   const [edges, setEdges, changeEdges] = useEdgesState<FlowEdge>(initial.edges)
@@ -439,6 +452,7 @@ export function ExperimentTopologyEditor({
       setBaseline(serialized)
       setLastNode((current) => current.slice(submittedLast.length))
       setBusinessSaveFailed(false)
+      setPositionUnsaved(false)
       toast.success('拓扑保存成功')
     } catch (error) {
       if (afterBusiness && !controller.signal.aborted)
@@ -451,6 +465,52 @@ export function ExperimentTopologyEditor({
         toast.error(error.message)
     } finally {
       if (!controller.signal.aborted) setSaving(false)
+    }
+  }
+  async function persistBluePosition(
+    nodeId: string,
+    terminal: PositionTerminal | null,
+    signal: AbortSignal,
+  ) {
+    if (readOnly || shared || busy || saving)
+      throw new ApiError('business', '请等待当前拓扑操作完成')
+    const nextNodes = nodes.map((node) =>
+      node.id === nodeId
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              raw: {
+                ...node.data.raw,
+                data: { ...node.data.raw.data, blueInfo: terminal ?? {} },
+              },
+            },
+          }
+        : node,
+    )
+    const next: EditorGraph = {
+      ...draft,
+      nodes: nextNodes.map((node) => ({
+        ...node,
+        extent: node.extent === 'parent' ? 'parent' : undefined,
+      })),
+    }
+    setNodes(nextNodes)
+    setPositionUnsaved(true)
+    await persistPositionGraph(next, signal)
+  }
+  async function persistPositionGraph(next: EditorGraph, signal: AbortSignal) {
+    if (readOnly || shared || busy || saving)
+      throw new ApiError('business', '请等待当前拓扑操作完成')
+    setBusy(true)
+    try {
+      await savePositionTopology(id, next, signal)
+      if (!signal.aborted) {
+        setBaseline(JSON.stringify(toX6Graph(next)))
+        setPositionUnsaved(false)
+      }
+    } finally {
+      if (!operation.current.signal.aborted) setBusy(false)
     }
   }
   async function toggleLock() {
@@ -1477,6 +1537,27 @@ export function ExperimentTopologyEditor({
               className="flex flex-wrap items-center gap-2"
               aria-label="拓扑运行操作"
             >
+              {taskId != null && (
+                <Button
+                  variant="outline"
+                  disabled={busy || saving || businessSaveRequested}
+                  onClick={() => {
+                    if (
+                      !nodes.some(
+                        (node) =>
+                          node.data.raw.shape === 'custom-react-node' &&
+                          node.data.raw.data?.is_blue,
+                      )
+                    ) {
+                      toast.error('请先配置蓝军终端节点')
+                      return
+                    }
+                    setBluePositionOpen(true)
+                  }}
+                >
+                  蓝军配置
+                </Button>
+              )}
               <Button
                 disabled={busy || saving || businessSaveRequested}
                 onClick={() => void operateRuntime('start')}
@@ -2562,6 +2643,23 @@ export function ExperimentTopologyEditor({
             ) : null}
           </DialogContent>
         </Dialog>
+        {bluePositionOpen && taskId != null && (
+          <BluePosition
+            taskId={taskId}
+            nodes={nodes.filter(
+              (node) =>
+                node.data.raw.shape === 'custom-react-node' &&
+                node.data.raw.data?.is_blue,
+            )}
+            close={() => setBluePositionOpen(false)}
+            persist={persistBluePosition}
+            unsaved={positionUnsaved}
+            saving={busy || saving}
+            retrySave={() =>
+              persistPositionGraph(draft, operation.current.signal)
+            }
+          />
+        )}
         <Dialog
           open={blocker.status === 'blocked'}
           onOpenChange={(open) => {

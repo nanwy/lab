@@ -48,3 +48,14 @@
 ## 完成边界
 
 三票分别交付原三个独立页面，每票包含实际数据接线、原交互、局部缺陷修复及必要定向验证。静态内容不补全，不改造产品，不新增实时能力。用户已确认该范围及三票划分；无待定产品决策。尚未实测的真实服务契约、权限、数据及媒体可用性作为差异记录保留，不成为猜接口或扩功能的理由。
+
+## S14-02 定向补证（2026-10-26）
+
+原 GWs、Kfr、VWs/WWs 及 t9n 已按有界查询复核，原 bundle SHA 不变。查询发现 page-map 派生索引已过期，重建并 verify 通过后继续。
+
+- cIe.getTopoData @8247857 消费 HTTP 顶层 cells，不是 status/data 或 topo_json 包装。t9n 对 numeric14+scene 的特殊 POST 不适用于字符串深链类型，保持普通 GET。
+- WWs @13298600附近仅渲染 custom-react-node 和 edge；level 初始化为 data.level 或0，按边顺序在 target level=0 时置 source+1。递归函数返回的新 Map 原未并入，不另设新布局。节点世界坐标为 ((x-1000)*3, 200+(maxLevel-level)*200, (y-600)*3)，边按节点直连，不消费折点。
+- Kfr 保留 fov100、near1/far100000、相机(-100,2000,2000)、同原色雾/地面 wireframe 与透明面、data.logo Sprite 与名称 CanvasTexture、OrbitControls 左旋转/中缩放/右平移。原动画循环仅 renderer.render，不运行 composer，因此不新增后处理。
+- 防御日志无请求；五计数全0，90%安全状态、交换机2/路由器1/局域网2/防火墙1/节点5的资产环图、训练任务空容器保持。右侧400→30px、底部300→35px且底部固定 right400px，转换0.5秒。
+
+原深链可见内容与适配均为静态推断，没有真实响应或媒体取样。

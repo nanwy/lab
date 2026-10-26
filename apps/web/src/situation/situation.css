@@ -1,0 +1,147 @@
+.blue-situation {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  min-height: 600px;
+  overflow: hidden;
+  color: #d6edff;
+  background: radial-gradient(100% 69% at 100% 50%, #02163e 0%, #01102e 100%);
+}
+.situation-header {
+  position: relative;
+  z-index: 2;
+  height: 80px;
+  text-align: center;
+  pointer-events: none;
+}
+.situation-header h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 70px;
+  color: #d6edff;
+}
+.situation-clock {
+  position: absolute;
+  top: 24px;
+  right: 16px;
+  font-size: 14px;
+}
+.situation-counts {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  pointer-events: none;
+}
+.situation-counts > div {
+  display: flex;
+  flex-direction: column;
+  width: 164px;
+  padding: 8px;
+  text-align: center;
+  border: 1px solid #17416e;
+  background: #06244c;
+}
+.situation-counts b {
+  font-size: 18px;
+}
+.situation-counts span {
+  font-size: 14px;
+}
+.situation-network {
+  position: absolute;
+  inset: 0;
+}
+.situation-chart {
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
+}
+.situation-empty {
+  position: absolute;
+  top: 40%;
+  width: 100%;
+  text-align: center;
+}
+.situation-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 300px;
+  transition: height 0.5s;
+}
+.situation-bottom-collapsed {
+  height: 35px;
+}
+.situation-toggle {
+  display: block;
+  width: 90px;
+  height: 30px;
+  margin: 0 auto;
+  color: #d6edff;
+  background: #0b3567;
+  border: 1px solid #17416e;
+  cursor: pointer;
+}
+.situation-bottom-content {
+  display: grid;
+  grid-template-columns: 3fr 3fr 2fr;
+  height: 270px;
+  gap: 16px;
+  padding: 8px;
+}
+.situation-bottom-content[hidden] {
+  display: none;
+}
+.situation-panel {
+  min-width: 0;
+  overflow: hidden;
+  background: #031b3df2;
+}
+.situation-panel h2 {
+  height: 43px;
+  margin: 0;
+  padding: 0 16px;
+  font-size: 16px;
+  line-height: 43px;
+  color: #d6edff;
+  background: #0b3567;
+}
+.situation-panel > .situation-chart {
+  height: calc(100% - 43px);
+}
+.situation-panel p {
+  padding: 8px;
+}
+.situation-log-viewport {
+  height: calc(100% - 43px);
+  overflow: auto;
+}
+.situation-log-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.situation-log-list li {
+  padding: 4px 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+.situation-log-list li span {
+  margin-right: 8px;
+}
+.situation-log-scroll {
+  animation: situation-scroll 15s linear infinite;
+}
+@keyframes situation-scroll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}

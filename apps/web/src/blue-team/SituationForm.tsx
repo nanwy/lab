@@ -28,7 +28,6 @@ import {
 } from '@workspace/ui/components/dialog'
 import {
   getSituationTypes,
-  saveSituation,
   situationGraphData,
   type SituationNode,
 } from '../api/blue-situation'
@@ -55,7 +54,11 @@ const schema = z
     values: z.array(z.union([z.string(), z.number()])),
   })
   .superRefine((value, ctx) => {
-    if (value.data_type !== 1 && value.data_define === '')
+    if (
+      value.data_type !== 1 &&
+      value.data_define === '' &&
+      !(value.data_type === 3 && value.values.length === 0)
+    )
       ctx.addIssue({
         code: 'custom',
         path: ['data_define'],
@@ -98,7 +101,7 @@ function defaults(node?: SituationNode): Values {
     data_type: node.data_type,
     data_define:
       node.data_type === 3
-        ? node.define_value[0].data_define
+        ? (node.define_value[0]?.data_define ?? '')
         : node.data_define,
     rows:
       node.data_type === 1
@@ -107,17 +110,25 @@ function defaults(node?: SituationNode): Values {
           ? node.define_value.map((row) => ({ ...row }))
           : [{ data_define: '', define_value: '' }],
     values:
-      node.data_type === 3 ? [...node.define_value[0].define_value] : [''],
+      node.data_type === 3
+        ? [...(node.define_value[0]?.define_value ?? [])]
+        : [''],
   }
 }
 export function SituationForm({
-  taskId,
+  save,
+  kind,
   editing,
   parent,
   close,
   saved,
 }: {
-  taskId: BlueId
+  save: (
+    data: unknown,
+    nodeId: BlueId | undefined,
+    signal: AbortSignal,
+  ) => Promise<void>
+  kind: 2 | 3
   editing?: SituationNode
   parent?: SituationNode
   close: () => void
@@ -140,28 +151,36 @@ export function SituationForm({
       const rows = value.rows.map((row) => ({ ...row }))
       const dataDefine =
         value.data_type === 1 ? first.data_define : value.data_define
+      const preserveEmptyOuter =
+        editing?.data_type === 3 &&
+        editing.define_value.length === 0 &&
+        value.values.length === 0
       const defineValue =
         value.data_type === 1
           ? first.define_value
           : value.data_type === 2
             ? rows
-            : [
-                {
-                  ...(editing?.data_type === 3 ? editing.define_value[0] : {}),
-                  data_define: value.data_define,
-                  define_value: value.values,
-                },
-              ]
+            : preserveEmptyOuter
+              ? []
+              : [
+                  {
+                    ...(editing?.data_type === 3
+                      ? editing.define_value[0]
+                      : {}),
+                    data_define: value.data_define,
+                    define_value: value.values,
+                  },
+                ]
       const data = editing
         ? {
             ...situationGraphData(editing),
-            data_define: dataDefine,
+            data_define: preserveEmptyOuter ? editing.data_define : dataDefine,
             define_value: defineValue,
           }
         : {
             parent: parent?.id ?? null,
             data_type: value.data_type,
-            kind: 2,
+            kind,
             data_define: value.data_type === 1 ? '' : value.data_define,
             data:
               value.data_type === 1
@@ -181,7 +200,7 @@ export function SituationForm({
                   ]
                 : [{ data_define: '', define_value: [''] }],
           }
-      await saveSituation(taskId, data, editing?.id, signal)
+      await save(data, editing?.id, signal)
       if (signal.aborted) return
       await saved()
       if (!signal.aborted) close()

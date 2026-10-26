@@ -324,39 +324,43 @@ function ExecutionRound({
               {hideLogs ? '展开' : '收起'}执行记录
             </Button>
           </div>
-          {!hideLogs &&
-            (logs.isPending ? (
-              <Loading label="正在读取执行日志…" />
-            ) : logs.isError ? (
-              <p role="alert">
-                执行日志读取失败
-                <Button variant="link" onClick={() => void logs.refetch()}>
-                  重试日志
-                </Button>
-              </p>
-            ) : events.length || logs.data.length ? (
-              <ol className="max-h-80 space-y-2 overflow-auto">
-                {[...events, ...logs.data].map((log, i) => (
-                  <li key={i}>
-                    <time>{log.create_time}</time> 执行{' '}
-                    <span
-                      className={
-                        log.status === 1
-                          ? 'text-green-700'
-                          : log.status === 2
-                            ? 'text-red-700'
-                            : ''
-                      }
-                    >
-                      {log.message}
-                    </span>
-                    {log.spend_time ? ` 耗时${log.spend_time}` : ''}
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p>暂无记录</p>
-            ))}
+          {!hideLogs && (
+            <>
+              {logs.isPending ? (
+                <Loading label="正在读取执行日志…" />
+              ) : logs.isError ? (
+                <p role="alert">
+                  执行日志读取失败
+                  <Button variant="link" onClick={() => void logs.refetch()}>
+                    重试日志
+                  </Button>
+                </p>
+              ) : null}
+              {events.length || logs.data?.length ? (
+                <ol className="max-h-80 space-y-2 overflow-auto">
+                  {[...events, ...(logs.data ?? [])].map((log, i) => (
+                    <li key={i}>
+                      <time>{log.create_time}</time> 执行{' '}
+                      <span
+                        className={
+                          log.status === 1
+                            ? 'text-green-700'
+                            : log.status === 2
+                              ? 'text-red-700'
+                              : ''
+                        }
+                      >
+                        {log.message}
+                      </span>
+                      {log.spend_time ? ` 耗时${log.spend_time}` : ''}
+                    </li>
+                  ))}
+                </ol>
+              ) : logs.isSuccess ? (
+                <p>暂无记录</p>
+              ) : null}
+            </>
+          )}
         </section>
       </div>
       <Dialog

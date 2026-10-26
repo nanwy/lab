@@ -1,5 +1,28 @@
 # S13 配置与初始态势静态证据
 
+## 场景拓扑蓝军接入与部署补证（2026-10-26）
+
+此前配置范围漏掉了 simulate 的跨页前置链。原 `Ojs @12682300 → QOe @8018585 → M4a → N3a @6861994` 在实验 `task_type="6"` 工具栏显示“蓝军配置”，传入 `experiment.topo_id`、`experiment.test_task` 和任务域蓝军 URL。该入口与 simulate 中的剧本/智能配置不同，不能用终端提取或 `data.is_blue` 开关替代。
+
+以下偏移均为原 bundle 零起始 Unicode 字符，原件 SHA 沿用本文件下文；经 evidence_query 有界复核。`R4a @8008xxx–8017xxx` 只从拓扑选择 `shape="custom-react-node" && data.is_blue` 的节点。没有蓝军节点提示先配置；每节点关联一个蓝军终端，允许重新关联和确认解除。终端稳定选择值为 `${blue_team_id}-${id}`，其他节点已用的终端不可选；当前已关联终端仍可选。
+
+接口共同前缀 `P=/api/front/wqzb/test_task/{T}`，定义 `1816400–1817900`，store 消费 `6093000–6097000`：
+
+| 操作             | 原请求与消费                                                                                                                                                                                 |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 终端列表         | GET `P/init_info/terminal/`，`status=1` 时取 `data.used_data/unused_data`；项消费 `id,blue_team_id,blue_team_name,scenario_type,system/name,position_init_id`                                |
+| 关联             | POST `P/init_info/`，body `{blue_team:选项.blue_team_id,terminal或intelligent_terminal:选项.id,device_id:画布节点UUID}`，按 `scenario_type=1/2` 选终端字段，成功 `status=1`                  |
+| 解除             | DELETE `P/init_info/`，body `{ids:[used_data中同时匹配终端和蓝军的position_init_id]}`，成功 `status=1`                                                                                       |
+| 工具列表（实验） | GET `P/blue_team/{B}/terminal/{terminalId}/tool/?page=1&size=10&search=&node_id={B}`；原 `node_id` 实际取蓝军 ID，不能按参数名改为节点 UUID；实验分支不发 `resource_id/resource_type` 请求体 |
+| 单项部署/检测    | POST `P/node_tool/{toolId}/deploy/` 或 `check/`，无显式 body                                                                                                                                 |
+| 批量部署/检测    | POST `P/terminal/{terminalId}/node_tool/deploy/` 或 `check/`，query `type=scenario_type`，无显式 body                                                                                        |
+
+关联成功将完整选项（含稳定选择值 `terminal_id`）写入图元 `data.blueInfo` 并按 `saveGraph({type:"node"})` 保存；解除后写 `{}` 并保存。原操作按钮在锁图时仍可达，这是业务关系保存，不代表允许解锁后端或放宽普通设计编辑。业务关联和 draw 保存是两次操作，不得将 draw 失败报告为已完全持久化。
+
+工具列表有 `results` 时采用 `count/results` 并标为可操作（空数组也成立）；无 `results` 时显示“当前蓝军节点未启动，请先启动节点，启动之后可进行工具布设”。表格消费 `id,tool_name,version,instruction_count,tool_uuid,status,run_status`；状态 `1待部署/2部署完成/3部署中/4部署失败`。部署中禁用该行部署；单项部署/检测遇 `run_status===2` 仅提示先启动环境。按钮复用全局请求忙状态，原无自动部署、自动启动或自动检测轮询。`status=1` 后重读当前列表，`status=2` 显示后端消息。
+
+原教学手册 `12725600` 附近也说明“选择模拟蓝军 → 阵地初始化并接入网络场景 → 启动网络场景及武器工具布设 → 启动模拟蓝军”；该文字为辅助线索，具体实验操作以以上可达代码为准。真实后端响应、节点与终端对应关系、部署效果仍需在授权测试范围内验证。
+
 调查日期：2026-10-25。仅通过 `scripts/evidence_query.py query` 查询原 bundle，没有请求真实接口、执行业务写入或修改原件。以下字段、成功条件和行为都是**源码静态观察**，不代表真实响应已验证；不能据消费代码推断每个字段均为接口必填。
 
 ## 证据入口与可达范围

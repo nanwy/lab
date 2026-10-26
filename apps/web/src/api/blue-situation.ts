@@ -38,8 +38,19 @@ const nodeValue = z.discriminatedUnion('data_type', [
 export type SituationNode = z.infer<typeof nodeValue> & {
   child?: SituationNode[]
 }
-export const nodeSchema: z.ZodType<SituationNode> = nodeValue.and(
-  z.object({ child: z.lazy(() => z.array(nodeSchema)).optional() }),
+const childField = {
+  child: z
+    .lazy(() => z.array(nodeSchema))
+    .nullish()
+    .transform((value) => (value === null ? [] : value)),
+}
+export const nodeSchema: z.ZodType<SituationNode> = z.discriminatedUnion(
+  'data_type',
+  [
+    nodeValue.options[0].extend(childField),
+    nodeValue.options[1].extend(childField),
+    nodeValue.options[2].extend(childField),
+  ],
 )
 export const situationKeys = {
   tree: (taskId: BlueId) => ['blue-situation', String(taskId)] as const,

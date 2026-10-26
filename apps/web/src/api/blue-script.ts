@@ -289,7 +289,10 @@ const parameterSchema: z.ZodType<AbilityParameter> = z.object({
   required: z.boolean().optional(),
   field_type: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   example: z.unknown().optional(),
-  child: z.lazy(() => z.array(parameterSchema)).optional(),
+  child: z
+    .lazy(() => z.array(parameterSchema))
+    .nullish()
+    .transform((value) => value ?? []),
 })
 export const getAbility = (id: BlueId, signal?: AbortSignal) =>
   readScript(
@@ -303,11 +306,11 @@ export const getAbility = (id: BlueId, signal?: AbortSignal) =>
       attack_style_display: z.string().nullable().optional(),
       input_params: z
         .array(parameterSchema)
-        .optional()
+        .nullish()
         .transform((value) => value ?? []),
       output_params: z
         .array(parameterSchema)
-        .optional()
+        .nullish()
         .transform((value) => value ?? []),
     }),
     `/front/wqzb/basic_resources/subtolgy/${encodeURIComponent(id)}/`,

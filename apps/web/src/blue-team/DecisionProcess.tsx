@@ -189,7 +189,7 @@ function DecisionRound({
         view === 'tree' ? (
           <DecisionTreeGraph root={tree.data} onDetail={setDetail} />
         ) : (
-          <DecisionSunburst root={tree.data} />
+          <DecisionSunburst key={String(decision)} root={tree.data} />
         )
       ) : (
         <p>暂无决策过程</p>

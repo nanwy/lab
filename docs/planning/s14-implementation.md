@@ -2,7 +2,7 @@
 
 ## S14-01 独立深链与蓝军态势（2026-10-26）
 
-范围为 F048 的 R098；[第一票](../../.scratch/s14-situation/issues/01-blue-situation.md)及[原调用链](../../.scratch/s14-situation/analysis.md)定义本次边界。S14-02/03 未实施，整片进度仅维护在[实施计划](page-rebuild-implementation.md)。本票已实施，尚待双轴审查，不声明真实服务接通。
+范围为 F048 的 R098；[第一票](../../.scratch/s14-situation/issues/01-blue-situation.md)及[原调用链](../../.scratch/s14-situation/analysis.md)定义本次边界。S14-02/03 未实施，整片进度仅维护在[实施计划](page-rebuild-implementation.md)。本票已实施并完成双轴审查及增量复查，不声明真实服务接通。
 
 ### 交付与原行为
 
@@ -41,3 +41,9 @@
 公共 API 先验证业务错误类型、原 message、HTTP 200 及 handled 状态，红灯见 `/tmp/s14-01-review-red.log`。修复后 7 项本票契约通过（含原 HTTP 503/error 消息保留），见 `/tmp/s14-01-review-green.log`。新增日志业务失败的定向浏览器 1 项通过（1.8 秒，`/tmp/s14-01-review-browser.log`），确认原消息仅提示一次、日志失败面板明确，其余网络/日志仍成功展示。
 
 web 类型 `/tmp/s14-01-review-types.log`、三个改动代码/测试文件 ESLint `/tmp/s14-01-review-lint.log` 及定向格式/diff 检查通过。复用原四项浏览器结果，不重跑全组、构建、全量 check 或真实后端。本修正尚待增量复查，不提前声明审查关闭。
+
+## 第一票最终收口（2026-10-26）
+
+初审固定差异 `fdc4aef...a872eee`：Standards 1 项 P2、Spec 0 项。日志接口 HTTP 200 业务失败原被 literal Schema 误判格式错误，修复提交 `c0a8401` 已仅对日志接入统一客户端业务失败判据，风险/网络 raw 协议保持原样。增量 `a872eee...c0a8401` 两轴复查确认原问题关闭，新增均为 0；完整[审查记录](../../.scratch/s14-situation/review-01.md)。
+
+修复以 `0062f9b` 合入 `integration/s14-situation`，第一票关闭。累计 5 项不同浏览器用例通过（原 4 项复用、增量业务失败单提示 1 项通过），最终 7 项契约、web 类型、定向 lint/格式通过。最终收口仅检查文档和工单一致性，不重复应用测试，不推进 02/03，不推送远端。静态范围完成与真实服务未验证、原媒体外观差异继续分开记录。

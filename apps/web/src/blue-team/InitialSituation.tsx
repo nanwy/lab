@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import {
   ReactFlow,
   Background,
@@ -25,6 +25,7 @@ import {
   getSituation,
   situationKeys,
   deleteSituation,
+  saveSituation,
   type SituationNode,
 } from '../api/blue-situation'
 import type { BlueId } from '../api/blue-team'
@@ -96,7 +97,19 @@ function SituationGraph({
     visit(tree, 0)
     return { nodes, edges }
   }, [tree])
-  const [nodes, , onNodesChange] = useNodesState(initial.nodes)
+  const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes)
+  useEffect(
+    () =>
+      setNodes((previous) =>
+        initial.nodes.map((node) => ({
+          ...node,
+          position:
+            previous.find((item) => item.id === node.id)?.position ??
+            node.position,
+        })),
+      ),
+    [initial.nodes, setNodes],
+  )
   return (
     <div
       className="h-[480px] rounded border"
@@ -132,6 +145,33 @@ function SituationSession({ taskId }: { taskId: BlueId }) {
     queryFn: ({ signal }) => getSituation(taskId, signal),
     retry: false,
   })
+  return (
+    <SituationEditor
+      tree={tree}
+      kind={2}
+      save={(data, nodeId, signal) =>
+        saveSituation(taskId, data, nodeId, signal)
+      }
+      remove={(nodeId, signal) => deleteSituation(taskId, nodeId, signal)}
+    />
+  )
+}
+export function SituationEditor({
+  tree,
+  save,
+  remove: removeNode,
+  kind,
+}: {
+  tree: UseQueryResult<SituationNode[]>
+  save: (
+    data: unknown,
+    nodeId: BlueId | undefined,
+    signal: AbortSignal,
+  ) => Promise<void>
+  remove: (nodeId: BlueId, signal: AbortSignal) => Promise<void>
+  kind: 2 | 3
+}) {
+  const title = kind === 2 ? '初始态势' : '蓝军数据'
   const signalForPage = usePageSignal()
   const [form, setForm] = useState<{
       editing?: SituationNode
@@ -153,7 +193,7 @@ function SituationSession({ taskId }: { taskId: BlueId }) {
     const signal = signalForPage()
     setBusy(true)
     try {
-      await deleteSituation(taskId, deleting.id, signal)
+      await removeNode(deleting.id, signal)
       if (signal.aborted) return
       await saved()
       if (!signal.aborted) setDeleting(null)
@@ -185,17 +225,16 @@ function SituationSession({ taskId }: { taskId: BlueId }) {
         </Button>
       </div>
       {tree.isPending ? (
-        <Loading label="正在读取初始态势…" />
+        <Loading label={`正在读取${title}…`} />
       ) : tree.isError ? (
         <div role="alert">
-          初始态势读取失败
+          {title}读取失败
           <Button variant="link" onClick={() => void tree.refetch()}>
-            重试初始态势
+            重试{title}
           </Button>
         </div>
       ) : tree.data.length ? (
         <SituationGraph
-          key={tree.dataUpdatedAt}
           tree={tree.data}
           menu={(node, point) =>
             setContext(node && point ? { node, ...point } : null)
@@ -243,7 +282,8 @@ function SituationSession({ taskId }: { taskId: BlueId }) {
       )}
       {form && (
         <SituationForm
-          taskId={taskId}
+          save={save}
+          kind={kind}
           editing={form.editing}
           parent={form.parent}
           close={() => setForm(null)}

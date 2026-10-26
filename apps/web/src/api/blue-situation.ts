@@ -38,7 +38,7 @@ const nodeValue = z.discriminatedUnion('data_type', [
 export type SituationNode = z.infer<typeof nodeValue> & {
   child?: SituationNode[]
 }
-const nodeSchema: z.ZodType<SituationNode> = nodeValue.and(
+export const nodeSchema: z.ZodType<SituationNode> = nodeValue.and(
   z.object({ child: z.lazy(() => z.array(nodeSchema)).optional() }),
 )
 export const situationKeys = {

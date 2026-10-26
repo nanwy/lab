@@ -28,7 +28,6 @@ import {
 } from '@workspace/ui/components/dialog'
 import {
   getSituationTypes,
-  saveSituation,
   situationGraphData,
   type SituationNode,
 } from '../api/blue-situation'
@@ -111,13 +110,19 @@ function defaults(node?: SituationNode): Values {
   }
 }
 export function SituationForm({
-  taskId,
+  save,
+  kind,
   editing,
   parent,
   close,
   saved,
 }: {
-  taskId: BlueId
+  save: (
+    data: unknown,
+    nodeId: BlueId | undefined,
+    signal: AbortSignal,
+  ) => Promise<void>
+  kind: 2 | 3
   editing?: SituationNode
   parent?: SituationNode
   close: () => void
@@ -161,7 +166,7 @@ export function SituationForm({
         : {
             parent: parent?.id ?? null,
             data_type: value.data_type,
-            kind: 2,
+            kind,
             data_define: value.data_type === 1 ? '' : value.data_define,
             data:
               value.data_type === 1
@@ -181,7 +186,7 @@ export function SituationForm({
                   ]
                 : [{ data_define: '', define_value: [''] }],
           }
-      await saveSituation(taskId, data, editing?.id, signal)
+      await save(data, editing?.id, signal)
       if (signal.aborted) return
       await saved()
       if (!signal.aborted) close()

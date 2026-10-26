@@ -18,6 +18,7 @@ import {
   type RouterHistory,
 } from '@tanstack/react-router'
 import { lazy, Suspense, useState } from 'react'
+import { Loading } from '@workspace/ui/components/loading'
 
 import { can, mockIdentity } from './identity'
 import { DiagnosticsPage } from './diagnostics-page'
@@ -574,6 +575,22 @@ const controlPanelRoute = createRoute({
   ),
 })
 
+const LazyBlueSituationPage = lazy(async () => ({
+  default: (await import('./situation/BlueSituationPage')).BlueSituationPage,
+}))
+const blueSituationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/bluessituation/$secne_id/$resource_type/$resource_id/$test_task_id/$scene_type',
+  component: () => {
+    const params = blueSituationRoute.useParams()
+    return (
+      <Suspense fallback={<Loading label="正在加载蓝军态势…" />}>
+        <LazyBlueSituationPage {...params} />
+      </Suspense>
+    )
+  },
+})
+
 const resourceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/resources/$resourceId',
@@ -655,6 +672,7 @@ const routeTree = rootRoute.addChildren([
   desktopRoute,
   fullscreenRoute,
   controlPanelRoute,
+  blueSituationRoute,
   diagnosticErrorRoute,
 ])
 

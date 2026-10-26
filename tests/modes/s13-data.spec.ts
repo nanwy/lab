@@ -221,6 +221,26 @@ test('连续态势节点事件读取消息data_define并保留父子数据，切
     '192.0.2.22',
   )
   await expect(page.locator('.react-flow__edge')).toHaveCount(2)
+  current.socket.send(
+    JSON.stringify({
+      id: 11,
+      parent: null,
+      data_type: 1,
+      data_define: 1,
+      define_name: '父IP更新',
+      define_value: '192.0.2.99',
+    }),
+  )
+  await expect(page.locator('.react-flow__node[data-id="11"]')).toContainText(
+    '192.0.2.99',
+  )
+  await expect(page.locator('.react-flow__node[data-id="21"]')).toContainText(
+    '192.0.2.21',
+  )
+  await expect(page.locator('.react-flow__node[data-id="22"]')).toContainText(
+    '192.0.2.22',
+  )
+  await expect(page.locator('.react-flow__edge')).toHaveCount(2)
   await page
     .locator('.react-flow__node[data-id="21"]')
     .click({ button: 'right' })

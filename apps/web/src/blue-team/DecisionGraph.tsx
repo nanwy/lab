@@ -182,25 +182,41 @@ function sector(inner: number, outer: number, start: number, end: number) {
 }
 export function DecisionSunburst({ root }: { root: DecisionStep }) {
   const data = useMemo(() => ringNode(root), [root])
+  const [focus, setFocus] = useState<{ root: DecisionStep; path: number[] }>({
+    root,
+    path: [],
+  })
+  const path = focus.root === root ? focus.path : []
+  const selected = path.reduce((node, index) => node.children[index]!, data)
+  const parent = path
+    .slice(0, -1)
+    .reduce((node, index) => node.children[index]!, data)
   const depth = (node: RingNode): number =>
     1 + Math.max(0, ...node.children.map(depth))
-  const band = 200 / depth(data)
+  const band = 200 / (depth(selected) + (path.length ? 1 : 0))
   const pieces: {
     node: RingNode
     level: number
     start: number
     end: number
+    path: number[]
   }[] = []
-  function visit(node: RingNode, level: number, start: number, end: number) {
-    pieces.push({ node, level, start, end })
+  function visit(
+    node: RingNode,
+    level: number,
+    start: number,
+    end: number,
+    path: number[],
+  ) {
+    pieces.push({ node, level, start, end, path })
     let angle = start
-    for (const child of node.children) {
+    node.children.forEach((child, index) => {
       const finish = angle + ((end - start) * child.value) / node.value
-      visit(child, level + 1, angle, finish)
+      visit(child, level + 1, angle, finish, [...path, index])
       angle = finish
-    }
+    })
   }
-  visit(data, 0, -Math.PI / 2, Math.PI * 1.5)
+  visit(selected, path.length ? 1 : 0, -Math.PI / 2, Math.PI * 1.5, path)
   return (
     <svg
       role="img"
@@ -209,7 +225,26 @@ export function DecisionSunburst({ root }: { root: DecisionStep }) {
       className="h-[440px] w-full rounded border"
     >
       <g>
-        {pieces.map(({ node, level, start, end }, index) => {
+        {!!path.length && (
+          <circle
+            r={band}
+            fill="#ccc"
+            role="button"
+            aria-label={`返回父层：${parent.label}`}
+            tabIndex={0}
+            className="cursor-pointer"
+            onClick={() => setFocus({ root, path: path.slice(0, -1) })}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                setFocus({ root, path: path.slice(0, -1) })
+              }
+            }}
+          >
+            <title>返回父层：{parent.label}</title>
+          </circle>
+        )}
+        {pieces.map(({ node, level, start, end, path: nodePath }, index) => {
           const mid = (start + end) / 2,
             [x, y] = polar((level + 0.5) * band, mid)
           let rotation = (mid * 180) / Math.PI + 90
@@ -221,6 +256,19 @@ export function DecisionSunburst({ root }: { root: DecisionStep }) {
                 fill={node.step.kind === 1 ? '#1890FF' : '#62DE25'}
                 stroke="white"
                 strokeWidth={1}
+                role={node === selected ? undefined : 'button'}
+                aria-label={
+                  node === selected ? undefined : `下钻：${node.label}`
+                }
+                tabIndex={node === selected ? undefined : 0}
+                className={node === selected ? undefined : 'cursor-pointer'}
+                onClick={() => setFocus({ root, path: nodePath })}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setFocus({ root, path: nodePath })
+                  }
+                }}
               >
                 <title>
                   {node.label}：{node.value}

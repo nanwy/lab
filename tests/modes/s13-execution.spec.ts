@@ -265,3 +265,58 @@ test('无轮次不连接实时或读取记录，读取失败可重试并恢复�
   ).toBeVisible()
   expect(sockets).toHaveLength(0)
 })
+
+test('历史日志等待或失败时仍展示实时日志，重试后保留已收记录', async ({
+  page,
+}) => {
+  await fixture(page, false)
+  let release!: () => void
+  const waiting = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let fail = true
+  await page.route(`**${root}/control/log/**`, async (r) => {
+    if (fail) {
+      await waiting
+      return r.fulfill({ status: 500, json: { message: '历史日志暂不可用' } })
+    }
+    return r.fulfill({ json: { status: 1, data: { log: [] } } })
+  })
+  const sockets: WebSocketRoute[] = []
+  await page.routeWebSocket('**/ws/emulate_task/**', (socket) =>
+    sockets.push(socket),
+  )
+  await page.goto(simulateURL)
+  await page.getByRole('tab', { name: '运行控制', exact: true }).click()
+  await page.getByRole('tab', { name: '执行过程', exact: true }).click()
+  await expect.poll(() => sockets.length).toBeGreaterThan(0)
+  sockets.at(-1)!.send(
+    JSON.stringify({
+      kind: 1,
+      create_time: '实时三',
+      log_message: '历史失败也可见',
+      status: 1,
+    }),
+  )
+  try {
+    await expect(
+      page.getByText('历史失败也可见', { exact: true }),
+    ).toBeVisible()
+  } finally {
+    release()
+  }
+  await expect(
+    page.getByText('执行日志读取失败', { exact: false }),
+  ).toBeVisible()
+  await expect(page.getByText('历史失败也可见', { exact: true })).toBeVisible()
+  await page.screenshot({
+    path: '/tmp/s13-audit-log-recovery.png',
+    fullPage: true,
+  })
+  fail = false
+  await page.getByRole('button', { name: '重试日志', exact: true }).click()
+  await expect(
+    page.getByRole('button', { name: '重试日志', exact: true }),
+  ).toHaveCount(0)
+  await expect(page.getByText('历史失败也可见', { exact: true })).toBeVisible()
+})

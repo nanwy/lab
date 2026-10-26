@@ -228,3 +228,82 @@ test('决策无轮次空态及读取失败可重试，合法空参数子节点�
     fullPage: true,
   })
 })
+
+test('决策环可下钻任意层并逐层返回，切决策后恢复完整层次', async ({ page }) => {
+  await fixture(page)
+  let pauseCached = false
+  let release!: () => void
+  const waiting = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route(`**${root}/perspective/tree/?*`, async (r) => {
+    if (
+      pauseCached &&
+      new URL(r.request().url()).searchParams.get('instruction_record_id') ===
+        '901'
+    )
+      await waiting
+    return r.fulfill({
+      json: {
+        status: 1,
+        data: {
+          kind: 1,
+          sub_technology_name: '根过程',
+          child: [
+            {
+              kind: 1,
+              sub_technology_name: '分支甲',
+              child: [
+                { kind: 1, sub_technology_name: '甲子步骤' },
+                { kind: 1, sub_technology_name: '甲次步骤' },
+              ],
+            },
+            { kind: 1, sub_technology_name: '分支乙' },
+          ],
+        },
+      },
+    })
+  })
+  await page.goto(simulateURL)
+  await page.getByRole('tab', { name: '运行控制', exact: true }).click()
+  await page.getByRole('tab', { name: '决策过程', exact: true }).click()
+  await page.getByRole('button', { name: '决策环视图', exact: true }).click()
+  const ring = page.getByRole('img', { name: '决策环层次图', exact: true })
+  await expect(ring.getByText('分支乙', { exact: true })).toBeVisible()
+  const label = await ring.getByText('甲子步骤', { exact: true }).boundingBox()
+  if (!label) throw new Error('甲子步骤标签未显示')
+  await page.mouse.click(label.x + label.width / 2, label.y + label.height / 2)
+  await expect(ring.getByText('分支乙', { exact: true })).toHaveCount(0)
+  await expect(ring.getByText('甲次步骤', { exact: true })).toHaveCount(0)
+  await ring
+    .getByRole('button', { name: '返回父层：分支甲', exact: true })
+    .click()
+  await expect(ring.getByText('甲次步骤', { exact: true })).toBeVisible()
+  await expect(ring.getByText('分支乙', { exact: true })).toHaveCount(0)
+  await page.screenshot({
+    path: '/tmp/s13-audit-ring-drill.png',
+    fullPage: true,
+  })
+  await ring
+    .getByRole('button', { name: '返回父层：根过程', exact: true })
+    .click()
+  await expect(ring.getByText('分支乙', { exact: true })).toBeVisible()
+  await ring.getByRole('button', { name: '下钻：分支甲', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await expect(ring.getByText('分支乙', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: '第3次决策', exact: true }).click()
+  await expect(ring.getByText('分支乙', { exact: true })).toBeVisible()
+  await ring
+    .getByRole('button', { name: '下钻：分支甲', exact: true })
+    .press('Enter')
+  await expect(ring.getByText('分支乙', { exact: true })).toHaveCount(0)
+  pauseCached = true
+  await page.getByRole('button', { name: '全部过程', exact: true }).click()
+  await expect(ring.getByText('分支乙', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '第3次决策', exact: true }).click()
+  try {
+    await expect(ring.getByText('分支乙', { exact: true })).toBeVisible()
+  } finally {
+    release()
+  }
+})

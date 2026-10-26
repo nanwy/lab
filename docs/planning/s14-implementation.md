@@ -56,7 +56,7 @@ web 类型 `/tmp/s14-01-review-types.log`、三个改动代码/测试文件 ESLi
 
 - 原五段参数保留，拓扑只消费 secne_id、resource_type、scene_type。scene_type=scene 选择 scene，否则 topo；原特殊 POST 的 numeric14 判据不会命中 string 深链，保持 GET draw/?task_type，直接消费顶层 cells，不套 S07 固定6或 status/data 包装。
 - Three 真实 WebGL 场景保留原设备 Sprite、data.logo、名称 CanvasTexture、直线、原坐标与顺序 level、透视相机、雾及 wireframe/透明地面。使用 OrbitControls 原旋转、缩放、平移，不补相机按钮、节点详情或编辑。原 composer 未在主动画循环使用，不复制无消费者后处理。
-- 五项计数固定0、安全90%、资产分布2/1/2/1/5和训练任务空壳原样保留，不主动读取日志、风险或网络。底部/右侧原收起尺寸及0.5秒过渡保留；原五卡片与安全状态在小视口下重叠、底部固定 right400px 未另做重排。
+- 五项计数固定0、安全90%、资产分布2/1/2/1/5和训练任务空壳原样保留，不主动读取日志、风险或网络。底部/右侧原收起尺寸及0.5秒过渡保留，底部固定 right400px；右面板按原DOM顺序应在顶卡之上，初始误将文字遮挡归为原行为，已在下节撤销并修正。
 - 已出现第二个消费者后，仅抽取现有 Chart/Clock/参数类型供01和02复用，不预建03或通用图形平台。场景查询透传 AbortSignal，换上下文/空图不残留；离页取消帧、断开 resize 和 controls、销毁 renderer/context、geometry/material/texture，迟到贴图加载也释放。
 - 原装饰媒体未复制；节点 logo 按响应指定 URL 加载，本次浏览器采用独立 SVG 图标 fixture。WebGL 不可用有明确状态，不以2D假图冒充；真实服务字段/媒体/授权未验证。
 
@@ -67,3 +67,9 @@ web 类型 `/tmp/s14-01-review-types.log`、三个改动代码/测试文件 ESLi
 测试边界沿票面：scene/topo 参数、真实3D相机及原面板、静态内容、空图/切页/失败。首项404红灯见 `/tmp/s14-02-red.log`，主链绿见 `/tmp/s14-02-green.log`。3D实际鼠标旋转、滚轮缩放、右键平移通过画面变化验证；空图与离页、迟到响应和失败单提示两项通过 `/tmp/s14-02-interactions.log`（2项、21.1秒）。主链在局部修正原生按钮白底污染后定向1项复测通过 `/tmp/s14-02-initial-final.log`（8.0秒）。累计3项不同本票浏览器用例通过；01共享直接消费者1项通过 `/tmp/s14-02-consumer.log`（4.2秒），未重跑01其他未变分支。
 
 3项公共 API 契约通过 `/tmp/s14-02-contract.log`，确认顶层 cells、string14 GET、原坐标层级及合法空值/错误引用/HTTP失败。web类型 `/tmp/s14-02-types.log`、改动代码定向 ESLint `/tmp/s14-02-lint.log` 通过。初始完整面板截图 `/tmp/s14-02-defense-initial.png` 已目视核对；动态相机截图另见 `/tmp/s14-02-defense.png`。未运行全量 check、构建、无关回归或真实后端。
+
+## S14-02 双轴初审修正（2026-10-26）
+
+Standards 初审0项，Spec 初审1项P2：共享计数卡的z-index=2反转了原防御页DOM中右侧面板晚于卡片的绘制次序，遮住90%与安全状态。先前将其记录为原布局问题的结论不成立，已撤销。仅给防御右侧面板指定高于卡片的局部层级，不改尺寸、排布、固定数据或其他页面。
+
+主链回归在文字实际Range的三处覆盖点检查绘制层级；由于原计数卡不接收指针，检查时暂时恢复其pointer-events以暴露透明于指针的遮挡，再立即恢复原值。原实现返回false红灯 `/tmp/s14-02-review-layer-red.log`，修正后主链1项绿灯 `/tmp/s14-02-review-layer-green.log`，同时复用原拓扑、计数、空日志及面板验收。最终唯一截图 `/tmp/s14-02-defense-layer-final.png` 用于复核安全状态文字完整可读。其余已通过测试结果复用，不重跑整组。修复尚待增量复查，不提前声明审查关闭。

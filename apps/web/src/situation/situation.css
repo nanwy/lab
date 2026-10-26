@@ -216,3 +216,7 @@
   border-radius: 0;
   background: transparent;
 }
+/* 原右侧面板绘制在顶卡之后；共享顶卡的z-index不应反转该层级。 */
+.defensive-right {
+  z-index: 3;
+}

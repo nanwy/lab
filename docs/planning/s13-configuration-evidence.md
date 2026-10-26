@@ -4,7 +4,7 @@
 
 此前配置范围漏掉了 simulate 的跨页前置链。原 `Ojs @12682300 → QOe @8018585 → M4a → N3a @6861994` 在实验 `task_type="6"` 工具栏显示“蓝军配置”，传入 `experiment.topo_id`、`experiment.test_task` 和任务域蓝军 URL。该入口与 simulate 中的剧本/智能配置不同，不能用终端提取或 `data.is_blue` 开关替代。
 
-以下偏移均为原 bundle 零起始 Unicode 字符，原件 SHA 沿用本文件下文；经 evidence_query 有界复核。`R4a @8008xxx–8017xxx` 只从拓扑选择 `shape="custom-react-node" && data.is_blue` 的节点。没有蓝军节点提示先配置；每节点关联一个蓝军终端，允许重新关联和确认解除。终端稳定选择值为 `${blue_team_id}-${id}`，其他节点已用的终端不可选；当前已关联终端仍可选。
+以下偏移均为原 bundle 零起始 Unicode 字符，原件 SHA 沿用本文件下文；经 evidence_query 有界复核。`R4a @8008249 → k4a @8017288` 只从拓扑选择 `shape="custom-react-node" && data.is_blue` 的节点。没有蓝军节点提示先配置；每节点关联一个蓝军终端，允许重新关联和确认解除。终端稳定选择值为 `${blue_team_id}-${id}`，其他节点已用的终端不可选；当前已关联终端仍可选。
 
 接口共同前缀 `P=/api/front/wqzb/test_task/{T}`，定义 `1816400–1817900`，store 消费 `6093000–6097000`：
 

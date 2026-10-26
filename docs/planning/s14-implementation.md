@@ -33,3 +33,11 @@
 - 专项服务保留开发构建与关闭 MSW 的隔离 API，仅使用 Vite test 模式按现有 App 条件关闭会遮挡右下图例箭头的开发工具；没有为测试改业务布局。早期箭头点击超时为 Devtools 覆盖与 SVG clipPath 定位问题，修正测试环境/定位后通过，不计产品功能缺陷。
 
 不运行全量 check、构建或真实后端请求。截图 `/tmp/s14-01-blue-situation-final.png` 展示完整展开面板，等待字体就绪及两帧后重截的第一项复测通过（`/tmp/s14-01-screenshot-final.log`），标题、四项计数及底部面板已目视核对。真实服务字段、授权、采集数据与原媒体仍未验证。
+
+## S14-01 双轴初审修正（2026-10-26）
+
+初审 Spec 无发现，Standards 发现一项 P2：日志 HTTP 200 返回 status=0 及业务 message 时，原适配器仅以 status=1 Schema 校验，误报响应格式错误并丢失业务消息。现仅在日志请求接入统一客户端的 isBusinessFailure，按原 status=1 成功判据处理业务失败；风险/网络继续消费原顶层响应，不套用日志判据，不增加错误框架。
+
+公共 API 先验证业务错误类型、原 message、HTTP 200 及 handled 状态，红灯见 `/tmp/s14-01-review-red.log`。修复后 7 项本票契约通过（含原 HTTP 503/error 消息保留），见 `/tmp/s14-01-review-green.log`。新增日志业务失败的定向浏览器 1 项通过（1.8 秒，`/tmp/s14-01-review-browser.log`），确认原消息仅提示一次、日志失败面板明确，其余网络/日志仍成功展示。
+
+web 类型 `/tmp/s14-01-review-types.log`、三个改动代码/测试文件 ESLint `/tmp/s14-01-review-lint.log` 及定向格式/diff 检查通过。复用原四项浏览器结果，不重跑全组、构建、全量 check 或真实后端。本修正尚待增量复查，不提前声明审查关闭。

@@ -7,6 +7,27 @@ import {
 
 afterEach(() => vi.unstubAllGlobals())
 
+it('日志失败保留HTTP状态及原业务或HTTP消息', async () => {
+  vi.stubGlobal('fetch', async () =>
+    Response.json({ status: 0, message: '任务不可用' }),
+  )
+  await expect(getTaskSituationLogs('73', 1)).rejects.toMatchObject({
+    kind: 'business',
+    message: '任务不可用',
+    status: 200,
+    handled: true,
+  })
+  vi.stubGlobal('fetch', async () =>
+    Response.json({ error: '日志服务暂不可用' }, { status: 503 }),
+  )
+  await expect(getTaskSituationLogs('73', 1)).rejects.toMatchObject({
+    kind: 'http',
+    message: '日志服务暂不可用',
+    status: 503,
+    handled: true,
+  })
+})
+
 it('独立态势读取原顶层风险与IP关系，日志只消费原展示字段', async () => {
   const paths: string[] = []
   vi.stubGlobal('fetch', async (input: URL | string) => {

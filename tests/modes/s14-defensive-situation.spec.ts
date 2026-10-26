@@ -56,6 +56,31 @@ test('防御深链读取原场景拓扑，保留固定指标、空日志和面�
   ])
     await expect(page.getByLabel(name, { exact: true })).toHaveText('0')
   await expect(page.getByText('90%', { exact: true })).toBeVisible()
+  // 透明于指针的计数卡仍会遮挡文字；临时恢复命中以核对真实绘制层级。
+  for (const text of ['90%', '安全状态']) {
+    const status = page.getByText(text, { exact: true })
+    await expect(status).toBeVisible()
+    const unobscured = await status.evaluate((element) => {
+      const counts = document.querySelector<HTMLElement>('.situation-counts')!
+      const previous = counts.style.pointerEvents
+      counts.style.pointerEvents = 'auto'
+      try {
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        const rect = range.getBoundingClientRect()
+        return [0.1, 0.5, 0.9].every((part) => {
+          const top = document.elementFromPoint(
+            rect.left + rect.width * part,
+            rect.top + rect.height / 2,
+          )
+          return top === element || element.contains(top)
+        })
+      } finally {
+        counts.style.pointerEvents = previous
+      }
+    })
+    expect(unobscured).toBe(true)
+  }
   await expect(
     page.getByRole('heading', { name: '防御操作日志' }),
   ).toBeVisible()
@@ -68,7 +93,7 @@ test('防御深链读取原场景拓扑，保留固定指标、空日志和面�
       .getByText('防火墙', { exact: true }),
   ).toBeVisible()
   await page.screenshot({
-    path: '/tmp/s14-02-defense-initial.png',
+    path: '/tmp/s14-02-defense-layer-final.png',
     fullPage: true,
   })
   await page.getByRole('button', { name: '收起底部面板', exact: true }).click()

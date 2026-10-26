@@ -2655,9 +2655,7 @@ export function ExperimentTopologyEditor({
             persist={persistBluePosition}
             unsaved={positionUnsaved}
             saving={busy || saving}
-            retrySave={() =>
-              persistPositionGraph(draft, operation.current.signal)
-            }
+            retrySave={(signal) => persistPositionGraph(draft, signal)}
           />
         )}
         <Dialog

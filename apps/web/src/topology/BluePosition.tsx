@@ -64,7 +64,7 @@ export function BluePosition({
 }: {
   unsaved: boolean
   saving: boolean
-  retrySave: () => Promise<void>
+  retrySave: (signal: AbortSignal) => Promise<void>
   taskId: BlueId
   nodes: PositionCanvasNode[]
   close: () => void
@@ -74,6 +74,7 @@ export function BluePosition({
     signal: AbortSignal,
   ) => Promise<void>
 }) {
+  const signalForPage = usePageSignal()
   const [selected, setSelected] = useState(nodes[0]?.id ?? '')
   const current = nodes.find((n) => n.id === selected) ?? nodes[0]
   const query = useQuery({
@@ -104,11 +105,12 @@ export function BluePosition({
             <LoadingButton
               loading={saving}
               onClick={async () => {
+                const signal = signalForPage()
                 try {
-                  await retrySave()
-                  await query.refetch()
+                  await retrySave(signal)
+                  if (!signal.aborted) await query.refetch()
                 } catch (error) {
-                  blueError(error)
+                  if (!signal.aborted) blueError(error)
                 }
               }}
             >

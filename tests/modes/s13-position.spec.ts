@@ -314,7 +314,7 @@ test('锁图关联保存失败可重试，重试后可解除，保存中关窗�
   let fail = true,
     hold = false
   let release!: () => void
-  const waiting = new Promise<void>((resolve) => {
+  let waiting = new Promise<void>((resolve) => {
     release = resolve
   })
   await page.route(
@@ -382,6 +382,24 @@ test('锁图关联保存失败可重试，重试后可解除，保存中关窗�
   hold = false
   release()
   await page.getByRole('button', { name: '蓝军配置', exact: true }).click()
+  waiting = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  hold = true
+  await panel.getByRole('button', { name: '重试保存关联', exact: true }).click()
+  await expect
+    .poll(() => state.writes.filter((w) => w.path === 'draw').length)
+    .toBe(5)
+  await panel.getByRole('button', { name: '关闭', exact: true }).click()
+  try {
+    await expect(
+      page.getByRole('button', { name: '蓝军配置', exact: true }),
+    ).toBeEnabled()
+  } finally {
+    hold = false
+    release()
+  }
+  await page.getByRole('button', { name: '蓝军配置', exact: true }).click()
   await panel.getByRole('button', { name: '重试保存关联', exact: true }).click()
   await expect(
     panel.getByRole('button', { name: '重试保存关联', exact: true }),
@@ -389,7 +407,7 @@ test('锁图关联保存失败可重试，重试后可解除，保存中关窗�
   expect(
     state.writes.filter((w) => w.path === 'init_info' && w.method === 'POST'),
   ).toHaveLength(2)
-  expect(state.writes.filter((w) => w.path === 'draw')).toHaveLength(5)
+  expect(state.writes.filter((w) => w.path === 'draw')).toHaveLength(6)
   expect(state.graph.lock).toBe(true)
   expect(
     (state.graph.cells as { data: Record<string, unknown> }[])[0]!.data

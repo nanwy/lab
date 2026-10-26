@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { apiClient, ApiError } from './index'
-import { blueId, parseBlueResponse, type BlueId } from './blue-team'
+import { blueId, type BlueId } from './blue-team'
 import { toX6Graph, type EditorGraph } from '../topology/x6-adapter'
 const terminalFields = {
   id: blueId,
@@ -32,15 +32,22 @@ const terminals = z
   .array(positionTerminalSchema)
   .nullish()
   .transform((value) => value ?? [])
-export const getPositionTerminals = (task: BlueId, signal?: AbortSignal) =>
-  parseBlueResponse(
-    z.object({
+export async function getPositionTerminals(task: BlueId, signal?: AbortSignal) {
+  const raw = await apiClient.request(`${base(task)}/init_info/terminal/`, {
+    signal,
+    isBusinessFailure: (value) =>
+      z.object({ status: z.literal(2) }).safeParse(value).success,
+  })
+  const parsed = z
+    .object({
       status: z.literal(1),
       data: z.object({ used_data: terminals, unused_data: terminals }),
-    }),
-    `${base(task)}/init_info/terminal/`,
-    signal,
-  ).then((r) => r.data)
+    })
+    .safeParse(raw)
+  if (!parsed.success)
+    throw new ApiError('invalid-response', '蓝军终端列表响应格式错误')
+  return parsed.data.data
+}
 async function command(
   path: string,
   method: 'POST' | 'DELETE',

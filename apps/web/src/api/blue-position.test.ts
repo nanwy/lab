@@ -24,6 +24,14 @@ it('终端保留未知字段及可空列表，工具未启动与业务失败和�
   await expect(getPositionTerminals('task')).rejects.toMatchObject({
     kind: 'invalid-response',
   })
+  vi.stubGlobal('fetch', async () =>
+    Response.json({ status: 2, message: '终端读取被拒绝' }),
+  )
+  await expect(getPositionTerminals('task')).rejects.toMatchObject({
+    kind: 'business',
+    handled: true,
+    message: '终端读取被拒绝',
+  })
   vi.stubGlobal('fetch', async () => Response.json({ status: 1 }))
   await expect(
     getPositionTools('task', terminal, { page: 1, search: '' }),

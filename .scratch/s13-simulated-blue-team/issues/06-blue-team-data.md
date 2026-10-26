@@ -58,4 +58,4 @@
 
 ## 空结构增量回归修正
 
-原3项P2已复查关闭后，Spec新增1项P2已修：只有原外层define_value=[]且未添加值才保留外层空；首块内部define_value=[]仍保留该块与未知元字段，按原HZn保存逻辑将首块data_define写入顶层，不错误改用旧外层来源。独立fixture outer99/inner7及未知unit/metadata先红后绿，连同既有outer[]定向2项通过`/tmp/s13-06-inner-green.log`，类型/两文件lint/四文件格式及diff通过。尚待此次增量复查，整体仍待审；细节见[S13记录](../../../docs/planning/s13-implementation.md#s13-06-空结构增量回归修正2026-10-26)。
+原3项P2已复查关闭后，Spec新增1项P2已修：只有原外层define_value=[]且未添加值才保留外层空；首块内部define_value=[]仍保留该块与未知元字段，按原HZn保存逻辑将首块data_define写入顶层，不错误改用旧外层来源。独立fixture outer99/inner7及未知unit/metadata先红后绿，连同既有outer[]定向2项通过`/tmp/s13-06-inner-green.log`，类型/两文件lint/四文件格式及diff通过。最终增量`c92daa9...bd3423b`两轴复查无新增发现，保存回归已关闭，Spec确认六票静态范围可收口；本票随`94058ac`合入集成分支。细节见[S13记录](../../../docs/planning/s13-implementation.md#s13-06-空结构增量回归修正2026-10-26)。

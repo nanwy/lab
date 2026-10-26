@@ -86,3 +86,9 @@
 决策页交付全部/单次筛选、原树及sunburst层次图、树右键步骤详情与直接下一步图、当前轮次日志。sunburst保持原层次/参数标签及权重，不替换为任意环；原环click/contextmenu为空不增加操作。child/params合法空值按证据归一，空树/日志与失败重试明确展示，日志无新增分页控件。详细范围、源码补证与红绿记录见[第五票](../../.scratch/s13-simulated-blue-team/issues/05-execution-and-decision.md)。
 
 6项本票浏览器及2项共享直接消费者通过：`/tmp/s13-05-direct.log`执行3+共享2，`/tmp/s13-05-integrated.log`正式入口决策3+受影响执行1；其余未改结果直接复用。web类型、11文件ESLint、15文件Prettier、文档链接/diff检查通过；`/tmp/s13-05-execution.png`、`/tmp/s13-05-decision-tree.png`、`/tmp/s13-05-decision-ring.png`已目视核对。未全量check、构建或真实后端。第五票已实施验证、双轴审查尚待；整体仍进行中，第六票未实施，历史日志/实时事件轮次语义和真实执行结果仍保留未知。
+
+## S13-05 原范围精简复核（2026-10-26）
+
+两轴初审均0项；父代理复核用户“只原bundle、精简”要求发现环图额外加入wheel缩放/pointer拖拽。经有界复核`bho @ 9738423`，原sunburst只配置层次series/radius/sort/label、click/contextmenu为空，无roam；zoom-canvas/drag-canvas仅在vho树画布。已删除DecisionSunburst的transform/drag状态及wheel/pointer处理，保留原层次扇区、标签与响应式viewBox，树画布平移/缩放不变，并精确修订第五票条款。
+
+仅决策环相关1项通过`/tmp/s13-05-trim-ring.log`；web类型`/tmp/s13-05-trim-types.log`、图文件ESLint与三文件Prettier/diff通过，未增加负面矩阵或重跑其他流程。该项为去除额外设计，不扩展原业务；尚待父代理增量复核，第六票未实施。

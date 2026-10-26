@@ -181,8 +181,6 @@ function sector(inner: number, outer: number, start: number, end: number) {
     : `M ${a.join(' ')} A ${outer} ${outer} 0 ${large} 1 ${b.join(' ')} L ${c.join(' ')} A ${inner} ${inner} 0 ${large} 0 ${d.join(' ')} Z`
 }
 export function DecisionSunburst({ root }: { root: DecisionStep }) {
-  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 }),
-    [drag, setDrag] = useState<{ x: number; y: number } | null>(null)
   const data = useMemo(() => ringNode(root), [root])
   const depth = (node: RingNode): number =>
     1 + Math.max(0, ...node.children.map(depth))
@@ -208,36 +206,9 @@ export function DecisionSunburst({ root }: { root: DecisionStep }) {
       role="img"
       aria-label="决策环层次图"
       viewBox="-250 -250 500 500"
-      className="h-[440px] w-full touch-none rounded border"
-      onWheel={(event) =>
-        setTransform((v) => ({
-          ...v,
-          scale: Math.max(
-            0.25,
-            Math.min(4, v.scale * (event.deltaY < 0 ? 1.1 : 0.9)),
-          ),
-        }))
-      }
-      onPointerDown={(event) => {
-        event.currentTarget.setPointerCapture(event.pointerId)
-        setDrag({ x: event.clientX, y: event.clientY })
-      }}
-      onPointerMove={(event) => {
-        if (!drag) return
-        const ratio = 500 / event.currentTarget.getBoundingClientRect().width
-        setTransform((v) => ({
-          ...v,
-          x: v.x + (event.clientX - drag.x) * ratio,
-          y: v.y + (event.clientY - drag.y) * ratio,
-        }))
-        setDrag({ x: event.clientX, y: event.clientY })
-      }}
-      onPointerUp={() => setDrag(null)}
-      onPointerCancel={() => setDrag(null)}
+      className="h-[440px] w-full rounded border"
     >
-      <g
-        transform={`translate(${transform.x} ${transform.y}) scale(${transform.scale})`}
-      >
+      <g>
         {pieces.map(({ node, level, start, end }, index) => {
           const mid = (start + end) / 2,
             [x, y] = polar((level + 0.5) * band, mid)

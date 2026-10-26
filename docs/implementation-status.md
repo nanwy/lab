@@ -422,3 +422,11 @@ Standards 审查无可操作发现。Spec 审查发现的 HTTP 错误体读取�
 ### S13 终端列表真实空值兼容（2026-10-26）
 
 任务1556终端GET的未关联项position_init_id为null，适配器曾误拒整份列表；已按实测结构修正并回归错误类型。2项契约测试、web类型及定向lint/格式通过，用户面板重试恢复可选终端。未执行真实关联或资源写入，详见[S13真实空值修复](planning/s13-restoration-audit.md#真实终端列表空关联标识修复2026-10-26)。
+
+### 2026-10-26：S13 合法空值集中排查
+
+覆盖S13接口适配与直接消费，修复未就绪工具null记录ID、真实version_name字段，以及适配系统、备注、动作名称和执行记录展示字段的空值误拒；保留身份、结构和类型错误校验。17项API及2项定向浏览器回归、web类型与定向lint/格式通过。依据与未验证边界见[集中排查记录](planning/s13-restoration-audit.md#s13-合法空值集中排查2026-10-26)，当前进度见[实施计划](planning/page-rebuild-implementation.md)。
+
+### 2026-10-26：拓扑引用及保存业务失败修复
+
+修复拖线后更换目标仍沿用原设备磁吸点、复制蓝军节点继承旧终端关系、拓扑保存/锁切换误认status=2成功三项缺陷。7项API、7项不同的定向浏览器场景及web类型、定向lint/格式通过。范围和证据见[S13复审补修](planning/s13-restoration-audit.md#三项引用与保存缺陷的代码修复2026-10-26)，当前阶段仍以[实施计划](planning/page-rebuild-implementation.md)为准。

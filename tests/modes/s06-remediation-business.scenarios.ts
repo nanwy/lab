@@ -454,3 +454,104 @@ test('专项业务：配置业务成功画布失败后仅重试画布，链路�
   await expect.poll(() => state.stored.cells.length).toBe(2)
   expect(state.errors).toEqual([])
 })
+for (const target of ['b', 'c']) {
+  test(`${target === 'b' ? '保留' : '更换'}拖线目标后磁吸点归属正确，保存重开无兼容性错误`, async ({
+    page,
+  }) => {
+    const initial = linkedDevices()
+    const c = structuredClone(initial.cells[1]!)
+    c.id = 'c'
+    c.position = { x: 420, y: 350 }
+    c.ports = {
+      items: [
+        { id: 'c-right', group: 'right' },
+        { id: 'c-left', group: 'left' },
+      ],
+    }
+    c.data = { ...c.data, name: 'c', data_id: 93 }
+    initial.cells.push(c)
+    const state = await mount(page, initial)
+    const a = page.locator(
+      '.react-flow__node[data-id="a"] [data-handleid="a-right"]',
+    )
+    const b = page.locator(
+      '.react-flow__node[data-id="b"] [data-handleid="b-right"]',
+    )
+    await expect(a).toBeVisible()
+    await expect(b).toBeVisible()
+    const ab = (await a.boundingBox())!,
+      bb = (await b.boundingBox())!
+    await page.mouse.move(ab.x + ab.width / 2, ab.y + ab.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2, {
+      steps: 12,
+    })
+    await page.mouse.up()
+    await page.getByLabel('目标设备', { exact: true }).selectOption(target)
+    await page.getByLabel('源网卡', { exact: true }).selectOption('0')
+    await page.getByLabel('目标网卡', { exact: true }).selectOption('0')
+    await page.getByRole('button', { name: '创建链路', exact: true }).click()
+    await expect
+      .poll(() => state.stored.cells.filter((x) => x.shape === 'edge').length)
+      .toBe(1)
+    const edge = state.stored.cells.find((x) => x.shape === 'edge')!
+    expect(edge.source).toMatchObject({ cell: 'a', port: 'a-right' })
+    expect(edge.target).toMatchObject({
+      cell: target,
+      port: target === 'b' ? 'b-right' : 'c-left',
+    })
+    expect(edge.data).toMatchObject({ source: 0, target: 0 })
+    await page.reload()
+    await expect(page.getByText(/引用了无法渲染的节点或端口/)).toHaveCount(0)
+  })
+}
+
+test('复制蓝军设备不继承原终端关联，保留蓝军标记及原节点关系', async ({
+  page,
+}) => {
+  const initial = linkedDevices()
+  initial.cells = initial.cells.slice(0, 1)
+  initial.cells[0]!.data = {
+    ...initial.cells[0]!.data,
+    is_blue: true,
+    blueInfo: {
+      id: 'terminal',
+      blue_team_id: 10,
+      scenario_type: 1,
+      position_init_id: 55,
+    },
+  }
+  const state = await mount(page, initial)
+  await page.locator('.react-flow__node[data-id="a"]').click()
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Control+v')
+  await expect(page.locator('.react-flow__node')).toHaveCount(2)
+  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
+  await expect.poll(() => state.stored.cells.length).toBe(2)
+  const copied = state.stored.cells.find((c) => c.id !== 'a')!
+  expect(copied.data?.blueInfo).toBeUndefined()
+  expect(copied.data?.is_blue).toBe(true)
+  expect(state.stored.cells.find((c) => c.id === 'a')?.data?.blueInfo).toEqual(
+    initial.cells[0]!.data?.blueInfo,
+  )
+  expect(state.writes.some((w) => w.path.includes('/init_info/'))).toBe(false)
+})
+
+test('拓扑业务保存失败保留未保存状态，重试不重复创建设备', async ({ page }) => {
+  const state = await mount(page)
+  let reject = true
+  await page.route('**/api/front/topo/business/draw/?task_type=6', (route) => {
+    if (route.request().method() === 'POST' && reject)
+      return route.fulfill({ json: { status: 2, message: '拓扑保存被拒绝' } })
+    return route.fallback()
+  })
+  await place(page, 240)
+  await expect(page.getByText(/业务操作已成功，画布保存失败/)).toBeVisible()
+  await expect(page.getByText('有未保存的修改', { exact: true })).toBeVisible()
+  expect(state.stored.cells).toHaveLength(0)
+  reject = false
+  await page.getByRole('button', { name: '保存拓扑', exact: true }).click()
+  await expect.poll(() => state.stored.cells.length).toBe(1)
+  await expect(page.getByText('所有修改已保存', { exact: true })).toBeVisible()
+  expect(state.writes.filter((w) => w.path.endsWith('/node/'))).toHaveLength(1)
+})

@@ -1,7 +1,27 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { getExperimentTopology, saveExperimentTopology } from './topology'
+import {
+  getExperimentTopology,
+  saveExperimentTopology,
+  setExperimentTopologyLock,
+} from './topology'
+import { fromX6Graph } from '../topology/x6-adapter'
 
 afterEach(() => vi.unstubAllGlobals())
+
+it.each(['save', 'lock'] as const)(
+  '%s拒绝HTTP成功中的业务失败',
+  async (action) => {
+    vi.stubGlobal('fetch', async () =>
+      Response.json({ status: 2, message: '保存被拒绝' }),
+    )
+    const graph = fromX6Graph({ cells: [] })
+    await expect(
+      action === 'save'
+        ? saveExperimentTopology('one', graph)
+        : setExperimentTopologyLock('one', graph, true),
+    ).rejects.toMatchObject({ kind: 'business', message: '保存被拒绝' })
+  },
+)
 
 it('新增资源追踪随图保存，资源ID零也保留', async () => {
   let body: unknown

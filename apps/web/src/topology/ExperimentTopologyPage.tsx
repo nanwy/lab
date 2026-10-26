@@ -941,6 +941,8 @@ export function ExperimentTopologyEditor({
     for (const cell of cells) {
       const previous = cell.id
       cell.id = ids.get(previous)!
+      // 终端关联绑定原节点UUID，复制设备后必须重新关联。
+      if (cell.shape !== 'edge' && cell.data) delete cell.data.blueInfo
       if (cell.position) {
         cell.position.x += offset
         cell.position.y += offset
@@ -2566,13 +2568,23 @@ export function ExperimentTopologyEditor({
                     )
                     if (operation.current.signal.aborted) return
                     const sourceHandle =
-                      pendingConnection?.sourceHandle ??
-                      source.data.ports.find((port) => port.group === 'right')
-                        ?.id
+                      pendingConnection?.source === source.id &&
+                      source.data.ports.some(
+                        (port) => port.id === pendingConnection.sourceHandle,
+                      )
+                        ? pendingConnection.sourceHandle
+                        : source.data.ports.find(
+                            (port) => port.group === 'right',
+                          )?.id
                     const targetHandle =
-                      pendingConnection?.targetHandle ??
-                      target.data.ports.find((port) => port.group === 'left')
-                        ?.id
+                      pendingConnection?.target === target.id &&
+                      target.data.ports.some(
+                        (port) => port.id === pendingConnection.targetHandle,
+                      )
+                        ? pendingConnection.targetHandle
+                        : target.data.ports.find(
+                            (port) => port.group === 'left',
+                          )?.id
                     const raw = {
                       id: uuid,
                       shape: 'edge',

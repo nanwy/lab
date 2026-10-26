@@ -71,7 +71,9 @@ async function submitTopology(
         ...(lastNode?.length ? { last_node: lastNode } : {}),
       },
       signal,
-      isBusinessFailure: (value) => !value,
+      isBusinessFailure: (value) =>
+        !value ||
+        (typeof value === 'object' && 'status' in value && value.status === 2),
     },
   )
 }

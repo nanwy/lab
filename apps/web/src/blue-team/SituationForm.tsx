@@ -54,7 +54,11 @@ const schema = z
     values: z.array(z.union([z.string(), z.number()])),
   })
   .superRefine((value, ctx) => {
-    if (value.data_type !== 1 && value.data_define === '')
+    if (
+      value.data_type !== 1 &&
+      value.data_define === '' &&
+      !(value.data_type === 3 && value.values.length === 0)
+    )
       ctx.addIssue({
         code: 'custom',
         path: ['data_define'],
@@ -97,7 +101,7 @@ function defaults(node?: SituationNode): Values {
     data_type: node.data_type,
     data_define:
       node.data_type === 3
-        ? node.define_value[0].data_define
+        ? (node.define_value[0]?.data_define ?? '')
         : node.data_define,
     rows:
       node.data_type === 1
@@ -106,7 +110,9 @@ function defaults(node?: SituationNode): Values {
           ? node.define_value.map((row) => ({ ...row }))
           : [{ data_define: '', define_value: '' }],
     values:
-      node.data_type === 3 ? [...node.define_value[0].define_value] : [''],
+      node.data_type === 3
+        ? [...(node.define_value[0]?.define_value ?? [])]
+        : [''],
   }
 }
 export function SituationForm({
@@ -150,17 +156,24 @@ export function SituationForm({
           ? first.define_value
           : value.data_type === 2
             ? rows
-            : [
-                {
-                  ...(editing?.data_type === 3 ? editing.define_value[0] : {}),
-                  data_define: value.data_define,
-                  define_value: value.values,
-                },
-              ]
+            : editing?.data_type === 3 && value.values.length === 0
+              ? []
+              : [
+                  {
+                    ...(editing?.data_type === 3
+                      ? editing.define_value[0]
+                      : {}),
+                    data_define: value.data_define,
+                    define_value: value.values,
+                  },
+                ]
       const data = editing
         ? {
             ...situationGraphData(editing),
-            data_define: dataDefine,
+            data_define:
+              editing.data_type === 3 && value.values.length === 0
+                ? editing.data_define
+                : dataDefine,
             define_value: defineValue,
           }
         : {

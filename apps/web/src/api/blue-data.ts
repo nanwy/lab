@@ -55,6 +55,7 @@ export async function deleteBlueSituation(
 export const situationEventSchema = nodeSchema.and(
   z.object({ parent: blueId.nullish() }),
 )
+export type SituationEvent = z.infer<typeof situationEventSchema>
 export const getDataRecords = (
   task: BlueId,
   blue: BlueId,

@@ -51,3 +51,7 @@
 - 正式入口蓝军CRUD与连续节点事件2项通过`/tmp/s13-06-data-integrated.log`（2 passed、3.9秒）；网络3项通过`/tmp/s13-06-network-integrated.log`（3 passed、4.4秒）；原任务级CRUD与05实时执行直接消费者2项通过`/tmp/s13-06-consumers.log`（2 passed、2.5秒）。节点事件流程随后追加适配视图操作用于截图，定向1项通过`/tmp/s13-06-data-view.log`。未重跑三类型表单矩阵或其他票全组。
 - web类型`/tmp/s13-06-types-final.log`、12个改动代码/测试文件ESLint、16文件Prettier、文档链接及diff检查通过。`/tmp/s13-06-data.png`与`/tmp/s13-06-network.png`已目视核对；未运行全量check、构建或真实接口。
 - 六票的原可达静态范围与缺口已在[S13记录](../../../docs/planning/s13-implementation.md#六票覆盖与剩余边界)核对。06已实施验证，S13仅待最终双轴审查收口，尚未声明本票审查通过。type7原链缺失继续明确不可用，终端编辑/iho不可达不补造；真实服务、工具/资源操作、持久化及授权仍未联调，不能冒称已接通。未修改S12或S14。
+
+## 双轴初审修正
+
+两轴汇总3项独立P2（读取竞态重复发现只计一次）已统一修正，尚待增量复查：当前GET窗口暂存节点事件，响应快照合并事件后再写缓存；未知parent必须明确反馈，不能提升为根；原type3空define_value数组在HTTP/WS、图与编辑中合法，保存不伪造首项，错误数组元素仍拒绝。三项公共行为先红后绿`/tmp/s13-06-review-green.log`，原蓝军CRUD/任务级态势CRUD直接消费者2项通过`/tmp/s13-06-review-consumers.log`；web类型、六文件lint、八文件格式/链接/diff通过。只处理当前读取窗口，不建归档或轮次协议，未重跑原7项全组；细节见[S13记录](../../../docs/planning/s13-implementation.md#s13-06-双轴初审修正2026-10-26)。

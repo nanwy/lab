@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   flexRender,
@@ -29,6 +29,7 @@ import {
   saveBlueSituation,
   deleteBlueSituation,
   situationEventSchema,
+  type SituationEvent,
   getDataRecords,
 } from '../api/blue-data'
 import { subscribeBlueSocket } from '../api/blue-socket'
@@ -108,6 +109,37 @@ function DataRound(props: { taskId: BlueId; blueId: BlueId; roundId: BlueId }) {
     </section>
   )
 }
+function mergeSituationEvent(
+  tree: SituationNode[],
+  event: SituationEvent,
+): SituationNode[] {
+  const { parent, ...node } = event
+  const contains = (items: SituationNode[], id: string): boolean =>
+    items.some(
+      (item) => String(item.id) === id || contains(item.child ?? [], id),
+    )
+  if (parent != null && !contains(tree, String(parent)))
+    throw new Error(`态势节点父节点不存在：${parent}`)
+  let updated = false
+  const update = (items: SituationNode[]): SituationNode[] =>
+    items.map((item) => {
+      if (String(item.id) === String(node.id)) {
+        updated = true
+        return { ...item, ...node, child: node.child ?? item.child }
+      }
+      return { ...item, child: item.child ? update(item.child) : undefined }
+    })
+  const next = update(tree)
+  if (updated) return next
+  if (parent == null) return [...next, node]
+  const append = (items: SituationNode[]): SituationNode[] =>
+    items.map((item) =>
+      String(item.id) === String(parent)
+        ? { ...item, child: [...(item.child ?? []), node] }
+        : { ...item, child: item.child ? append(item.child) : undefined },
+    )
+  return append(next)
+}
 function DataSituation({
   taskId,
   blueId,
@@ -119,6 +151,7 @@ function DataSituation({
 }) {
   const client = useQueryClient(),
     [connection, setConnection] = useState<string | null>(null)
+  const reading = useRef<{ events: SituationEvent[] } | null>(null)
   const key = [
     'blue-data',
     String(taskId),
@@ -128,7 +161,26 @@ function DataSituation({
   ]
   const tree = useQuery({
     queryKey: key,
-    queryFn: ({ signal }) => getBlueSituation(taskId, blueId, roundId, signal),
+    queryFn: async ({ signal }) => {
+      const window = { events: [] as SituationEvent[] }
+      reading.current = window
+      try {
+        let snapshot = await getBlueSituation(taskId, blueId, roundId, signal)
+        for (const event of window.events) {
+          try {
+            snapshot = mergeSituationEvent(snapshot, event)
+          } catch (error) {
+            if (!signal.aborted)
+              setConnection(
+                error instanceof Error ? error.message : '态势节点关系无效',
+              )
+          }
+        }
+        return snapshot
+      } finally {
+        if (reading.current === window) reading.current = null
+      }
+    },
     retry: false,
     gcTime: 0,
   })
@@ -144,46 +196,30 @@ function DataSituation({
             setConnection('态势节点消息格式错误')
             return
           }
-          client.setQueryData<SituationNode[]>(
-            [
-              'blue-data',
-              String(taskId),
-              String(blueId),
-              String(roundId),
-              'situation',
-            ],
-            (previous) => {
-              if (!previous) return previous
-              const { parent, ...node } = event.data
-              let placed = false
-              const update = (items: SituationNode[]): SituationNode[] =>
-                items.map((item) => {
-                  if (String(item.id) === String(node.id)) {
-                    placed = true
-                    return { ...item, ...node, child: node.child ?? item.child }
-                  }
-                  return {
-                    ...item,
-                    child: item.child ? update(item.child) : undefined,
-                  }
-                })
-              const next = update(previous)
-              if (placed) return next
-              const append = (items: SituationNode[]): SituationNode[] =>
-                items.map((item) => {
-                  if (parent != null && String(item.id) === String(parent)) {
-                    placed = true
-                    return { ...item, child: [...(item.child ?? []), node] }
-                  }
-                  return {
-                    ...item,
-                    child: item.child ? append(item.child) : undefined,
-                  }
-                })
-              const attached = append(next)
-              return placed ? attached : [...attached, node]
-            },
-          )
+          if (reading.current) {
+            reading.current.events.push(event.data)
+            return
+          }
+          try {
+            client.setQueryData<SituationNode[]>(
+              [
+                'blue-data',
+                String(taskId),
+                String(blueId),
+                String(roundId),
+                'situation',
+              ],
+              (previous) => {
+                if (!previous)
+                  throw new Error('态势基线尚未读取，无法应用实时节点')
+                return mergeSituationEvent(previous, event.data)
+              },
+            )
+          } catch (error) {
+            setConnection(
+              error instanceof Error ? error.message : '态势节点关系无效',
+            )
+          }
         },
         setConnection,
       ),

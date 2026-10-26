@@ -32,7 +32,7 @@ const nodeValue = z.discriminatedUnion('data_type', [
   z.looseObject({
     ...nodeFields,
     data_type: z.literal(3),
-    define_value: z.tuple([arrayValue]).rest(arrayValue),
+    define_value: z.array(arrayValue),
   }),
 ])
 export type SituationNode = z.infer<typeof nodeValue> & {
@@ -123,10 +123,12 @@ export function situationGraphData(node: SituationNode) {
   }
   if (node.data_type === 3) {
     width = Math.max(
-      node.define_value[0].define_name?.length ?? 0,
-      ...node.define_value[0].define_value.map((value) => String(value).length),
+      node.define_value[0]?.define_name?.length ?? 0,
+      ...(node.define_value[0]?.define_value ?? []).map(
+        (value) => String(value).length,
+      ),
     )
-    height = node.define_value[0].define_value.length + 1
+    height = (node.define_value[0]?.define_value.length || 1) + 1
   }
   return {
     id: node.id,

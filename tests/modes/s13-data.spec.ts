@@ -241,3 +241,186 @@ test('连续态势节点事件读取消息data_define并保留父子数据，切
   expect(sessions).toHaveLength(count)
   expect(current.sent).toHaveLength(1)
 })
+
+test('初始与刷新读取窗口保留先到实时节点，迟到快照不会覆盖事件', async ({
+  page,
+}) => {
+  await fixture(page)
+  let initialRelease!: () => void, refreshRelease!: () => void
+  const initialGate = new Promise<void>((r) => {
+      initialRelease = r
+    }),
+    refreshGate = new Promise<void>((r) => {
+      refreshRelease = r
+    })
+  let refresh = false
+  await page.route(`**${root}/init_situation_node/?*`, async (r) => {
+    const refreshing = refresh
+    await (refreshing ? refreshGate : initialGate)
+    await r
+      .fulfill({
+        json: {
+          status: 1,
+          data: [
+            {
+              id: 11,
+              data_type: 1,
+              data_define: 1,
+              define_name: 'IP',
+              define_value: '192.0.2.11',
+              child: refreshing
+                ? [
+                    {
+                      id: 21,
+                      data_type: 1,
+                      data_define: 1,
+                      define_name: '子IP',
+                      define_value: '192.0.2.21',
+                    },
+                  ]
+                : [],
+            },
+          ],
+        },
+      })
+      .catch(() => {})
+  })
+  const sessions: WebSocketRoute[] = []
+  await page.routeWebSocket('**/ws/emulate_task/**', (s) => sessions.push(s))
+  await page.goto(simulateURL)
+  await page.getByRole('tab', { name: '运行控制', exact: true }).click()
+  await page.getByRole('tab', { name: '蓝军数据', exact: true }).click()
+  await page.getByRole('button', { name: '数据视图', exact: true }).click()
+  await expect(
+    page.getByText('正在读取蓝军数据…', { exact: true }),
+  ).toBeVisible()
+  await expect.poll(() => sessions.length).toBeGreaterThan(0)
+  const socket = sessions.at(-1)!
+  socket.send(
+    JSON.stringify({
+      id: 21,
+      parent: 11,
+      data_type: 1,
+      data_define: 1,
+      define_name: '子IP',
+      define_value: '192.0.2.21',
+    }),
+  )
+  initialRelease()
+  await expect(page.locator('.react-flow__node[data-id="21"]')).toContainText(
+    '192.0.2.21',
+  )
+  refresh = true
+  await page.getByRole('button', { name: '刷新数据', exact: true }).click()
+  socket.send(
+    JSON.stringify({
+      id: 22,
+      parent: 21,
+      data_type: 1,
+      data_define: 1,
+      define_name: '孙IP',
+      define_value: '192.0.2.22',
+    }),
+  )
+  refreshRelease()
+  await expect(
+    page.getByRole('button', { name: '刷新数据', exact: true }),
+  ).toBeEnabled()
+  await expect(page.locator('.react-flow__node[data-id="22"]')).toContainText(
+    '192.0.2.22',
+  )
+  await expect(page.locator('.react-flow__edge')).toHaveCount(2)
+})
+
+test('态势消息未知父节点明确反馈，不把子节点静默提升为根', async ({ page }) => {
+  await fixture(page)
+  const sessions: WebSocketRoute[] = []
+  await page.routeWebSocket('**/ws/emulate_task/**', (s) => sessions.push(s))
+  await page.goto(simulateURL)
+  await page.getByRole('tab', { name: '运行控制', exact: true }).click()
+  await page.getByRole('tab', { name: '蓝军数据', exact: true }).click()
+  await page.getByRole('button', { name: '数据视图', exact: true }).click()
+  await expect(page.locator('.react-flow__node[data-id="11"]')).toBeVisible()
+  sessions.at(-1)!.send(
+    JSON.stringify({
+      id: 99,
+      parent: 404,
+      data_type: 1,
+      data_define: 1,
+      define_name: '孤立IP',
+      define_value: '192.0.2.99',
+    }),
+  )
+  await expect(
+    page.getByText('态势节点父节点不存在：404', { exact: true }),
+  ).toBeVisible()
+  await expect(page.locator('.react-flow__node[data-id="99"]')).toHaveCount(0)
+  await expect(page.locator('.react-flow__node[data-id="11"]')).toBeVisible()
+})
+
+test('HTTP和实时空块数组保留空结构，可编辑保存且错误元素仍拒绝', async ({
+  page,
+}) => {
+  const s = await fixture(page)
+  s.tree = [
+    {
+      id: 33,
+      data_type: 3,
+      data_define: 7,
+      define_name: '空块数组',
+      define_value: [],
+    },
+  ]
+  await page.route(`**${root}/init_situation_node/33/`, (r) => {
+    s.writes.push({
+      method: r.request().method(),
+      body: r.request().postDataJSON(),
+    })
+    return r.fulfill({ json: { status: 1 } })
+  })
+  const sessions: WebSocketRoute[] = []
+  await page.routeWebSocket('**/ws/emulate_task/**', (s) => sessions.push(s))
+  await page.goto(simulateURL)
+  await page.getByRole('tab', { name: '运行控制', exact: true }).click()
+  await page.getByRole('tab', { name: '蓝军数据', exact: true }).click()
+  await page.getByRole('button', { name: '数据视图', exact: true }).click()
+  await expect(page.locator('.react-flow__node[data-id="33"]')).toContainText(
+    '空块数组',
+  )
+  await page
+    .locator('.react-flow__node[data-id="33"]')
+    .click({ button: 'right' })
+  await page.getByRole('button', { name: '编辑节点', exact: true }).click()
+  const d = page.getByRole('dialog', { name: '编辑数据', exact: true })
+  await expect(d.getByLabel('数组值1', { exact: true })).toHaveCount(0)
+  await d.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(d).toHaveCount(0)
+  expect(s.writes[0]!.body).toMatchObject({ data_define: 7, define_value: [] })
+  sessions.at(-1)!.send(
+    JSON.stringify({
+      id: 34,
+      parent: 33,
+      data_type: 3,
+      data_define: 7,
+      define_name: '实时空块数组',
+      define_value: [],
+    }),
+  )
+  await expect(page.locator('.react-flow__node[data-id="34"]')).toContainText(
+    '实时空块数组',
+  )
+  sessions.at(-1)!.send(
+    JSON.stringify({
+      id: 35,
+      parent: null,
+      data_type: 3,
+      data_define: 7,
+      define_name: '错误元素',
+      define_value: [{ data_define: 7, define_value: '错误标量' }],
+    }),
+  )
+  await expect(
+    page.getByText('态势节点消息格式错误', { exact: true }),
+  ).toBeVisible()
+  await expect(page.locator('.react-flow__node[data-id="35"]')).toHaveCount(0)
+})

@@ -59,7 +59,7 @@ function SituationGraphNode({ data }: NodeProps<DataNode>) {
                   {String(row.define_value)}
                 </div>
               ))
-            : item.define_value[0].define_value.map((value, i) => (
+            : (item.define_value[0]?.define_value ?? []).map((value, i) => (
                 <div key={i}>{String(value)}</div>
               ))}
         </>

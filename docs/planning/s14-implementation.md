@@ -114,4 +114,6 @@ web类型`/tmp/s14-03-types.log`、改动代码/测试定向ESLint`/tmp/s14-03-l
 
 公共接口混合目标反例先红（`/tmp/s14-network-compat-red.log`），错误精确落在嵌套项；最小修复后通过。最终12项任务态势契约通过（`/tmp/s14-network-compat-contract-final.log`），包含正常目标保留、全部嵌套仍保留源节点/交换机及其他错误类型继续拒绝。蓝军页面定向1项通过（`/tmp/s14-network-compat-browser.log`，3.3秒），确认合法IP及计数继续显示，嵌套IP未被展开，页面无整图失败。
 
-web类型（`/tmp/s14-network-compat-types.log`）、三个改动代码/测试的定向ESLint（`/tmp/s14-network-compat-lint.log`）、Prettier及diff检查通过。只使用隔离本地响应，未访问真实后端、未运行全量检查或构建；其余已通过结果复用。本修复尚待双轴复查和集成收口，不提前声明缺口关闭。
+web类型（`/tmp/s14-network-compat-types.log`）、三个改动代码/测试的定向ESLint（`/tmp/s14-network-compat-lint.log`）、Prettier及diff检查通过。只使用隔离本地响应，未访问真实后端、未运行全量检查或构建；其余已通过结果复用。
+
+固定增量 `03b1bb1...631d86f` 经Standards/Spec独立复查，原P2关闭，两轴新增均0；修复已以 `13118cf` 合回 `integration/s14-situation`。计划恢复按原静态范围完成，真实服务未验证边界不变；最终只校验文档和状态一致性，不重跑应用测试。

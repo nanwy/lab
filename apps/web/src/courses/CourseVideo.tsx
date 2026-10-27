@@ -147,15 +147,13 @@ export function CourseVideo({
           Date.now() - lastRecovery > 1000
         ) {
           lastRecovery = Date.now()
-          if (video.currentTime + 1 < video.duration) {
-            video.currentTime += 1
-            void video.play().catch(() => {})
-            toast.warning('视频缓冲中，请稍后')
-            later(() => {
-              hls.startLoad()
-              hls.recoverMediaError()
-            }, 2000)
-          }
+          if (video.currentTime + 1 < video.duration) video.currentTime += 1
+          void video.play().catch(() => {})
+          toast.warning('视频缓冲中，请稍后')
+          later(() => {
+            hls.startLoad()
+            hls.recoverMediaError()
+          }, 2000)
         } else if (
           String(data.details) === 'fragLoopLoadingError' ||
           data.details === ErrorDetails.MANIFEST_LOAD_ERROR ||

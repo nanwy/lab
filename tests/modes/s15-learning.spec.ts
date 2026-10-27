@@ -193,7 +193,7 @@ test('40秒日志失败保留分片，暂停不补报，成功仅清本次快照
         v.buffered.end(v.buffered.length - 1),
       ),
     )
-    .toBeGreaterThan(60)
+    .toBeGreaterThan(63.9)
   const response = page.waitForResponse(
     (r) => r.url().endsWith('/section/first/video/log/') && r.status() === 200,
   )

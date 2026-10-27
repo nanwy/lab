@@ -450,3 +450,7 @@ Standards 审查无可操作发现。Spec 审查发现的 HTTP 错误体读取�
 ## S15 第二票：视频学习与课程笔记（2026-10-27）
 
 实际 HLS、原分片日志、课程专属笔记与共享评分、驻点定位、拖动边界及资源清理的交付与验收见 [S15 实施记录](planning/s15-implementation.md#第二票视频学习与课程笔记2026-10-27)，审查见 [02 报告](../.scratch/s15-courses/review-02.md)。全量单测首次 215/216 通过，临时目录清理失败项定向重跑通过；浏览器与真实服务边界分别记录。当前进度仍只维护在[实施计划](planning/page-rebuild-implementation.md)。
+
+## S15 第三票：章节测试（2026-10-27）
+
+整节题目、逐题保存、提交结果、重新测试、弹窗拖动及请求隔离的实际交付见 [S15 实施记录](planning/s15-implementation.md#第三票章节测试2026-10-27)，双轴修复见 [03 审查](../.scratch/s15-courses/review-03.md)。本票浏览器 6 项、课程域直接回归和全量单测 220 项的结果与中途失败分别记录；真实计分、次数及权限没有实测。当前进度仍以[实施计划](planning/page-rebuild-implementation.md)为唯一来源。

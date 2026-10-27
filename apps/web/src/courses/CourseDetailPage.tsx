@@ -14,6 +14,7 @@ import {
 } from '../api/courses'
 import { currentUserQueryOptions } from '../auth/session'
 import { CourseError, reportCourseError } from './CourseFeedback'
+import { CourseSectionTest } from './CourseSectionTest'
 import { CourseNotes } from './CourseNotes'
 import { CourseMaterials } from './CourseMaterials'
 import { CourseVideo, type CourseVideoHandle } from './CourseVideo'
@@ -49,6 +50,7 @@ export function CourseDetailPage({
   const [selected, setSelected] = useState<string | number | undefined>(
     sectionId,
   )
+  const [testing, setTesting] = useState(false)
   const [notes, setNotes] = useState(false)
   const [seekTarget, setSeekTarget] = useState<{
     section: string | number
@@ -77,6 +79,7 @@ export function CourseDetailPage({
       aria-current={s.id === section?.id ? 'true' : undefined}
       onClick={() => {
         setSelected(s.id)
+        if (!s.test) setTesting(false)
         setSeekTarget(null)
         setMedia(null)
         if (s.type === 1) {
@@ -206,6 +209,11 @@ export function CourseDetailPage({
                 />
               ) : null}
               <div key={section.id} className="flex flex-wrap gap-2">
+                {section.test ? (
+                  <Button variant="outline" onClick={() => setTesting(true)}>
+                    本节测试
+                  </Button>
+                ) : null}
                 {section.type === 1 && section.attachment?.lecture ? (
                   <LectureLink
                     src={section.attachment.lecture}
@@ -272,6 +280,14 @@ export function CourseDetailPage({
             相关课程
           </Button>
         </div>
+      ) : null}
+      {testing && user.data && section?.test ? (
+        <CourseSectionTest
+          key={`${user.data.id}:${courseId}:${section.id}`}
+          scope={{ courseId, sectionId: section.id }}
+          account={user.data.id}
+          close={() => setTesting(false)}
+        />
       ) : null}
       {notes && user.data && section ? (
         <CourseNotes

@@ -113,3 +113,13 @@ python3 scripts/evidence_query.py query --offset 3594600 --context 1700 --max-ch
 python3 scripts/evidence_query.py query --text 'async function nei' --context 3300 --limit 1 --max-chars 7000
 python3 scripts/evidence_query.py query --text 'envUpdates' --context 100 --limit 4 --max-chars 1100
 ```
+
+## 03 实施前的精确消费复核（2026-10-27）
+
+通过同一有界查询入口复核原 Unicode @3557490–3560360 的 bEi 完整渲染体，以及 @3607350 前后 1000 字符：
+
+- 本节测试按钮仅判断 section.test 真值，没有额外 section.type===1 条件；实验小节同样可以有整节测试。目录适配只归一化该字段的原真值，不猜成题目数或题目 ID。
+- bEi 实际显示题号、题型、name、content、user_option 和完成后 status/answer/parse；没有读取独立分值字段。03 票原“分值”措辞据此校正，不添加猜测 key。
+- store 的 courseTest 仅要求响应 results 存在；页面将缺失/null done 走未完成分支。适配不将 done 设为整个响应必填，status 也不额外设为必填；未为 1/0 时仍走原错误展示分支。
+
+以上均为静态观察；没有新建真实作答、提交或重置。

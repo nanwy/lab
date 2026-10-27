@@ -44,6 +44,24 @@ async function fixture(page: Page) {
   return { errors, reads }
 }
 
+test('网络跳过嵌套数组目标，仍显示同条关系的合法节点', async ({ page }) => {
+  const state = await fixture(page)
+  await page.route(`**${root}/*/flow_path/`, (route) =>
+    route.fulfill({
+      json: { ip_relation: [{ '192.0.2.1': ['192.0.2.2', ['198.51.100.3']] }] },
+    }),
+  )
+  await page.goto(url())
+  const graph = page.getByRole('img', { name: '蓝军网络拓扑', exact: true })
+  await expect(graph.getByText('192.0.2.1', { exact: true })).toBeVisible()
+  await expect(graph.getByText('192.0.2.2', { exact: true })).toBeVisible()
+  await expect(graph.getByText('198.51.100.3', { exact: true })).toHaveCount(0)
+  await expect(page.getByLabel('节点数量', { exact: true })).toHaveText('2')
+  await expect(page.getByLabel('交换机数量', { exact: true })).toHaveText('1')
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  expect(state.errors).toEqual([])
+})
+
 test('独立蓝军态势使用任务数据展示网络、风险与原滚动日志', async ({ page }) => {
   const state = await fixture(page)
   await page.goto(url())

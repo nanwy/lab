@@ -7,6 +7,49 @@ import {
 
 afterEach(() => vi.unstubAllGlobals())
 
+it('嵌套数组目标只跳过该项，保留同条关系的合法网络', async () => {
+  vi.stubGlobal('fetch', async () =>
+    Response.json({
+      ip_relation: [{ '192.0.2.1': ['192.0.2.2', ['198.51.100.3']] }],
+    }),
+  )
+  await expect(getTaskSituationNetwork('73')).resolves.toEqual({
+    nodes: [
+      { id: '192.0.2.1', kind: 'ip' },
+      { id: '192.0.2.sw', kind: 'switch' },
+      { id: '192.0.2.2', kind: 'ip' },
+    ],
+    edges: [
+      { id: '192.0.2.1_192.0.2.sw', source: '192.0.2.1', target: '192.0.2.sw' },
+      { id: '192.0.2.2_192.0.2.sw', source: '192.0.2.2', target: '192.0.2.sw' },
+    ],
+  })
+})
+
+it('目标全部为嵌套数组时仍保留源节点及其交换机', async () => {
+  vi.stubGlobal('fetch', async () =>
+    Response.json({ ip_relation: [{ '192.0.2.1': [['198.51.100.3'], []] }] }),
+  )
+  await expect(getTaskSituationNetwork('73')).resolves.toEqual({
+    nodes: [
+      { id: '192.0.2.1', kind: 'ip' },
+      { id: '192.0.2.sw', kind: 'switch' },
+    ],
+    edges: [
+      { id: '192.0.2.1_192.0.2.sw', source: '192.0.2.1', target: '192.0.2.sw' },
+    ],
+  })
+})
+
+it.each([123, {}, null])('非数组的错误目标%s仍明确拒绝', async (target) => {
+  vi.stubGlobal('fetch', async () =>
+    Response.json({ ip_relation: [{ '192.0.2.1': ['192.0.2.2', target] }] }),
+  )
+  await expect(getTaskSituationNetwork('73')).rejects.toMatchObject({
+    kind: 'invalid-response',
+  })
+})
+
 it('日志失败保留HTTP状态及原业务或HTTP消息', async () => {
   vi.stubGlobal('fetch', async () =>
     Response.json({ status: 0, message: '任务不可用' }),

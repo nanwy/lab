@@ -25,10 +25,16 @@ const networkSchema = z.object({
     .array(
       z.record(
         z.string(),
-        z
-          .array(z.string())
-          .nullish()
-          .transform((v) => v ?? []),
+        z.preprocess(
+          (value) =>
+            Array.isArray(value)
+              ? value.filter((item) => !Array.isArray(item))
+              : value,
+          z
+            .array(z.string())
+            .nullish()
+            .transform((v) => v ?? []),
+        ),
       ),
     )
     .nullish()

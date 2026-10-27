@@ -382,6 +382,7 @@ function CourseDetailRoutePage() {
       key={courseId}
       courseId={courseId}
       sectionId={state.section_id}
+      breakpointTime={state.breakpoint_time}
     />
   )
 }

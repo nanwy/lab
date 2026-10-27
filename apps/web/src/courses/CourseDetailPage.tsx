@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { Loading } from '@workspace/ui/components/loading'
 import { Button } from '@workspace/ui/components/button'
 import {
+  addCoursePlay,
   getCourse,
   getCourseCatalog,
   courseSections,
@@ -13,7 +14,9 @@ import {
 } from '../api/courses'
 import { currentUserQueryOptions } from '../auth/session'
 import { CourseError, reportCourseError } from './CourseFeedback'
+import { CourseNotes } from './CourseNotes'
 import { CourseMaterials } from './CourseMaterials'
+import { CourseVideo, type CourseVideoHandle } from './CourseVideo'
 import { CourseMediaDialog } from './CourseDialog'
 import { isOfficeFile } from '../api/files'
 import { CourseComments } from './CourseComments'
@@ -23,10 +26,13 @@ import { usePageSignal } from '../auth/use-page-signal'
 export function CourseDetailPage({
   courseId,
   sectionId,
+  breakpointTime,
 }: {
   courseId: string
   sectionId?: string | number
+  breakpointTime?: number
 }) {
+  const video = useRef<CourseVideoHandle>(null)
   const user = useQuery(currentUserQueryOptions())
   const client = useQueryClient()
   const signalForPage = usePageSignal()
@@ -42,6 +48,15 @@ export function CourseDetailPage({
   })
   const [selected, setSelected] = useState<string | number | undefined>(
     sectionId,
+  )
+  const [notes, setNotes] = useState(false)
+  const [seekTarget, setSeekTarget] = useState<{
+    section: string | number
+    time: number
+  } | null>(
+    sectionId !== undefined && breakpointTime
+      ? { section: sectionId, time: breakpointTime }
+      : null,
   )
   const [materials, setMaterials] = useState(false)
   const [comments, setComments] = useState(false)
@@ -62,7 +77,16 @@ export function CourseDetailPage({
       aria-current={s.id === section?.id ? 'true' : undefined}
       onClick={() => {
         setSelected(s.id)
+        setSeekTarget(null)
         setMedia(null)
+        if (s.type === 1) {
+          const signal = signalForPage()
+          void addCoursePlay(courseId, s.id, signal)
+            .then(() => {
+              if (!signal.aborted) void catalog.refetch()
+            })
+            .catch((error) => reportCourseError(error, signal))
+        }
       }}
     >
       <span>
@@ -166,6 +190,21 @@ export function CourseDetailPage({
           {section ? (
             <>
               <h2 className="font-semibold">当前节：{section.name}</h2>
+              {section.type === 1 && section.m3u8 ? (
+                <CourseVideo
+                  key={`${courseId}:${section.id}:${section.m3u8}`}
+                  ref={video}
+                  courseId={courseId}
+                  sectionId={section.id}
+                  src={section.m3u8}
+                  finished={section.finish === true}
+                  breakpointTime={
+                    String(section.id) === String(seekTarget?.section)
+                      ? seekTarget?.time
+                      : undefined
+                  }
+                />
+              ) : null}
               <div key={section.id} className="flex flex-wrap gap-2">
                 {section.type === 1 && section.attachment?.lecture ? (
                   <LectureLink
@@ -212,6 +251,17 @@ export function CourseDetailPage({
       </div>
       {detail.isSuccess ? (
         <div className="flex gap-2">
+          {section ? (
+            <Button
+              variant="outline"
+              onClick={() => {
+                video.current?.pauseAndGetTime()
+                setNotes(true)
+              }}
+            >
+              笔记
+            </Button>
+          ) : null}
           <Button variant="outline" onClick={() => setMaterials(true)}>
             资料
           </Button>
@@ -222,6 +272,20 @@ export function CourseDetailPage({
             相关课程
           </Button>
         </div>
+      ) : null}
+      {notes && user.data && section ? (
+        <CourseNotes
+          scope={{ courseId, sectionId: section.id }}
+          account={user.data.id}
+          videoSection={section.type === 1}
+          readTime={() => video.current?.pauseAndGetTime() ?? 0}
+          seek={(id, time) => {
+            setSeekTarget({ section: id, time })
+            if (String(section.id) === String(id)) video.current?.seek(time)
+            else setSelected(id)
+          }}
+          close={() => setNotes(false)}
+        />
       ) : null}
       {materials && user.data ? (
         <CourseMaterials

@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { md5 } from 'js-md5'
+import { noteNameSchema } from './personal-notes'
 import { apiClient, ApiError } from './index'
 import { contentAddress } from './content'
 
@@ -32,6 +34,7 @@ const section = z.object({
   name: z.string(),
   type: z.union([z.literal(1), z.literal(2)]),
   video_length: z.string().nullish(),
+  m3u8: address.nullish().or(z.literal('')),
   finish_rate: z.number().nullish(),
   finish: z.boolean().optional(),
   play_count: z.number().optional(),
@@ -286,5 +289,85 @@ export function deleteCourseComment(
     `${coursePath(courseId)}comment/delete/`,
     { level1: [commentId] },
     signal,
+  )
+}
+
+export function addCoursePlay(
+  courseId: CourseId,
+  sectionId: CourseId,
+  signal?: AbortSignal,
+) {
+  return post(
+    z.object({ status: z.literal(1) }),
+    `${coursePath(courseId)}catalog/${encodeURIComponent(sectionId)}/play/`,
+    undefined,
+    signal,
+  )
+}
+export function addCourseVideoLog(
+  courseId: CourseId,
+  sectionId: CourseId,
+  video_log: Record<string, number>,
+  sum_duration: number,
+  signal?: AbortSignal,
+) {
+  const timestamp = Date.now()
+  const token = md5(
+    `${timestamp}&seclove|@.com|${courseId}M${sectionId}*${JSON.stringify(video_log)}%${sum_duration}`,
+  )
+  return post(
+    z.object({ status: z.literal(1) }),
+    `${coursePath(courseId)}section/${encodeURIComponent(sectionId)}/video/log/`,
+    { video_log, sum_duration, timestamp, token },
+    signal,
+  )
+}
+
+export type CourseNoteScope = { courseId: CourseId; sectionId: CourseId }
+export function getCourseNotes(
+  scope: CourseNoteScope,
+  shared: boolean,
+  search: string,
+  signal?: AbortSignal,
+) {
+  const query = new URLSearchParams({
+    nopage: '1',
+    search,
+    course_id: String(scope.courseId),
+    section_id: String(scope.sectionId),
+  })
+  return read(
+    z.array(z.object({ id, name: z.string() })),
+    `/front/${shared ? 'share' : 'user'}/note/?${query}`,
+    signal,
+  )
+}
+export async function saveCourseNoteMetadata(
+  scope: CourseNoteScope,
+  name: string,
+  share: boolean,
+  extend: unknown,
+  noteId?: CourseId,
+  signal?: AbortSignal,
+) {
+  noteNameSchema.parse({ name })
+  const path = `/front/user/note/${noteId === undefined ? '' : `${encodeURIComponent(noteId)}/`}`
+  return parse(
+    z.object({ id }),
+    await apiClient.request(path, {
+      method: noteId === undefined ? 'POST' : 'PATCH',
+      json: {
+        name,
+        share,
+        extend,
+        type: 1,
+        course_id: scope.courseId,
+        section_id: scope.sectionId,
+      },
+      signal,
+      isBusinessFailure: (value) =>
+        z.object({ status: z.literal(2) }).safeParse(value).success,
+    }),
+    path,
   )
 }

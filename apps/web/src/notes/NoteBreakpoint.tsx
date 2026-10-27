@@ -17,11 +17,14 @@ declare module '@tanstack/react-router' {
 }
 export function NoteBreakpoint({
   context,
+  seek,
   note,
 }: {
-  context: NoteContext
   note: { extend?: unknown; section_id?: NoteId }
-}) {
+} & (
+  | { context: NoteContext; seek?: never }
+  | { context?: never; seek: (sectionId: NoteId, time: number) => void }
+)) {
   const navigate = useNavigate()
   const signalForNote = usePageSignal()
   const [busy, setBusy] = useState(false)
@@ -49,8 +52,12 @@ export function NoteBreakpoint({
     if (busy) return
     const signal = signalForNote()
     setBusy(true)
-    const course = context.type > 4 ? context.folderId : context.courseId
     try {
+      if (seek) {
+        seek(note.section_id!, value as number)
+        return
+      }
+      const course = context.type > 4 ? context.folderId : context.courseId
       const allowed = await canEnterNoteCourse(course, signal)
       if (signal.aborted) return
       if (!allowed) {

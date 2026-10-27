@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Loading } from '@workspace/ui/components/loading'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
 import { toast } from '@workspace/ui/components/sonner'
@@ -93,7 +94,7 @@ function SharedSession({
             ))}
           </nav>
           {current && (
-            <SharedDetail
+            <SharedNoteDetail
               key={String(current.id)}
               accountId={accountId}
               scope={scope}
@@ -126,14 +127,16 @@ function ReadError({
     </section>
   )
 }
-function SharedDetail({
+export function SharedNoteDetail({
   accountId,
   noteId,
   scope,
+  seek,
 }: {
   accountId: NoteId
   noteId: NoteId
-  scope: NoteContext
+  scope?: NoteContext
+  seek?: (sectionId: NoteId, time: number) => void
 }) {
   const client = useQueryClient()
   const detail = useQuery({
@@ -176,7 +179,7 @@ function SharedDetail({
   return (
     <section className="space-y-4" aria-label="共享笔记正文">
       {detail.isPending ? (
-        <p role="status">正在加载共享正文…</p>
+        <Loading label="正在加载共享正文…" />
       ) : detail.isError ? (
         <ReadError
           title="共享正文读取失败"
@@ -189,7 +192,11 @@ function SharedDetail({
             推荐度：
             <span aria-label="推荐度">{detail.data.synthesis_score} / 5</span>
           </div>
-          <NoteBreakpoint context={scope} note={detail.data} />
+          {scope ? (
+            <NoteBreakpoint context={scope} note={detail.data} />
+          ) : seek ? (
+            <NoteBreakpoint seek={seek} note={detail.data} />
+          ) : null}
           <RichContentEditor
             value={detail.data.content}
             scopeKey={`${accountId}:shared:${noteId}`}
@@ -198,7 +205,7 @@ function SharedDetail({
         </>
       )}
       {score.isPending ? (
-        <p role="status">正在加载您的评分…</p>
+        <Loading label="正在加载您的评分…" />
       ) : score.isError ? (
         <ReadError
           title="个人评分读取失败"

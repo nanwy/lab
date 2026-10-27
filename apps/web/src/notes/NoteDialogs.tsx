@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { z } from 'zod'
 import { useForm } from '@tanstack/react-form'
 import { Button } from '@workspace/ui/components/button'
 import { LoadingButton } from '@workspace/ui/components/loading-button'
+import { Checkbox } from '@workspace/ui/components/checkbox'
 import { Input } from '@workspace/ui/components/input'
 import {
   FieldGroup,
@@ -40,22 +42,32 @@ export function reportNoteError(error: unknown, signal?: AbortSignal) {
 export function NoteNameDialog({
   title,
   initial = '',
+  checkpoint,
   save,
   close,
 }: {
   title: string
   initial?: string
-  save: (name: string, signal: AbortSignal) => Promise<unknown>
+  checkpoint?: { initial: number; read: () => number }
+  save: (
+    name: string,
+    signal: AbortSignal,
+    breakpoint: number,
+  ) => Promise<unknown>
   close: () => void
 }) {
   const signalForDialog = usePageSignal()
   const form = useForm({
-    defaultValues: { name: initial },
-    validators: { onSubmit: noteNameSchema },
+    defaultValues: { name: initial, breakpoint: checkpoint?.initial ?? 0 },
+    validators: {
+      onSubmit: noteNameSchema.extend({
+        breakpoint: z.number().finite().nonnegative(),
+      }),
+    },
     onSubmit: async ({ value }) => {
       const signal = signalForDialog()
       try {
-        await save(value.name, signal)
+        await save(value.name, signal, value.breakpoint)
         if (!signal.aborted) close()
       } catch (error) {
         reportNoteError(error, signal)
@@ -105,6 +117,46 @@ export function NoteNameDialog({
                 )
               }}
             />
+            {checkpoint ? (
+              <form.Field
+                name="breakpoint"
+                children={(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id={field.name}
+                          name={field.name}
+                          checked={field.state.value > 0}
+                          aria-invalid={isInvalid}
+                          onBlur={field.handleBlur}
+                          onCheckedChange={(checked) => {
+                            if (!checked) {
+                              field.handleChange(0)
+                              return
+                            }
+                            const time = checkpoint.read()
+                            if (!time) {
+                              toast.error('视频未开始播放或者异常，请稍后！')
+                              return
+                            }
+                            field.handleChange(time)
+                          }}
+                        />
+                        <FieldLabel htmlFor={field.name}>
+                          记录视频驻点
+                        </FieldLabel>
+                      </div>
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  )
+                }}
+              />
+            ) : null}
             <form.Subscribe selector={(state) => state.isSubmitting}>
               {(submitting) => (
                 <div className="flex justify-end gap-2">

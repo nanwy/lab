@@ -634,3 +634,63 @@ test('异常暂停只自动恢复一次，主动操作后重置保护', async ({
   await video.evaluate((v: HTMLVideoElement) => v.pause())
   await expect(video).toHaveJSProperty('paused', true)
 })
+
+test('目录重读失败保留当前视频实例与笔记草稿', async ({ page }) => {
+  let failCatalog = false
+  await page.route(`**${base}catalog/`, (route) =>
+    failCatalog
+      ? route.fulfill({ status: 500, json: { error: '目录重读失败' } })
+      : route.fulfill({
+          json: [{ id: 'chapter', name: '嵌套章', section: sections }],
+        }),
+  )
+  await page.route(`**${base}catalog/*/play/`, (route) =>
+    route.fulfill({ json: { status: 1 } }),
+  )
+  await page.route('**/api/front/user/note/?*', (route) =>
+    route.fulfill({ json: [{ id: 'n1', name: '草稿笔记' }] }),
+  )
+  await page.route('**/api/front/user/note/n1/', (route) =>
+    route.fulfill({
+      json: {
+        id: 'n1',
+        name: '草稿笔记',
+        content: '<p>已保存</p>',
+        share: false,
+        extend: {},
+        section_id: 'first',
+      },
+    }),
+  )
+  await page.goto('/#/basic/training/course/one')
+  const video = page.locator('video')
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
+    .toBeGreaterThan(0)
+  const instance = await video.elementHandle()
+  await page.getByRole('button', { name: '笔记', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '课程笔记', exact: true })
+  await dialog
+    .locator('.ql-editor[contenteditable="true"]')
+    .fill('尚未保存的草稿')
+  failCatalog = true
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('offline'))
+    window.dispatchEvent(new Event('online'))
+  })
+  await expect(
+    page.getByText('课程目录读取失败', { exact: true }),
+  ).toBeVisible()
+  await expect(video).toHaveCount(1)
+  expect(await instance!.evaluate((v) => v.isConnected)).toBe(true)
+  await expect(dialog.locator('.ql-editor[contenteditable="true"]')).toHaveText(
+    '尚未保存的草稿',
+  )
+  failCatalog = false
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  await page.getByRole('button', { name: '重试', exact: true }).click()
+  await expect(page.getByText('课程目录读取失败', { exact: true })).toHaveCount(
+    0,
+  )
+  await expect(page.getByRole('button', { name: /第二节/ })).toBeVisible()
+})

@@ -791,3 +791,80 @@ test('实验与整节测试同时打开时同题ID的标签只修改所属答案
     dialog.getByRole('radio', { name: 'A：章节选项A', exact: true }),
   ).toBeChecked()
 })
+
+test('选择实验节刷新目录完成标识且不增加视频播放次数', async ({ page }) => {
+  let catalogReads = 0,
+    plays = 0
+  await page.route(`**${course}catalog/`, (r) => {
+    catalogReads++
+    return r.fulfill({
+      json: [
+        {
+          id: 'chapter',
+          name: '实验章',
+          section: [{ ...section, finish: catalogReads > 1 }],
+        },
+      ],
+    })
+  })
+  await page.route(`**${course}catalog/*/play/`, (r) => {
+    plays++
+    return r.fulfill({ json: { status: 1 } })
+  })
+  await page.goto('/#/basic/training/course/one')
+  const lesson = page.getByRole('button', { name: /实验小节/ })
+  await expect(lesson).toContainText('未完成')
+  await lesson.click()
+  await expect.poll(() => catalogReads).toBe(2)
+  await expect(lesson).not.toContainText('未完成')
+  await expect(lesson).toContainText('完成')
+  expect(plays).toBe(0)
+})
+
+test('宿主目录重读失败保留运行环境的自动释放截止时间', async ({ page }) => {
+  await page.clock.install()
+  let failCatalog = false,
+    stops = 0
+  await page.route(`**${course}catalog/`, (r) =>
+    failCatalog
+      ? r.fulfill({ status: 500, json: { error: '目录重读失败' } })
+      : r.fulfill({
+          json: [{ id: 'chapter', name: '实验章', section: [section] }],
+        }),
+  )
+  await page.route(`**${operate}op/checkpoint/?*`, (r) =>
+    r.fulfill({
+      json: [{ ...checkpoints[0], task_type: 1, env: 'template' }],
+    }),
+  )
+  await page.route('**/api/front/env/runs/?*', (r) => r.fulfill({ json: [] }))
+  await page.route('**/api/front/env/status/', (r) =>
+    r.fulfill({
+      json: { status: 1, data: { status: 3, run_id: 'running', times: 10 } },
+    }),
+  )
+  await page.route('**/api/front/scene/running/status/?*', (r) =>
+    r.fulfill({ json: { nodes: {} } }),
+  )
+  await page.route('**/api/front/env/stop/running/', (r) => {
+    stops++
+    return r.fulfill({ json: { status: 1 } })
+  })
+  await page.goto('/#/basic/training/course/one')
+  const timer = page
+    .getByRole('region', { name: '课程环境', exact: true })
+    .getByRole('timer')
+  await expect(timer).toBeVisible()
+  await page.clock.fastForward(4000)
+  failCatalog = true
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('offline'))
+    window.dispatchEvent(new Event('online'))
+  })
+  await expect(
+    page.getByText('课程目录读取失败', { exact: true }),
+  ).toBeVisible()
+  await expect(timer).toBeVisible()
+  await page.clock.fastForward(6000)
+  await expect.poll(() => stops).toBe(1)
+})

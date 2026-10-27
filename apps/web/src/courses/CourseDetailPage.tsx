@@ -71,7 +71,7 @@ export function CourseDetailPage({
     src: string
     kind: 'video' | 'lecture'
   } | null>(null)
-  const sections = courseSections(catalog.isError ? [] : (catalog.data ?? []))
+  const sections = courseSections(catalog.data ?? [])
   const section =
     sections.find((s) => String(s.id) === String(selected)) ?? sections[0]
   const row = (s: CourseSection, index: number) => (
@@ -80,19 +80,18 @@ export function CourseDetailPage({
       variant={s.id === section?.id ? 'secondary' : 'ghost'}
       className="h-auto w-full justify-start whitespace-normal py-3 text-left"
       aria-current={s.id === section?.id ? 'true' : undefined}
-      onClick={() => {
+      onClick={async () => {
         setSelected(s.id)
         setExperiment(false)
         if (!s.test) setTesting(false)
         setSeekTarget(null)
         setMedia(null)
-        if (s.type === 1) {
-          const signal = signalForPage()
-          void addCoursePlay(courseId, s.id, signal)
-            .then(() => {
-              if (!signal.aborted) void catalog.refetch()
-            })
-            .catch((error) => reportCourseError(error, signal))
+        const signal = signalForPage()
+        try {
+          if (s.type === 1) await addCoursePlay(courseId, s.id, signal)
+          if (!signal.aborted) void catalog.refetch()
+        } catch (error) {
+          reportCourseError(error, signal)
         }
       }}
     >
@@ -168,18 +167,21 @@ export function CourseDetailPage({
       <div className="grid gap-4 md:grid-cols-[340px_minmax(0,1fr)]">
         <aside className="rounded border p-3">
           <h2 className="mb-3 font-semibold">课程目录</h2>
-          {catalog.isPending ? (
-            <Loading label="正在读取课程目录…" />
-          ) : catalog.isError ? (
+          {catalog.isError ? (
             <CourseError
               title="课程目录读取失败"
               error={catalog.error}
               retry={() => void catalog.refetch()}
             />
+          ) : null}
+          {catalog.isPending ? (
+            <Loading label="正在读取课程目录…" />
           ) : !sections.length ? (
-            <p>未关联小节</p>
+            catalog.isError ? null : (
+              <p>未关联小节</p>
+            )
           ) : (
-            catalog.data.map((entry, index) =>
+            (catalog.data ?? []).map((entry, index) =>
               'section' in entry ? (
                 <div key={entry.id}>
                   <h3 className="my-2 px-2 text-sm font-semibold">

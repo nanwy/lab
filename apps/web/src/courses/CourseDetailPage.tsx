@@ -14,6 +14,8 @@ import {
 } from '../api/courses'
 import { currentUserQueryOptions } from '../auth/session'
 import { CourseError, reportCourseError } from './CourseFeedback'
+import { CoursePractice } from './CoursePractice'
+import { CourseDialog } from './CourseDialog'
 import { CourseSectionTest } from './CourseSectionTest'
 import { CourseNotes } from './CourseNotes'
 import { CourseMaterials } from './CourseMaterials'
@@ -50,6 +52,7 @@ export function CourseDetailPage({
   const [selected, setSelected] = useState<string | number | undefined>(
     sectionId,
   )
+  const [experiment, setExperiment] = useState(false)
   const [testing, setTesting] = useState(false)
   const [notes, setNotes] = useState(false)
   const [seekTarget, setSeekTarget] = useState<{
@@ -79,6 +82,7 @@ export function CourseDetailPage({
       aria-current={s.id === section?.id ? 'true' : undefined}
       onClick={() => {
         setSelected(s.id)
+        setExperiment(false)
         if (!s.test) setTesting(false)
         setSeekTarget(null)
         setMedia(null)
@@ -208,7 +212,20 @@ export function CourseDetailPage({
                   }
                 />
               ) : null}
+              {section.type === 2 && user.data ? (
+                <CoursePractice
+                  key={`${courseId}:${section.id}`}
+                  courseId={courseId}
+                  sectionId={section.id}
+                  account={user.data.id}
+                />
+              ) : null}
               <div key={section.id} className="flex flex-wrap gap-2">
+                {section.type === 1 && section.experiment ? (
+                  <Button variant="outline" onClick={() => setExperiment(true)}>
+                    本节实验
+                  </Button>
+                ) : null}
                 {section.test ? (
                   <Button variant="outline" onClick={() => setTesting(true)}>
                     本节测试
@@ -280,6 +297,20 @@ export function CourseDetailPage({
             相关课程
           </Button>
         </div>
+      ) : null}
+      {experiment && user.data && section ? (
+        <CourseDialog
+          title="本节实验"
+          draggable
+          close={() => setExperiment(false)}
+        >
+          <CoursePractice
+            key={`${courseId}:${section.id}`}
+            courseId={courseId}
+            sectionId={section.id}
+            account={user.data.id}
+          />
+        </CourseDialog>
       ) : null}
       {testing && user.data && section?.test ? (
         <CourseSectionTest

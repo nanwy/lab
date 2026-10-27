@@ -454,3 +454,7 @@ Standards 审查无可操作发现。Spec 审查发现的 HTTP 错误体读取�
 ## S15 第三票：章节测试（2026-10-27）
 
 整节题目、逐题保存、提交结果、重新测试、弹窗拖动及请求隔离的实际交付见 [S15 实施记录](planning/s15-implementation.md#第三票章节测试2026-10-27)，双轴修复见 [03 审查](../.scratch/s15-courses/review-03.md)。本票浏览器 6 项、课程域直接回归和全量单测 220 项的结果与中途失败分别记录；真实计分、次数及权限没有实测。当前进度仍以[实施计划](planning/page-rebuild-implementation.md)为唯一来源。
+
+## S15 第四票：课程实验与环境（2026-10-27）
+
+两个实验入口、检查点/Flag、手册、resource_type=16 环境生命周期及既有控制台接线的实际交付见 [S15 实施记录](planning/s15-implementation.md#第四票课程实验与环境2026-10-27)，审查见 [04 报告](../.scratch/s15-courses/review-04.md)。第四票浏览器 14 项、直接消费者回归和全量单测 223 项通过；U02 检查/上传原缺链仍明确不可用，真实环境及控制台连通未实测。当前进度仍只维护在[实施计划](planning/page-rebuild-implementation.md)。

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
@@ -113,7 +113,7 @@ export function CourseSectionTest({
       ) : (
         <div className="space-y-6">
           {detail.data.results.map((q, index) => (
-            <Question
+            <CourseQuestion
               key={`${q.id}:${detail.data.done}`}
               question={q}
               index={index}
@@ -135,29 +135,34 @@ export function CourseSectionTest({
   )
 }
 const selection = z.object({ option: z.array(z.string()) })
-function Question({
+export function CourseQuestion({
   question: q,
   index,
   done,
   busy,
   save,
+  optimistic = false,
+  snapshot,
 }: {
   question: CourseTestQuestion
-  index: number
+  index?: number
+  optimistic?: boolean
+  snapshot?: number
   done: boolean
   busy: boolean
   save: (option: string[]) => Promise<boolean>
 }) {
+  const instanceId = useId()
   const form = useForm({
     defaultValues: { option: q.user_option },
     validators: { onSubmit: selection },
   })
   useEffect(() => {
     form.reset({ option: q.user_option })
-  }, [form, q.user_option])
+  }, [form, q.user_option, snapshot])
   return (
     <section
-      aria-label={`第${index + 1}题`}
+      aria-label={index === undefined ? '检查点题目' : `第${index + 1}题`}
       className="space-y-3 border-b pb-5"
     >
       <form
@@ -173,20 +178,22 @@ function Question({
               const isInvalid =
                 field.state.meta.isTouched && !field.state.meta.isValid
               const change = async (option: string[]) => {
-                if (await save(option)) field.handleChange(option)
+                if (optimistic) field.handleChange(option)
+                if ((await save(option)) && !optimistic)
+                  field.handleChange(option)
               }
               return (
                 <Field data-invalid={isInvalid}>
                   <FieldSet>
                     <FieldLegend>
-                      {index + 1}、【
+                      {index === undefined ? null : `${index + 1}、`}【
                       {{ 1: '单选', 2: '多选', 3: '判断' }[q.option_type]}】
                       {q.name}
                     </FieldLegend>
                     {q.option_type === 2 ? (
                       <div className="space-y-2">
                         {Object.entries(q.content).map(([value, label]) => {
-                          const id = `question-${q.id}-${value}`
+                          const id = `${instanceId}-${value}`
                           return (
                             <div
                               key={value}
@@ -226,7 +233,7 @@ function Question({
                         onValueChange={(value) => void change([value])}
                       >
                         {Object.entries(q.content).map(([value, label]) => {
-                          const id = `question-${q.id}-${value}`
+                          const id = `${instanceId}-${value}`
                           return (
                             <div
                               key={value}

@@ -46,4 +46,4 @@ U01/U02 未解决时，票内必须注明对应子项尚未完成或原缺链保
 
 ## 交付依据
 
-已实现范围、定向验收和真实联调缺口见[实施记录](../../docs/planning/s15-implementation.md)，两轴报告见[01审查](review-01.md)、[02审查](review-02.md)和[03审查](review-03.md)。本组票没有提前实现 04。
+已实现范围、定向验收和真实联调缺口见[实施记录](../../docs/planning/s15-implementation.md)，两轴报告见[01审查](review-01.md)、[02审查](review-02.md)、[03审查](review-03.md)和[04审查](review-04.md)。U01 仍阻塞，04 的 U02 原缺链保留，不能宣称真实业务全闭环。

@@ -34,6 +34,7 @@ const section = z.object({
   name: z.string(),
   type: z.union([z.literal(1), z.literal(2)]),
   test: z.unknown().optional().transform(Boolean),
+  experiment: z.unknown().optional().transform(Boolean),
   video_length: z.string().nullish(),
   m3u8: address.nullish().or(z.literal('')),
   finish_rate: z.number().nullish(),

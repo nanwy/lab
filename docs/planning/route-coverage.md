@@ -122,3 +122,7 @@ R089 的 `_8s → e_t(module=1)` 可达蓝军配置、初始态势、运行控�
 ## R099 防御态势请求补证（2026-10-26）
 
 防御页仅以 secne_id/resource_type/scene_type 读取顶层 cells。原 t9n 对任务类型14的特殊 POST 判据未 Number 转换，深链资源类型为字符串，所以沿普通 GET scene/topo draw 请求。不根据未消费的 resource_id/test_task_id 增加请求，不主动拉取日志。3D仅渲染原设备 Sprite、名称及直线，保留坐标/顺序层级、OrbitControls 旋转缩放平移；原未参与主循环的 composer 不扩成新能力。详细证据见[S14分析](../../.scratch/s14-situation/analysis.md)。
+
+## R100 导调态势调用补证（2026-10-27）
+
+qWs仅调用scene/topo拓扑、任务级风险、kind1/2日志；未调用解构出的getBluePosition，不新增flow_path。原事件日志与蓝军攻击日志同读execLogs，流量日志读attackLogs。固定事件/资产分布、90事件统计、901流量统计及训练空壳保持；左右固定bottom280，底部全宽5:14:5，不套防御页right400。原路由定义与偏移不变，当前交付范围仍以[实施计划](page-rebuild-implementation.md)为准。

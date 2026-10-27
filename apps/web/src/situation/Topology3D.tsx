@@ -24,7 +24,13 @@ import {
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { SituationTopology } from '../api/situation-topology'
 
-export function Topology3D({ graph }: { graph: SituationTopology }) {
+export function Topology3D({
+  graph,
+  label = '防御3D拓扑',
+}: {
+  graph: SituationTopology
+  label?: string
+}) {
   const ref = useRef<HTMLDivElement>(null)
   const [error, setError] = useState(false)
   useEffect(() => {
@@ -147,7 +153,7 @@ export function Topology3D({ graph }: { graph: SituationTopology }) {
     }
   }, [graph])
   return (
-    <div className="situation-3d" role="img" aria-label="防御3D拓扑" ref={ref}>
+    <div className="situation-3d" role="img" aria-label={label} ref={ref}>
       {error ? <p role="alert">3D 拓扑不可用</p> : null}
     </div>
   )

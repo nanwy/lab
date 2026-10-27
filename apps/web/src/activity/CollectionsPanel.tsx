@@ -23,8 +23,8 @@ export function CollectionsPanel() {
         item.is_status && item.attribute === 1 ? (
           <Link
             className="text-primary underline"
-            to="/basic/$"
-            params={{ _splat: `training/course/${item.object_id}` }}
+            to="/basic/training/course/$courseId"
+            params={{ courseId: String(item.object_id) }}
           >
             {item.extend_info.name}
           </Link>

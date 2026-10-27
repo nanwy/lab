@@ -3,6 +3,8 @@ import { AttackTeachingPage } from './teaching/AttackTeachingPage'
 import { DetectionToolsPage } from './detection/DetectionToolsPage'
 import { detectionCategories } from './api/detection-tools'
 import { PersonalNotesPage } from './notes/PersonalNotesPage'
+import { CourseListPage } from './courses/CourseListPage'
+import { CourseDetailPage } from './courses/CourseDetailPage'
 import { ExperimentNotes } from './experiments/ExperimentNotes'
 import {
   Link,
@@ -361,6 +363,29 @@ const futureRoute = createRoute({
   component: FutureBusinessPage,
 })
 
+const courseListRoute = createRoute({
+  getParentRoute: () => basicRoute,
+  path: '/training/course',
+  component: CourseListPage,
+})
+const courseDetailRoute = createRoute({
+  getParentRoute: () => basicRoute,
+  path: '/training/course/$courseId',
+  component: CourseDetailRoutePage,
+})
+
+function CourseDetailRoutePage() {
+  const { courseId } = courseDetailRoute.useParams()
+  const state = useRouterState({ select: (s) => s.location.state })
+  return (
+    <CourseDetailPage
+      key={courseId}
+      courseId={courseId}
+      sectionId={state.section_id}
+    />
+  )
+}
+
 function FutureBusinessPage() {
   const { _splat = '' } = futureRoute.useParams()
   if (_splat === 'training/task')
@@ -681,6 +706,8 @@ const routeTree = rootRoute.addChildren([
     personalRoute,
     filesRoute,
     personalNotesRoute,
+    courseListRoute,
+    courseDetailRoute,
     experimentListRoute,
     experimentRoute.addChildren([
       experimentIndexRoute,

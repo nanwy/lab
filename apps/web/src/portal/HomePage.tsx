@@ -43,8 +43,8 @@ export function HomePage() {
       if (signal.aborted) return
       if (course.is_open)
         await navigate({
-          to: '/basic/$',
-          params: { _splat: `training/course/${id}` },
+          to: '/basic/training/course/$courseId',
+          params: { courseId: String(id) },
         })
       else toast.error('该课程已被关闭')
     } catch (error) {
@@ -131,13 +131,15 @@ export function HomePage() {
                     key={item.path}
                     to={
                       item.path === '/basic/user/bench' ||
-                      item.path === '/basic/user/note'
+                      item.path === '/basic/user/note' ||
+                      item.path === '/basic/training/course'
                         ? item.path
                         : '/basic/$'
                     }
                     params={
                       item.path === '/basic/user/bench' ||
-                      item.path === '/basic/user/note'
+                      item.path === '/basic/user/note' ||
+                      item.path === '/basic/training/course'
                         ? {}
                         : { _splat: item.path.slice(7) }
                     }
@@ -274,8 +276,7 @@ function LearningGuide({
                 <h3 className="text-lg font-semibold">课程推荐</h3>
                 <Link
                   className="text-primary underline"
-                  to="/basic/$"
-                  params={{ _splat: 'training/course' }}
+                  to="/basic/training/course"
                 >
                   查看更多课程
                 </Link>

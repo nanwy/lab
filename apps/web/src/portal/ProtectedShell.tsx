@@ -159,14 +159,16 @@ function LearnerShell({ user }: { user: CurrentUser }) {
                     to={
                       item.path === '/basic/user/bench' ||
                       item.path === '/basic/user/file' ||
-                      item.path === '/basic/user/note'
+                      item.path === '/basic/user/note' ||
+                      item.path === '/basic/training/course'
                         ? item.path
                         : '/basic/$'
                     }
                     params={
                       item.path === '/basic/user/bench' ||
                       item.path === '/basic/user/file' ||
-                      item.path === '/basic/user/note'
+                      item.path === '/basic/user/note' ||
+                      item.path === '/basic/training/course'
                         ? {}
                         : { _splat: item.path.slice(7) }
                     }

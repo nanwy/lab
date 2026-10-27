@@ -120,25 +120,25 @@ flowchart TD
 ### F005 培训 / 课程中心与课程详情
 
 - **入口**：/basic/training/course。路由索引：R004、R005、R006、R007。
-- **功能**：列表筛选；课程详情、目录、章节、资源、评论/推荐入口。
-- **权限/状态**：can_enter、课程可见性/下线状态。
+- **功能**：列表筛选；课程详情、目录、章节、资料、评论/回复、推荐、收藏及课程笔记接入。
+- **权限/状态**：列表brief/is_open；笔记驻点can_enter；课程可见性/下线状态。
 - **原站代码**：`lgi` @ `2459691`；`HEi` @ `3598190`。
 - **接口定位线索**：/api/front/learn/task/self_study/open_courses/。
   - 词法候选示例（非调用链）：`/api/front/learn/task/self_study/open_courses/${e}/can_enter/` @ `1813396`；`/api/front/learn/task/self_study/open_courses/list/?` @ `1827782`。
 - **验收**：可进入课程加载目录；不可进入时解释原因。
-- **仍需补证**：筛选枚举、资源权限、评论是否可写。
+- **仍需补证**：筛选与评论写入调用链已补证；课程导出响应、资源/评论/笔记权限及真实字段未实测；截图与模板导入未见公开课可达入口，见 docs/planning/s15-analysis.md。
 - **需求/阶段**：US 36, 37, 42；P3。
 
 ### F006 培训 / 视频与学习进度
 
 - **入口**：课程详情内部。路由索引：R007、R022。
-- **功能**：播放、断点续播、章节切换、视频学习日志与进度上报；课程/章节开启分支。
+- **功能**：播放、笔记驻点恢复、章节切换、视频学习日志与进度上报；课程/章节开启分支。
 - **权限/状态**：所属课程和章节；学习规则。
 - **原站代码**：`HEi` @ `3598190`；`Gla` @ `5980075`。
 - **接口定位线索**：/api/front/learn/task/self_study/open_courses/*/section/。
   - 词法候选示例（非调用链）：`/api/front/learn/task/self_study/open_courses/${e}/can_enter/` @ `1813396`；`/api/front/learn/task/self_study/open_courses/list/?` @ `1827782`。
 - **验收**：播放/暂停/重开后的进度与后端一致。
-- **仍需补证**：日志计算、心跳、拖动限制、重复上报处理；学习日志为写操作。
+- **仍需补证**：40秒HLS分片日志与签名、笔记驻点已补证；未见自动恢复最后播放位置；服务端去重/进度计算与原生HLS日志兼容未验证，见 docs/planning/s15-analysis.md。
 - **需求/阶段**：US 38, 39；P3。
 
 ### F007 培训 / 章节测验与实操检查点
@@ -147,10 +147,10 @@ flowchart TD
 - **功能**：取题、作答、重置、提交；自测与检查点/flag流程。
 - **权限/状态**：课程准入、次数及任务状态。
 - **原站代码**：`HEi` @ `3598190`；`Gla` @ `5980075`。
-- **接口定位线索**：/api/front/learn/task/self_study/open_courses/_/section/_/test/; operate/。
+- **接口定位线索**：/api/front/learn/task/self_study/open_courses/_/section/_/test/; operate/_/checkpoint/; /api/front/env/。
   - 词法候选示例（非调用链）：`/api/front/learn/task/self_study/open_courses/${e}/can_enter/` @ `1813396`；`/api/front/learn/task/self_study/open_courses/list/?` @ `1827782`。
 - **验收**：正确/错误/未答及重复提交按真实规则处理。
-- **仍需补证**：评分规则、题型、重试限制、环境依赖。
+- **仍需补证**：题型、重置及resource_type16环境调用链已补证；confront缺回调/上传地址；真实评分、次数、共享与环境契约未实测，见 docs/planning/s15-analysis.md。
 - **需求/阶段**：US 40, 41；P3。
 
 ### F008 培训 / 教学任务列表与详情

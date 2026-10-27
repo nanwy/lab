@@ -58,8 +58,8 @@ export function NoteBreakpoint({
         return
       }
       await navigate({
-        to: '/basic/$',
-        params: { _splat: `training/course/${course}` },
+        to: '/basic/training/course/$courseId',
+        params: { courseId: String(course) },
         state: {
           section_id: note.section_id,
           breakpoint_time: value as number,
